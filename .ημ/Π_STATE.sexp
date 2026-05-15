@@ -1,0 +1,10 @@
+(fork-tax-snapshot
+  (name "shuv-openplanner")
+  (timestamp "2026-05-15T06:01:45Z")
+  (repo "/home/err/devel/orgs/shuv/openplanner")
+  (branch "main")
+  (head-before "f95a53a4da8ed90588b0be320ba8e86c6a03668d")
+  (origin "git@github.com:riatzukiza/openplanner.git")
+  (scope ["."])
+  (note "Shuv OpenPlanner clean snapshot requested in fork-tax scope.")
+  (status-lines ["## main...origin/main"]))
