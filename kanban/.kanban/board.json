@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-05-29T04:01:19.827Z",
+  "totalTasks": 2,
+  "columns": [
+    {
+      "status": "icebox",
+      "title": "Icebox",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "incoming",
+      "title": "Incoming",
+      "taskCount": 2,
+      "tasks": [
+        {
+          "uuid": "orgs-shuv-openplanner-kanban-orgs-shuv-openplanner-specs-2026-03-27-dual-tier-semantic-memory-md",
+          "title": "Dual-tier semantic memory for OpenPlanner",
+          "slug": "dual-tier-semantic-memory-for-openplanner",
+          "status": "incoming",
+          "priority": "P3",
+          "labels": [
+            "specs",
+            "migrated-spec"
+          ],
+          "createdAt": "2026-05-29T04:01:18.668Z",
+          "content": "> Source: `orgs/shuv/openplanner/specs/2026-03-27-dual-tier-semantic-memory.md`\n> Migrated-to-kanban: `orgs/shuv/openplanner/kanban/2026-03-27-dual-tier-semantic-memory.md`\n\n# Dual-tier semantic memory for OpenPlanner\n\n## Goal\n\nImprove retrieval quality for short Discord-style messages by separating:\n\n1. a hot/raw vector store optimized for short messages and fast ingest\n2. a compacted semantic store containing larger synthesized packs built from related raw memories\n\nQueries should consult both stores.\n\n## Why\n\nRaw Discord messages are short and numerous. A single embedding model + single collection makes retrieval noisy as the corpus grows. The proposed approach keeps:\n\n- hot collection: raw message-level recall\n- compact collection: denser semantic recall over grouped related messages\n\n## Scope\n\n### Phase 1\n\n- Add dual Chroma collection support to OpenPlanner.\n- Keep raw event ingest writing to the hot collection.\n- Add a semantic compaction job that builds compact packs from semantically related raw events.\n- Add dual-tier vector search that queries both hot and compact collections and merges results.\n- Expose compact collection and model state in health output.\n\n### Phase 2\n\n- Add hybrid client search in `packages/cephalon-ts` so memory lookup can combine FTS with vector hits.\n- Optionally make compaction auto-triggered once thresholds are crossed.\n- Optionally tune hot model to `nomic-embed-text:latest` and compact model to a larger Qwen embedding model.\n\n## Constraints\n\n- Preserve current event ingest behavior.\n- Avoid destructive rewrites of the active hot collection.\n- Prefer additive config and backward-compatible API response shapes.\n- Keep vector search response compatible with existing clients.\n\n## Verification\n\n- Build OpenPlanner.\n- Run OpenPlanner tests.\n- Build/test `packages/cephalon-ts` search behavior.\n- Smoke test compact job creation and dual-tier vector query shape.",
+          "sourcePath": "/home/err/devel/orgs/shuv/openplanner/kanban/2026-03-27-dual-tier-semantic-memory.md"
+        },
+        {
+          "uuid": "orgs-shuv-openplanner-kanban-orgs-shuv-openplanner-specs-openplanner-graph-events-md",
+          "title": "OpenPlanner Graph Events",
+          "slug": "openplanner-graph-events",
+          "status": "incoming",
+          "priority": "P3",
+          "labels": [
+            "specs",
+            "migrated-spec"
+          ],
+          "createdAt": "2026-05-29T04:01:18.668Z",
+          "content": "> Source: `orgs/shuv/openplanner/specs/openplanner-graph-events.md`\n> Migrated-to-kanban: `orgs/shuv/openplanner/kanban/openplanner-graph-events.md`\n\n# OpenPlanner Graph Events\n\n## Status\nDraft\n\n## Summary\nAdd graph event kinds (`graph.node`, `graph.edge`) to OpenPlanner's event ingestion pipeline, enabling the storage and search of hyperlink graph data from Myrmex's web crawling.\n\n## Problem statement\nOpenPlanner currently ingests generic events and supports FTS/vector search on content. It has no concept of:\n- Graph nodes (web pages with URLs, titles, content hashes)\n- Graph edges (hyperlinks between pages)\n- Graph-scoped search (search only within crawled content)\n- Graph traversal queries (find pages linked from X, find pages about Y)\n\nMyrmex needs to store the growing hyperlink graph somewhere persistent and queryable. OpenPlanner is the natural home — it already stores events, generates embeddings, and indexes content.\n\n## Goals\n1. Support `graph.node` and `graph.edge` event kinds in OpenPlanner.\n2. Store graph nodes with URL, title, content hash, pheromone, visit metadata.\n3. Store graph edges with source, target, link text, discovery metadata.\n4. Add graph-scoped search filters to FTS and vector search endpoints.\n5. Support graph traversal queries via structured event queries.\n\n## Non-goals\n- Building a graph database engine in OpenPlanner.\n- Replacing DuckDB/MongoDB storage backends.\n- Implementing graph algorithms (PageRank, community detection) — those live in Myrmex.\n\n## Event schemas\n\n### graph.node\n```json\n{\n  \"kind\": \"graph.node\",\n  \"timestamp\": \"2026-04-01T18:00:00Z\",\n  \"data\": {\n    \"url\": \"https://example.com/article\",\n    \"title\": \"Article Title\",\n    \"content\": \"# Article Title\\n\\nArticle body...\",\n    \"contentHash\": \"sha256:abc123\",\n    \"metadata\": {\n      \"author\": \"John Doe\",\n      \"publishedAt\": \"2026-03-30T00:00:00Z\",\n      \"bypassMethod\": \"bpc-extension\",\n      \"status\": \"success\",\n      \"elapsed\": 2341\n    },\n    \"discoveredAt\": \"2026-04-01T17:55:00Z\",\n    \"lastVisitedAt\": \"2026-04-01T18:00:00Z\",\n    \"visitCount\": 3,\n    \"pheromone\": 1.5\n  }\n}\n```\n\n### graph.edge\n```json\n{\n  \"kind\": \"graph.edge\",\n  \"timestamp\": \"2026-04-01T18:00:00Z\",\n  \"data\": {\n    \"source\": \"https://example.com/article\",\n    \"target\": \"https://example.com/related\",\n    \"linkText\": \"related article\",\n    \"discoveredAt\": \"2026-04-01T18:00:00Z\"\n  }\n}\n```\n\n## Storage\n\n### DuckDB schema\n```sql\nCREATE TABLE IF NOT EXISTS graph_nodes (\n  url TEXT PRIMARY KEY,\n  title TEXT,\n  content_hash TEXT,\n  content TEXT,\n  discovered_at TIMESTAMP,\n  last_visited_at TIMESTAMP,\n  visit_count INTEGER DEFAULT 0,\n  pheromone DOUBLE DEFAULT 0.0,\n  metadata TEXT  -- JSON blob\n);\n\nCREATE TABLE IF NOT EXISTS graph_edges (\n  source TEXT,\n  target TEXT,\n  link_text TEXT,\n  discovered_at TIMESTAMP,\n  PRIMARY KEY (source, target)\n);\n\nCREATE INDEX IF NOT EXISTS idx_graph_nodes_title ON graph_nodes(title);\nCREATE INDEX IF NOT EXISTS idx_graph_nodes_discovered ON graph_nodes(discovered_at);\nCREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source);\nCREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target);\n```\n\n### ChromaDB collections\n- Existing hot/raw collections continue to store embeddings for all content\n- Graph node content is embedded the same way as other content\n- Search scope filter `scope=graph` limits results to graph node content\n\n## API changes\n\n### Event ingestion\nNo changes needed — `POST /v1/events` already accepts arbitrary event kinds. Graph events are ingested like any other event, with additional processing to populate the graph tables.\n\n### Search scoping\nAdd `scope` parameter to search endpoints:\n\n```\nPOST /v1/search/fts\n{\n  \"query\": \"machine learning\",\n  \"scope\": \"graph\"  -- new: limits to graph node content\n}\n\nPOST /v1/search/vector\n{\n  \"query\": \"machine learning\",\n  \"scope\": \"graph\"  -- new: limits to graph node embeddings\n}\n```\n\n### Graph query endpoints (new)\n```\nGET /v1/graph/stats\n→ { nodeCount, edgeCount, avgPheromone, oldestNode, newestNode }\n\nGET /v1/graph/nodes?url=https://example.com/article\n→ { url, title, content, metadata, visitCount, pheromone, outgoingEdges }\n\nGET /v1/graph/nodes?url=https://example.com/article&edges=true\n→ includes outgoing and incoming edges\n\nGET /v1/graph/edges?source=https://example.com/article\n→ [{ source, target, linkText, discoveredAt }]\n\nGET /v1/graph/edges?target=https://example.com/article\n→ incoming edges (pages that link to this)\n\nPOST /v1/graph/traverse\n{\n  \"from\": \"https://example.com/article\",\n  \"depth\": 2,\n  \"limit\": 50,\n  \"strategy\": \"bfs\" | \"dfs\" | \"pheromone\"\n}\n→ [{ url, title, distance, pheromone }]\n```\n\n## Affected files\n\n### OpenPlanner changes\n- `src/routes/v1/graph.ts` — new: graph query routes\n- `src/plugins/duckdb.ts` — add graph table creation and event processing\n- `src/plugins/mongodb.ts` — add graph collection support (if MongoDB backend)\n- `src/lib/event-processors/graph.ts` — new: graph event processor\n- `src/routes/v1/search.ts` — add `scope` parameter support\n- `src/lib/types.ts` — add graph event types\n\n## Phases\n\n### Phase 1: Event Processing\n- Add `graph.node` and `graph.edge` event kind support\n- Create DuckDB tables for graph storage\n- Implement graph event processor that populates tables from events\n\n### Phase 2: Graph Query API\n- Implement `/v1/graph/*` query endpoints\n- Add stats, nodes, edges, and traverse endpoints\n- Test graph queries against stored data\n\n### Phase 3: Search Scoping\n- Add `scope` parameter to FTS and vector search\n- Implement graph-scoped search filters\n- Test: search returns only graph node content when scoped\n\n## Verification\n- `POST /v1/events` with `kind: graph.node` creates a row in `graph_nodes`\n- `POST /v1/events` with `kind: graph.edge` creates a row in `graph_edges`\n- `GET /v1/graph/stats` returns accurate counts\n- `POST /v1/search/fts` with `scope: graph` returns only crawled content\n- `POST /v1/graph/traverse` returns reachable nodes within depth limit\n\n## Definition of done\n- Graph events are ingested and stored in DuckDB/MongoDB\n- Graph query endpoints return accurate data\n- Search scoping limits results to graph content\n- ChromaDB embeddings exist for all graph node content\n\n## Related specs\n- `myrmex-orchestrator.md` — Myrmex orchestrator sends graph events\n- `myrmex-graph-epic.md` — parent epic\n- `proxx-graph-surface.md` — Proxx proxies graph queries",
+          "sourcePath": "/home/err/devel/orgs/shuv/openplanner/kanban/openplanner-graph-events.md"
+        }
+      ]
+    },
+    {
+      "status": "accepted",
+      "title": "Accepted",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "breakdown",
+      "title": "Breakdown",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "blocked",
+      "title": "Blocked",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "ready",
+      "title": "Ready",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "todo",
+      "title": "Todo",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "in_progress",
+      "title": "In Progress",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "review",
+      "title": "Review",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "document",
+      "title": "Document",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "done",
+      "title": "Done",
+      "taskCount": 0,
+      "tasks": []
+    },
+    {
+      "status": "rejected",
+      "title": "Rejected",
+      "taskCount": 0,
+      "tasks": []
+    }
+  ]
+}

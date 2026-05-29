@@ -1,3 +1,17 @@
+---
+uuid: "orgs-shuv-openplanner-kanban-orgs-shuv-openplanner-specs-openplanner-graph-events-md"
+title: "OpenPlanner Graph Events"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:18.668Z"
+source: "orgs/shuv/openplanner/specs/openplanner-graph-events.md"
+category: "specs"
+---
+
+> Source: `orgs/shuv/openplanner/specs/openplanner-graph-events.md`
+> Migrated-to-kanban: `orgs/shuv/openplanner/kanban/openplanner-graph-events.md`
+
 # OpenPlanner Graph Events
 
 ## Status

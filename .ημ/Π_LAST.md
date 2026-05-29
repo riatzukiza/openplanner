@@ -1,25 +1,21 @@
-# Π Fork Tax Snapshot: shuv-openplanner
+# Π handoff: eta-mu kanban migration batch agent_shuv
 
-- timestamp: 2026-05-15T06:01:45Z
+- time: 2026-05-29T04:03:19Z
 - repo: /home/err/devel/orgs/shuv/openplanner
-- branch: main
-- head-before: f95a53a4da8ed90588b0be320ba8e86c6a03668d
-- origin: git@github.com:riatzukiza/openplanner.git
-- scope: .
-- note: Shuv OpenPlanner clean snapshot requested in fork-tax scope.
+- branch: fork-tax/20260515-openplanner-snapshot
+- manifest: /tmp/eta-mu-kanban-batches/agent_shuv.json
+- migrated markdown cards: 2
 
-## Dirty summary before commit
+## Migrated boards
+- `specs` -> `kanban` (2 markdown cards); validation: `eta-mu-beta kanban count --tasks-dir /home/err/devel/orgs/shuv/openplanner/kanban` => total 2
 
-```text
-## main...origin/main
-```
+## Verification
 
-## Verification plan
+- Ran migration script from `/home/err/devel`: `node services/eta-mu/kanban/scripts/migrate-specs-to-kanban.mjs --root /home/err/devel --manifest /tmp/eta-mu-kanban-batches/agent_shuv.json`.
+- Spot-checked every board in the manifest with `eta-mu-beta kanban count --tasks-dir <boardDir>`.
 
-- git diff --cached --check after staging
-- push branch and tag
-- create or update GitHub PR
+## Concurrency guard
 
-## Concurrent/residual dirt policy
-
-Unrelated dirty paths outside the scope are intentionally left untouched. Nested submodules with local-only dirt that are not part of the requested scope are recorded as residual rather than cleaned.
+- Staging is path-scoped to migrated kanban directories, removed spec/specs directories, and these `.ημ` handoff artifacts.
+- No repo-wide cleanup/reset/restore was run.
+- `services/eta-mu` and `orgs/open-hax/eta-mu` were not modified or staged by this batch.

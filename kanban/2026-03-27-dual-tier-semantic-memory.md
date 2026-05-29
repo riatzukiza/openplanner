@@ -1,3 +1,17 @@
+---
+uuid: "orgs-shuv-openplanner-kanban-orgs-shuv-openplanner-specs-2026-03-27-dual-tier-semantic-memory-md"
+title: "Dual-tier semantic memory for OpenPlanner"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:18.668Z"
+source: "orgs/shuv/openplanner/specs/2026-03-27-dual-tier-semantic-memory.md"
+category: "specs"
+---
+
+> Source: `orgs/shuv/openplanner/specs/2026-03-27-dual-tier-semantic-memory.md`
+> Migrated-to-kanban: `orgs/shuv/openplanner/kanban/2026-03-27-dual-tier-semantic-memory.md`
+
 # Dual-tier semantic memory for OpenPlanner
 
 ## Goal
