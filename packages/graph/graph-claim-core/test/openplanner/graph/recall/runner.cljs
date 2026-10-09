@@ -3,7 +3,8 @@
   (:require [cljs.test :refer [deftest is run-tests]]
             [openplanner.graph.claims.core-test]
             [openplanner.graph.recall.boundary :as boundary]
-            [openplanner.graph.recall.core-test :as fixture]))
+            [openplanner.graph.recall.core-test :as fixture]
+            [openplanner.graph.recall.mongo-test]))
 
 (deftest native-boundary-keeps-trace-and-failure-outcomes
   (let [result (boundary/recall-plan-js (clj->js fixture/snapshot)
@@ -23,4 +24,5 @@
   ;; run-tests' return value is not a summary and cannot attest success.
   (run-tests 'openplanner.graph.claims.core-test
              'openplanner.graph.recall.core-test
-             'openplanner.graph.recall.runner))
+             'openplanner.graph.recall.runner
+             'openplanner.graph.recall.mongo-test))
