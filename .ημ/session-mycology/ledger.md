@@ -83,3 +83,13 @@
   spore: none
   receipt-refs: cephalon-openplanner-sdk-query-format-green-20261009
   note: Consume existing SDK formatting semantics through a function port, verify actual provider input parity, preserve missing-capability refusals and source versus live evidence boundaries.
+
+- ts: 2026-10-09T16:56:36.418222Z
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Keep canonical review scratch separate from tracked source
+  p-efficiency: 0.63
+  p-friction: 0.32
+  p-skill-candidate: 0.23
+  spore: none
+  receipt-refs: cephalon-openplanner-review-caller-configuration-20261009
+  note: Actual setup failure is no review; preserve guards, include omitted dependency input and await fresh native evidence.
