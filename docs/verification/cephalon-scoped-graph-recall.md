@@ -13,6 +13,7 @@ From `packages/graph/graph-claim-core`:
 clojure -M:recall-test
 pnpm exec shadow-cljs --force-spawn compile test
 node target/test.cjs
+node scripts/verify-recall-test-exit.mjs
 pnpm exec shadow-cljs --force-spawn release lib
 node scripts/verify-scoped-recall.mjs
 ```
@@ -23,6 +24,12 @@ checks a graph-only neighbor and its complete path, exercises absent decisions,
 prints the actual result and deletes only its own fixture. It performs no database,
 REST, model, field write or social call. Fixture identity/revisions are explicit
 examples; they do not establish current stored authority or deployed state.
+
+The exit verifier forces a real existing assertion to fail by changing only a
+function value in an isolated process. It requires the child to report exactly
+one assertion failure and exit1. That intentional failing child is a passing
+runner-integrity check. Both Node entry points use the actual end-run report;
+the return value of `run-tests` is not a result summary.
 
 ## Contract and causal boundary
 
@@ -40,6 +47,11 @@ admission. Edges and force/trail/field influences require admitted endpoints and
 every declared provenance node before changing a path or cost. Hidden malformed
 content is excluded before content validation, so it cannot induce a failure in
 otherwise permitted recall. Denied IDs/text are absent from returned diagnostics.
+Duplicate storage detection runs after the complete compact/member admission;
+copies of denied compact rows cannot veto permitted recall. Public selection
+states depend on admitted data and the safe denial count, never excluded seed
+flags. Binary64 influence reduction uses stable influence-ID order before cost
+and budget decisions; permutations of the same admitted facts give the same result.
 
 The pure walker returns stable node and edge paths, reasons, graph/field/policy
 revisions, inclusion and visit counts and budgets. Empty, denied, indexing-pending,

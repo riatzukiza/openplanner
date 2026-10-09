@@ -1,7 +1,7 @@
 (ns openplanner.graph.recall.core-test
   "Frozen scoped graph laws, run on JVM and Node without database/model I/O."
   (:require #?(:clj [clojure.test :refer [deftest is run-tests]]
-               :cljs [cljs.test :refer [deftest is run-tests]])
+               :cljs [cljs.test :as test :refer [deftest is run-tests]])
             #?(:clj [clojure.edn :as edn] :cljs [cljs.reader :as edn])
             [openplanner.graph.recall.contract :as contract]
             [openplanner.graph.recall.core :as recall]))
@@ -109,7 +109,9 @@
   (doseq [changed [(assoc snapshot :scope {})
                    (update snapshot :nodes conj (first (:nodes snapshot)))
                    (assoc-in snapshot [:edges 0 :cost] ##NaN)]]
-    (let [result (plan changed)]
+    ;; Keep the original current authority fixed while corrupting storage.
+    ;; Duplicating a node must not also duplicate its authority fixture.
+    (let [result (plan changed (decisions-for (:nodes snapshot)))]
       (is (= :failed (:status result)))
       (is (= :invalid-snapshot (get-in result [:failure :code])))
       (is (= [] (:hits result))))))
@@ -161,6 +163,22 @@
         allowed (decisions-for (:nodes snapshot))]
     (is (= (plan a allowed) (plan b allowed)))))
 
+(deftest a-shared-identity-does-not-admit-another-compacts-members
+  (let [permitted (assoc (node "compact" true 0.9) :members ["seed"])
+        denied (assoc permitted :members ["foreign"])
+        one (update snapshot :nodes conj permitted)
+        two (update one :nodes conj denied)
+        allowed (decisions-for (:nodes one))
+        a (plan one allowed) b (plan two allowed)]
+    (is (= :completed (:status b)))
+    (is (= (:hits a) (:hits b)))
+    (is (= (:feedback a) (:feedback b)))
+    ;; Both independently admitted rows with this identity are a real storage
+    ;; conflict. Filtering member-denied rows cannot erase that integrity gate.
+    (is (= :failed (:status (plan (update one :nodes conj permitted) allowed))))
+    (is (= :invalid-snapshot
+           (get-in (plan (update one :nodes conj permitted) allowed) [:failure :code])))))
+
 (deftest admitted-influence-permutations-preserve-budget-admission
   (let [base (assoc-in snapshot [:edges 0 :cost] 0)
         influence (fn [id delta] {:id id :edge-id "edge:seed:neighbor" :kind :field
@@ -174,9 +192,15 @@
                                           (assoc request :max-cost 0)) inputs)]
     (is (apply = selected))))
 
+#?(:cljs
+   (defmethod test/report [:cljs.test/default :end-run-tests]
+     [summary]
+     (when-not (test/successful? summary)
+       (set! (.-exitCode js/process) 1))))
+
 (defn -main
   "Nonzero exit on failures on either host."
   [& _args]
-  (let [result (run-tests 'openplanner.graph.recall.core-test)]
-    (when (pos? (+ (:fail result) (:error result)))
-      #?(:clj (System/exit 1) :cljs (js/process.exit 1)))))
+  #?(:clj (let [result (run-tests 'openplanner.graph.recall.core-test)]
+            (when (pos? (+ (:fail result) (:error result))) (System/exit 1)))
+     :cljs (run-tests 'openplanner.graph.recall.core-test)))

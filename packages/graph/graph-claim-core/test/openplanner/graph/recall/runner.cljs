@@ -19,7 +19,8 @@
 (defn -main
   "Existing claim assertions stay included; any failure exits nonzero."
   []
-  (let [result (run-tests 'openplanner.graph.claims.core-test
-                         'openplanner.graph.recall.core-test
-                         'openplanner.graph.recall.runner)]
-    (when (pos? (+ (:fail result) (:error result))) (js/process.exit 1))))
+  ;; The imported recall test namespace installs the real end-run reporter.
+  ;; run-tests' return value is not a summary and cannot attest success.
+  (run-tests 'openplanner.graph.claims.core-test
+             'openplanner.graph.recall.core-test
+             'openplanner.graph.recall.runner))

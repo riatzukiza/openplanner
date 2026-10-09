@@ -55,15 +55,6 @@
 (defn- unique-ids? [rows]
   (= (count rows) (count (set (map :id rows)))))
 
-(defn- conflicting-bound-storage? [snapshot decisions]
-  (let [revision (get-in snapshot [:scope :policy-revision])
-        potential (filter (fn [node]
-                            (some #(and (contract/valid-decision? %) (:allowed? %)
-                                        (= revision (:policy-revision %))
-                                        (= (:id node) (:node-id %))
-                                        (= (:event-id node) (:event-id %))) decisions)) (:nodes snapshot))]
-    (not (unique-ids? potential))))
-
 (defn- snapshot-valid? [snapshot]
   (and (contract/valid-snapshot? snapshot)
        (every? unique-ids? ((juxt :nodes :edges :influences) snapshot))))
@@ -78,7 +69,8 @@
   (let [by-edge (group-by :edge-id influences)]
     (mapv (fn [edge]
             (assoc edge :cost (max 0 (+ (:cost edge)
-                                       (reduce + 0 (map :delta (get by-edge (:id edge)))))))) edges)))
+                                       ;; Stable identities define reduction order on both hosts.
+                                       (reduce + 0 (map :delta (sort-by :id (get by-edge (:id edge))))))))) edges)))
 
 (defn- expand-path [path edges visited maximum]
   (reduce (fn [result edge]
@@ -119,7 +111,6 @@
     (not (contract/valid-request? request)) (failed :invalid-request)
     (not (metadata-valid? snapshot)) (failed :invalid-snapshot)
     (not (vector? decisions)) (failed :invalid-authority-decisions)
-    (conflicting-bound-storage? snapshot decisions) (failed :invalid-snapshot)
     :else
     (let [scoped (scoped-snapshot snapshot decisions)
           base {:hits [] :recall-id (:recall-id request)
@@ -134,7 +125,10 @@
         (= :pending (:index-status scoped)) (assoc base :status :indexing-pending)
         (empty? (:nodes snapshot)) (assoc base :status :empty)
         (empty? (:nodes scoped)) (assoc base :status :denied)
-        (and (some :seed? (:nodes snapshot)) (empty? (ordered-seeds (:nodes scoped) request)))
+        ;; Only the safe admission outcome can distinguish denial here;
+        ;; properties of excluded nodes cannot select the public outcome.
+        (and (pos? (get-in base [:diagnostics :denied-nodes]))
+             (empty? (ordered-seeds (:nodes scoped) request)))
         (assoc base :status :denied)
         :else (let [{:keys [hits exhausted?]} (walk scoped request)]
                 (assoc base :status (cond exhausted? :budget-exhausted (seq hits) :completed :else :empty)

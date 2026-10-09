@@ -1,0 +1,304 @@
+{
+  "evidence_tier": "observed",
+  "representation": "Command-output transcription plus paraphrase of actually returned required local review; not raw REST or native GitHub approval",
+  "head_before_changes": "7bb7fdf52e8739b250d6bb635a6d5732c3dfd923",
+  "reviewer_agent_id": "01a1211b-b618-7e70-b1d7-bab8cf938bba",
+  "review_conclusion": "Three original findings resolved; distinct-ID compact regression passed but same-ID member-denied compact still vetoes recall. Summary verifier regex accepts11/21 and lacks injection/ordinary-pass binding. Both current actionable findings reproduced before fixes.",
+  "model_red": {
+    "tests": 17,
+    "assertions": 100,
+    "failures": 2,
+    "errors": 0,
+    "exit": 1
+  },
+  "summary_red": {
+    "actual_child_exit": 1,
+    "real_forced_assertion_failures": 1,
+    "parent_exit": 1,
+    "cause": "AssertionError missing expected exception on actual stdout mutated to11failures"
+  },
+  "source_manifest": [
+    {
+      "path": "docs/verification/cephalon-scoped-graph-recall.md",
+      "bytes": 5016,
+      "sha256": "cf88ff0613292d3d55525d3bb11d769dd79e8742e0d1faedf04e886d624bc531"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/package.json",
+      "bytes": 597,
+      "sha256": "5af8e76c2f02d3d836c0ecac3ef1077ebe7e3fe000d6909fe3385fd222af3d51"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 356915,
+      "sha256": "d2da328030005747a081d068b0bec297882c9cae0fd98cad201f1140ec26615d"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/core.cljc",
+      "bytes": 7524,
+      "sha256": "34fab36ef7153ac98a56765e7a6a4ad25589829d281d3fef6afdbc0c91c3e79d"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/core_test.cljc",
+      "bytes": 10935,
+      "sha256": "fa9ce6fa9e7c384df6bfecd10bebc17a281a787514026620f3e0d54508679522"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/runner.cljs",
+      "bytes": 1391,
+      "sha256": "188c05a19484b66cc8b0a0c1ca1b693b8ae76c47e688a9ea8c8511ac28c116da"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs",
+      "bytes": 2314,
+      "sha256": "4366598e2d2a37881f6dafee352d311d2db3a062c1337248cfc6a1de4ae336f4"
+    }
+  ],
+  "executions": [
+    {
+      "label": "current JVM before shared-ID regression",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-green-jvm2.log",
+      "exit": 0,
+      "bytes": 106,
+      "sha256": "d5d9c3eaf68d9e4fe8ad6c076f5499eacd3f83f01ec666bb6051d8f7cf1c67db",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Ran 16 tests containing 95 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "label": "matching corrected Node compile",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-final-node-compile.log",
+      "exit": 0,
+      "bytes": 307,
+      "sha256": "1a3dfbc7cd1c368302849beb7af33b64a36e7289880b0516e195e5afbc028bd9",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:test] Compiling ...\n",
+        "[:test] Build completed. (80 files, 2 compiled, 0 warnings, 2.15s)\n"
+      ]
+    },
+    {
+      "label": "warning-free ordinary Node",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-warning-free-node-test.log",
+      "exit": 0,
+      "bytes": 192,
+      "sha256": "c49471b0cbc2c352037c28f4f50e2a21b245aa1c9ee1627c8704dfb2e836937b",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 26 tests containing 137 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "label": "corrected actual failure exit; before summary checker regression",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-warning-free-runner-exit.log",
+      "exit": 0,
+      "bytes": 699,
+      "sha256": "67372b9deb7fddfe4ce3d4692e3f4ee633a5ec4f6f7dbcb2189b963d9b721d74",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 26 tests containing 137 assertions.\n",
+        "0 failures, 0 errors.\n",
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "FAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:12:9)\n",
+        "expected: (= \"completed\" (aget result \"status\"))\n",
+        "  actual: (not (= \"completed\" \"forced-review-failure\"))\n",
+        "\n",
+        "Ran 26 tests containing 137 assertions.\n",
+        "1 failures, 0 errors.\n",
+        "Observed isolated runner exit=1\n",
+        "PASS actual compiled Node runner exits 1 for the forced assertion failure\n"
+      ]
+    },
+    {
+      "label": "current released ESM compile before shared-ID correction",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-final-release.log",
+      "exit": 0,
+      "bytes": 305,
+      "sha256": "d9ed8cd130e912b89beba209edc31a67b38359f08a181ec1065bc063986a9b95",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:lib] Compiling ...\n",
+        "[:lib] Build completed. (67 files, 2 compiled, 0 warnings, 6.69s)\n"
+      ]
+    },
+    {
+      "label": "actual released library demonstration before shared-ID correction",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-final-released-demo.log",
+      "exit": 0,
+      "bytes": 1560,
+      "sha256": "0dd4167fe827822a9feb040a1b12d9e61d88a15c9b7a999ec859821f671e44c4",
+      "stdout_utf8_lines": [
+        "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n",
+        "{\n",
+        "  \"feedback\": {\n",
+        "    \"status\": \"not-requested\",\n",
+        "    \"attempted\": 0,\n",
+        "    \"completed\": 0\n",
+        "  },\n",
+        "  \"diagnostics\": {\n",
+        "    \"denied-nodes\": 0,\n",
+        "    \"authorized-nodes\": 2,\n",
+        "    \"admitted-edges\": 1\n",
+        "  },\n",
+        "  \"hits\": [\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:outside-encounter\",\n",
+        "      \"reason\": \"semantic-seed\",\n",
+        "      \"id\": \"outside-encounter\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [],\n",
+        "      \"cost\": 0,\n",
+        "      \"seed?\": true,\n",
+        "      \"text\": \"memory:outside-encounter\"\n",
+        "    },\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\",\n",
+        "        \"graph-only-neighbor\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:graph-only-neighbor\",\n",
+        "      \"reason\": \"graph-neighbor\",\n",
+        "      \"id\": \"graph-only-neighbor\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [\n",
+        "        \"edge:encounter:neighbor\"\n",
+        "      ],\n",
+        "      \"cost\": 1,\n",
+        "      \"seed?\": false,\n",
+        "      \"text\": \"memory:graph-only-neighbor\"\n",
+        "    }\n",
+        "  ],\n",
+        "  \"graph-revision\": \"fixture-graph:23\",\n",
+        "  \"recall-id\": \"fixture-turn:17\",\n",
+        "  \"field-revision\": \"fixture-field:11\",\n",
+        "  \"status\": \"completed\",\n",
+        "  \"visited-count\": 2,\n",
+        "  \"policy-revision\": \"fixture-policy:7\",\n",
+        "  \"budget\": {\n",
+        "    \"k\": 6,\n",
+        "    \"fetch\": 18,\n",
+        "    \"max-nodes\": 64,\n",
+        "    \"max-cost\": 4\n",
+        "  },\n",
+        "  \"field-owner\": \"eros-eris-field\"\n",
+        "}\n",
+        "PASS missing decisions refuse recall; retrieval schedules zero feedback writes\n",
+        "WARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\n",
+        "CLEAN removed only this demonstration's dedicated temporary fixture\n"
+      ]
+    },
+    {
+      "label": "bounded frozen offline test dependency install",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-review-corrections-source-map-install.log",
+      "exit": 0,
+      "bytes": 182,
+      "sha256": "c25285d2e56e38c4c8095bc3e3ec7f6e6521051da5c65f8ce7b3b628b9d3a584",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "Lockfile is up to date, resolution step is skipped\n",
+        "Done in 487ms using pnpm v10.15.0\n"
+      ]
+    },
+    {
+      "label": "new shared-ID admission RED",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-red.log",
+      "exit": 1,
+      "bytes": 932,
+      "sha256": "70706348a908bec9f3aa33ad6800e86e10a3748730bc562368505969a9fc2520",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "FAIL in (a-shared-identity-does-not-admit-another-compacts-members) (core_test.cljc:173)\n",
+        "expected: (= :completed (:status b))\n",
+        "  actual: (not (= :completed :failed))\n",
+        "\n",
+        "FAIL in (a-shared-identity-does-not-admit-another-compacts-members) (core_test.cljc:174)\n",
+        "expected: (= (:hits a) (:hits b))\n",
+        "  actual: (not (= [{:path [\"compact\"], :event-id \"event:compact\", :reason :semantic-seed, :id \"compact\", :score 0.9, :path-edge-ids [], :cost 0, :seed? true, :text \"memory:compact\"} {:path [\"seed\"], :event-id \"event:seed\", :reason :semantic-seed, :id \"seed\", :score 0.8, :path-edge-ids [], :cost 0, :seed? true, :text \"memory:seed\"} {:path [\"seed\" \"neighbor\"], :event-id \"event:neighbor\", :reason :graph-neighbor, :id \"neighbor\", :score 0.8, :path-edge-ids [\"edge:seed:neighbor\"], :cost 1, :seed? false, :text \"memory:neighbor\"}] []))\n",
+        "\n",
+        "Ran 17 tests containing 100 assertions.\n",
+        "2 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "label": "new exact-injection summary checker RED",
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-runner-summary-review-red.log",
+      "exit": 1,
+      "bytes": 1340,
+      "sha256": "ba1c5d49f3dd912d467b3d2ae6b2f608a80b26ae5817992132cd15704617f09b",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 26 tests containing 137 assertions.\n",
+        "0 failures, 0 errors.\n",
+        "ISOLATED_IN_MEMORY_ASSERTION_FAILURE\n",
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "FAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:12:9)\n",
+        "expected: (= \"completed\" (aget result \"status\"))\n",
+        "  actual: (not (= \"completed\" \"forced-review-failure\"))\n",
+        "\n",
+        "Ran 26 tests containing 137 assertions.\n",
+        "1 failures, 0 errors.\n",
+        "node:internal/modules/run_main:107\n",
+        "    triggerUncaughtException(\n",
+        "    ^\n",
+        "\n",
+        "AssertionError [ERR_ASSERTION]: Missing expected exception: invalid injection evidence must be rejected\n",
+        "    at file:///home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs:40:10\n",
+        "    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)\n",
+        "    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)\n",
+        "    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n",
+        "  generatedMessage: false,\n",
+        "  code: 'ERR_ASSERTION',\n",
+        "  actual: undefined,\n",
+        "  expected: undefined,\n",
+        "  operator: 'throws',\n",
+        "  diff: 'simple'\n",
+        "}\n",
+        "\n",
+        "Node.js v24.14.1\n"
+      ]
+    }
+  ],
+  "remaining": "Storage/authority/maker prompt/B1/B2/B3, full source integration and native review remain unqualified; no runtime/provider/board/deployment mutation. Historical RED/GREEN bytes remain unchanged."
+}
