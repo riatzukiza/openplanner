@@ -42,7 +42,35 @@
                [:scope [:ref ::scope]] [:index-status [:enum :ready :pending]]
                [:nodes [:vector {:max 2048} [:ref ::node]]]
                [:edges [:vector {:max 4096} [:ref ::edge]]]
-               [:influences [:vector {:max 4096} [:ref ::influence]]]]})
+               [:influences [:vector {:max 4096} [:ref ::influence]]]]
+   ::feedback [:map {:closed true} [:status [:= :not-requested]]
+               [:attempted [:= 0]] [:completed [:= 0]]]
+   ::hit [:map {:closed true}
+          [:id [:ref ::identity]] [:event-id [:ref ::identity]] [:text :string] [:seed? :boolean]
+          [:cost [:ref ::cost]] [:score [:ref ::score]]
+          [:path [:vector {:min 1 :max 64} [:ref ::identity]]]
+          [:path-edge-ids [:vector {:max 63} [:ref ::identity]]]
+          [:reason [:enum :semantic-seed :graph-neighbor]]]
+   ::budget [:map {:closed true}
+             [:k [:int {:min 1 :max 12}]] [:fetch [:int {:min 1 :max 18}]]
+             [:max-nodes [:int {:min 1 :max 64}]] [:max-cost [:ref ::cost]]]
+   ::failure [:map {:closed true} [:stage [:= :graph]]
+              [:code [:enum :invalid-request :invalid-snapshot :invalid-authority-decisions :invalid-result]]]
+   ::failed-result [:map {:closed true} [:status [:= :failed]] [:hits [:vector {:max 0} :any]]
+                    [:failure [:ref ::failure]] [:feedback [:ref ::feedback]]]
+   ::selection-result [:map {:closed true}
+                       [:status [:enum :completed :empty :denied :indexing-pending :budget-exhausted]]
+                       [:hits [:vector {:max 12} [:ref ::hit]]]
+                       [:recall-id [:ref ::identity]] [:graph-revision [:ref ::identity]]
+                       [:field-revision [:ref ::identity]] [:field-owner [:ref ::identity]]
+                       [:policy-revision [:ref ::identity]] [:budget [:ref ::budget]]
+                       [:diagnostics [:map {:closed true}
+                                      [:denied-nodes [:int {:min 0}]]
+                                      [:authorized-nodes [:int {:min 0}]]
+                                      [:admitted-edges [:int {:min 0}]]]]
+                       [:visited-count {:optional true} [:int {:min 0 :max 64}]]
+                       [:feedback [:ref ::feedback]]]
+   ::result [:or [:ref ::failed-result] [:ref ::selection-result]]})
 
 (defn validator
   "Compile a named schema without embedding functions in schema data."
@@ -52,3 +80,4 @@
 (def valid-request? (validator ::request))
 (def valid-snapshot? (validator ::snapshot))
 (def valid-decision? (validator ::decision))
+(def valid-result? (validator ::result))

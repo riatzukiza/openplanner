@@ -119,6 +119,61 @@
     (is (= a b))
     (is (= {:status :not-requested :attempted 0 :completed 0} (:feedback a)))))
 
+(deftest malformed-hidden-values-do-not-influence-a-permitted-result
+  (let [result (plan snapshot)
+        changed (-> snapshot
+                    (update :nodes conj (assoc (node "foreign" true 1) :score ##NaN :text {:private "denied"}))
+                    (update :influences conj {:id "hidden-force" :edge-id "edge:seed:neighbor"
+                                              :kind :force :delta ##NaN :provenance-node-ids ["foreign"]}))
+        selected (plan changed (decisions-for (:nodes snapshot)))]
+    (is (= (:hits result) (:hits selected)))
+    (is (= (:feedback result) (:feedback selected)))
+    (is (= (:status result) (:status selected)))))
+
+(deftest every-public-outcome-obeys-the-output-contract
+  (doseq [result [(plan snapshot) (plan snapshot []) (plan (assoc snapshot :index-status :pending))
+                  (plan (assoc snapshot :nodes [] :edges [])) (plan (assoc snapshot :scope {}))
+                  (recall/recall-plan snapshot (decisions-for (:nodes snapshot)) (assoc request :max-nodes 1))]]
+    (is (contract/valid-result? result))))
+
+(deftest arbitrary-malformed-snapshots-produce-a-safe-failure
+  (doseq [malformed [nil [] 7 "not-a-snapshot"]]
+    (let [result (recall/recall-plan malformed [] request)]
+      (is (= :failed (:status result)))
+      (is (= :invalid-snapshot (get-in result [:failure :code])))
+      (is (contract/valid-result? result)))))
+
+(deftest duplicate-denied-compacts-do-not-veto-permitted-recall
+  (let [compact (assoc (node "compact" true 1) :members ["foreign"])
+        allowed (decisions-for (conj (:nodes snapshot) compact))
+        one (update snapshot :nodes conj compact)
+        two (update one :nodes conj compact)
+        a (plan one allowed) b (plan two allowed)]
+    (is (= :completed (:status b)))
+    (is (= (:hits a) (:hits b)))
+    (is (= (:feedback a) (:feedback b)))))
+
+(deftest a-denied-nodes-seed-flag-cannot-change-the-selection-outcome
+  (let [authorized (update snapshot :nodes #(mapv (fn [row] (assoc row :seed? false)) %))
+        hidden (assoc (node "foreign" false 1) :score ##NaN :text {:private "denied"})
+        a (update authorized :nodes conj hidden)
+        b (update authorized :nodes conj (assoc hidden :seed? true))
+        allowed (decisions-for (:nodes snapshot))]
+    (is (= (plan a allowed) (plan b allowed)))))
+
+(deftest admitted-influence-permutations-preserve-budget-admission
+  (let [base (assoc-in snapshot [:edges 0 :cost] 0)
+        influence (fn [id delta] {:id id :edge-id "edge:seed:neighbor" :kind :field
+                                  :delta delta :provenance-node-ids ["seed" "neighbor"]})
+        plus (influence "a-plus" 1.0) tiny (influence "b-tiny" 1.0e-16)
+        minus (influence "c-minus" -1.0)
+        inputs [[plus tiny minus] [plus minus tiny] [tiny plus minus]
+                [tiny minus plus] [minus plus tiny] [minus tiny plus]]
+        allowed (decisions-for (:nodes snapshot))
+        selected (mapv #(recall/recall-plan (assoc base :influences %) allowed
+                                          (assoc request :max-cost 0)) inputs)]
+    (is (apply = selected))))
+
 (defn -main
   "Nonzero exit on failures on either host."
   [& _args]
