@@ -20,7 +20,8 @@ node_modules/
 openplanner-lake/
 
 # Editor / LSP caches
-.clj-kondo/
+.clj-kondo/*
+!.clj-kondo/config.edn
 .cpcache/
 .shadow-cljs/
 .lsp/
@@ -47,3 +48,8 @@ package-lock.json
 
 # OS
 .DS_Store
+
+# Generated, hash-verified artifacts from the reusable review workflow.
+# Tracked source is still checked; these directories contain no source inputs.
+/.review-context/
+/.opencode/review-evidence/

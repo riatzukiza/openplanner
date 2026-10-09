@@ -1,12 +1,14 @@
 {:source-paths ["src" "test"]
- :dependencies []
+ :dependencies [[metosin/malli "0.16.4"]]
  :builds
  {:lib
   {:target :esm
    :output-dir "dist"
    :modules {:index {:entries [openplanner.graph.claims.boundary
                                       openplanner.graph.claims.adapters.mongo
-                                      openplanner.graph.claims.lifecycle]
+                                      openplanner.graph.claims.lifecycle
+                                      openplanner.graph.recall.boundary
+                                      openplanner.graph.recall.mongo]
                      :exports {:normalizeEdgeClaimStatus openplanner.graph.claims.boundary/normalize-edge-claim-status-js
                                :normalizeEdgeClaimDirection openplanner.graph.claims.boundary/normalize-edge-claim-direction-js
                                :normalizeEdgeClaimScope openplanner.graph.claims.boundary/normalize-edge-claim-scope-js
@@ -18,11 +20,14 @@
                                :explainEdgeClaim openplanner.graph.claims.boundary/explain-edge-claim-js
                                :evaluateEdgeClaim openplanner.graph.claims.boundary/evaluate-edge-claim-js
                                :projectMongoEdgeClaims openplanner.graph.claims.adapters.mongo/project-mongo-edge-claims-js
-                               :planEdgeClaimTransition openplanner.graph.claims.lifecycle/transition-plan-js}}}
+                               :planEdgeClaimTransition openplanner.graph.claims.lifecycle/transition-plan-js
+                               :scopedGraphRecallPlan openplanner.graph.recall.boundary/recall-plan-js
+                               :createScopedMongoRecall openplanner.graph.recall.mongo/create-scoped-mongo-recall-js
+                               :validScopedMongoRecallResult openplanner.graph.recall.mongo/valid-scoped-result-js?}}}
    :compiler-options {:output-feature-set :es-next}}
 
   :test
   {:target :node-script
    :output-to "target/test.cjs"
-   :main openplanner.graph.claims.core-test/-main
+   :main openplanner.graph.recall.runner/-main
    :compiler-options {:output-feature-set :es-next}}}}
