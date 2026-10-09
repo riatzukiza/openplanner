@@ -73,7 +73,8 @@
                                                                     {:model model :texts (js->clj texts)})
                                                              (when-let [hook @(:embedding-hook* state)] (hook))
                                                              (js/Promise.resolve #js [#js [1.0 0.0]]))})}}}
-   (fn [] (swap! (:authority-calls* state) inc) (js/Promise.resolve (clj->js @(:authority* state))))))
+   (fn [] (swap! (:authority-calls* state) inc) (js/Promise.resolve (clj->js @(:authority* state))))
+   (fn [query] (str "configured query: " (str/trim query)))))
 
 (defn- ^:async recall! [reader request]
   (js->clj (await (reader (clj->js request))) :keywordize-keys true))
@@ -98,7 +99,7 @@
     (is (= 4 @(:authority-calls* state)) "Recheck after each index, embedding and graph await")
     (is (= #{"seed" "neighbor"}
            (set (get-in @(:reads* state) [0 :filter :source_event_id :$in]))))
-    (is (= [{:model "held-model" :texts ["harbor"]}] @(:embeddings* state)))
+    (is (= [{:model "held-model" :texts ["configured query: harbor"]}] @(:embeddings* state)))
     (is (= "not-loaded" (:field-status result)) "No invented physical field proof")
     (is (= 0 @(:writes* state)))
     (is (= 0 (get-in selection [:feedback :completed])))))

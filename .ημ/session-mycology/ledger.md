@@ -63,3 +63,13 @@
   spore: none
   receipt-refs: cephalon-openplanner-scoped-review-route-20261009
   note: Preserve actual compiler summaries and assertion exit evidence, distinguish missing review route from native quota. Reuse configured operator identity and never expose key contents. Independent source integration and live milestone remain owed.
+
+- ts: 2026-10-09T16:38:24.998291Z
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Independent SDK query formatting regression
+  p-efficiency: 0.65
+  p-friction: 0.31
+  p-skill-candidate: 0.18
+  spore: none
+  receipt-refs: cephalon-openplanner-sdk-query-format-red-20261009
+  note: Reproduce configured-provider input mismatch before correction; bind actual SDK function without copying formatting semantics.
