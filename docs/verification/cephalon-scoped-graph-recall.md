@@ -30,6 +30,10 @@ function value in an isolated process. It requires the child to report exactly
 one assertion failure and exit1. That intentional failing child is a passing
 runner-integrity check. Both Node entry points use the actual end-run report;
 the return value of `run-tests` is not a result summary.
+The verifier separates the ordinary and injected runs at its explicit marker,
+requires their exact summaries and equal suite counts, and checks the actual
+injected status assertion. It rejects mutated actual outputs reporting11/21
+failures, missing/wrong injection, an ordinary failure or an extra summary.
 
 ## Contract and causal boundary
 
@@ -49,7 +53,9 @@ content is excluded before content validation, so it cannot induce a failure in
 otherwise permitted recall. Denied IDs/text are absent from returned diagnostics.
 Duplicate storage detection runs after the complete compact/member admission;
 copies of denied compact rows cannot veto permitted recall. Public selection
-states depend on admitted data and the safe denial count, never excluded seed
+checks each retained compact row's members even if another row admits its ID;
+two independently admitted duplicates still fail storage integrity. Public
+selection states depend on admitted data and the safe denial count, never excluded seed
 flags. Binary64 influence reduction uses stable influence-ID order before cost
 and budget decisions; permutations of the same admitted facts give the same result.
 

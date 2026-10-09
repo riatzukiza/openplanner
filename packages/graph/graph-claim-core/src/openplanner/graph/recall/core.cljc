@@ -26,6 +26,14 @@
          (= revision (:policy-revision decision))
          (= (:event-id node) (:event-id decision)))))
 
+(defn- admitted-row? [ids node]
+  (if-not (contains? node :members)
+    true
+    (let [members (:members node)]
+      (and (vector? members) (seq members)
+           (not (some #{(:id node)} members))
+           (set/subset? (set members) ids)))))
+
 (defn- admitted-node-ids [nodes]
   ;; Grow from ordinary admitted nodes. A compact row needs its own bound grant
   ;; and every transitive member. Unknown members and cycles never enter.
@@ -44,7 +52,9 @@
   (let [grouped (group-by :node-id decisions)
         bound (filterv #(bound-node? (get-in snapshot [:scope :policy-revision]) grouped %) (:nodes snapshot))
         ids (admitted-node-ids bound)
-        nodes (filterv #(contains? ids (:id %)) bound)
+        ;; An admitted identity cannot grant another row's compact members.
+        ;; Preserve genuine duplicates only when each row is itself admitted.
+        nodes (filterv #(and (contains? ids (:id %)) (admitted-row? ids %)) bound)
         edges (filterv #(and (ids (:source %)) (ids (:target %))
                              (evidence-admitted? ids (:provenance-node-ids %))) (:edges snapshot))
         edge-ids (set (map :id edges))

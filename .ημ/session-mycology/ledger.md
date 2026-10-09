@@ -25,3 +25,12 @@
   spore: none
   receipt-refs: cephalon-openplanner-shared-compact-summary-red-20261009
   note: Preserve historical passing outputs within their tested scope. Reproduce shared-ID member denial with fixed authority and validate actual child summaries exactly; no spore or promotion.
+- ts: 2026-10-09T15:19:52.941881455Z
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Reviewed scoped recall corrections pass both hosts and actual forced failure exit
+  p-efficiency: 0.61
+  p-friction: 0.56
+  p-skill-candidate: 0.3
+  spore: none
+  receipt-refs: cephalon-openplanner-corrections-green-reviewed-20261009
+  note: Identity admission is insufficient for another compact row; evaluate each retained row. Exact actual summaries and marker distinguish normal and injected execution. Preserve earlier partial GREEN, no spore/promotion.
