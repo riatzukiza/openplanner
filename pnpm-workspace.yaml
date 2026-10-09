@@ -1,0 +1,28 @@
+packages:
+  - ./app/*
+  - packages/**
+
+allowBuilds:
+  '@discordjs/opus': true
+  '@google/genai': true
+  cbor-extract: true
+  esbuild: true
+  koffi: true
+  lmdb: true
+  msgpackr-extract: true
+  protobufjs: true
+
+onlyBuiltDependencies:
+  - '@discordjs/opus'
+  - '@google/genai'
+  - cbor-extract
+  - esbuild
+  - koffi
+  - lmdb
+  - msgpackr-extract
+  - protobufjs
+
+overrides:
+  hono: ^4.12.18
+
+linkWorkspacePackages: true
