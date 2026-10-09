@@ -25,17 +25,25 @@ function assertInjectedOutput(stdout) {
 }
 
 const child = spawnSync(process.execPath, ['-e', `
-  require(process.argv[1]);
-  const boundary = globalThis.openplanner.graph.recall.boundary;
-  const original = boundary.recall_plan_js;
-  if (typeof original !== 'function') throw new Error('compiled recall export is missing');
-  boundary.recall_plan_js = (...args) => {
-    const result = original(...args);
-    if (result.status === 'completed') result.status = 'forced-review-failure';
-    return result;
-  };
-  console.log('ISOLATED_IN_MEMORY_ASSERTION_FAILURE');
-  globalThis.openplanner.graph.recall.runner._main();
+  (async () => {
+    const completed = () => new Promise(resolve =>
+      process.once('openplanner:recall:test-complete', resolve));
+    const ordinary = completed();
+    require(process.argv[1]);
+    await ordinary;
+    const boundary = globalThis.openplanner.graph.recall.boundary;
+    const original = boundary.recall_plan_js;
+    if (typeof original !== 'function') throw new Error('compiled recall export is missing');
+    boundary.recall_plan_js = (...args) => {
+      const result = original(...args);
+      if (result.status === 'completed') result.status = 'forced-review-failure';
+      return result;
+    };
+    console.log('ISOLATED_IN_MEMORY_ASSERTION_FAILURE');
+    const injected = completed();
+    globalThis.openplanner.graph.recall.runner._main();
+    await injected;
+  })().catch(error => { console.error(error); process.exitCode = 1; });
 `, target], {encoding:'utf8', timeout:30000, maxBuffer:1048576});
 process.stdout.write(child.stdout ?? '');
 process.stderr.write(child.stderr ?? '');

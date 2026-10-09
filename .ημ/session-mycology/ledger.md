@@ -43,3 +43,13 @@
   spore: none
   receipt-refs: cephalon-openplanner-scoped-mongo-recall-red-20261009
   note: Use trusted fresh authority callback before scope-bound collection reads. Test held actual SDK cursor methods and native async code, preserve explicit absent physical state. No provider, runtime, board mutation or spore.
+
+- ts: 2026-10-09T16:16:59.012206+00:00
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Owning B3 storage boundary and concrete review corrections
+  p-efficiency: 0.61
+  p-friction: 0.59
+  p-skill-candidate: 0.25
+  spore: none
+  receipt-refs: cephalon-openplanner-scoped-mongo-green-20261009
+  note: Reproduce admission-before-cap and async completion defects. Held SDK collection methods plus actual released ESM are source evidence, never native approval or live field/mood proof. Preserve all historical failures and current canonical repository attribution. No spore or promotion.

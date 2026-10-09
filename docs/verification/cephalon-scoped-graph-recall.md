@@ -1,8 +1,9 @@
 # Scoped graph selection for the character loop
 
-This is the pure OpenPlanner portion of the accepted B3 milestone, task
-`a1e9d6af-0233-4dcb-9677-5c76fa9a2701`. Storage/identity integration and automatic
-Knoxx prompt inclusion remain unfinished. Passing this package does not complete
+This is the OpenPlanner selection and scoped storage portion of the accepted
+B3 milestone, task `a1e9d6af-0233-4dcb-9677-5c76fa9a2701`. The storage adapter is
+tested over held SDK collection ports; live identity/storage qualification and
+automatic Knoxx prompt delivery remain unfinished. Passing this package does not complete
 B3, the full recall story, physical field persistence or the separate mood model.
 
 ## Run the actual library
@@ -34,6 +35,38 @@ The verifier separates the ordinary and injected runs at its explicit marker,
 requires their exact summaries and equal suite counts, and checks the actual
 injected status assertion. It rejects mutated actual outputs reporting11/21
 failures, missing/wrong injection, an ordinary failure or an extra summary.
+Both runs await their actual asynchronous completion event before starting the
+next suite; otherwise shared test counters could overlap and corrupt evidence.
+
+## Owning SDK/Mongo recall boundary
+
+`createScopedMongoRecall(sdk, resolveCurrentAuthority)` binds a trusted SDK
+handle and a host callback. Its returned function accepts only the closed
+version1 recall request. The callback supplies the exact current principal,
+policy revision, project and admitted event IDs/text; neither tool JSON nor
+previous admission receipts can supply a grant. Absence denies before index or
+embedding access. It refreshes the complete binding after index loading, query
+embedding and edge loading, refusing changed scope or text without stale hits.
+These are checked observations across awaits, not atomic grant fencing.
+
+The adapter uses existing `graphNodeEmbeddings` and `graphEdges` cursor methods,
+with a five-second server query limit and finite row limits. It selects the
+same `graph-event` / `graph.node` model scope as the SDK indexer. Index rows must
+bind `node_id` to `source_event_id` in Mongo **before** the row limit; edges must
+have nonempty admitted provenance in Mongo before their limit. Excluded rows
+cannot consume the admitted storage budget. Missing admitted indices return
+`indexing-pending`; overflowing admitted rows fail without partial results.
+Held cursor fixtures test these explicit predicates; they do not establish
+compatibility with a live Mongo deployment.
+
+Validated cosine ranking chooses one strongest semantic seed; the existing
+pure walker selects associative neighbors with their exact node/edge paths.
+`validScopedMongoRecallResult(result)` lets a consumer validate the owning wire
+contract, including failure, feedback and path shapes, without copying those
+schemas. Storage/provider exceptions return bounded safe codes, including null
+or undefined rejections. Retrieval makes no database write and requests no
+reinforcement. `field-status: not-loaded` explicitly records the absent physical
+field; graph snapshot hashes are not field persistence proof.
 
 ## Contract and causal boundary
 

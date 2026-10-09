@@ -196,7 +196,10 @@
    (defmethod test/report [:cljs.test/default :end-run-tests]
      [summary]
      (when-not (test/successful? summary)
-       (set! (.-exitCode js/process) 1))))
+       (set! (.-exitCode js/process) 1))
+     ;; The native async runner completes after -main returns. Isolated runner
+     ;; probes must await this actual report before starting another suite.
+     (.emit js/process "openplanner:recall:test-complete" (clj->js summary))))
 
 (defn -main
   "Nonzero exit on failures on either host."
