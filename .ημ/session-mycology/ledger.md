@@ -53,3 +53,13 @@
   spore: none
   receipt-refs: cephalon-openplanner-scoped-mongo-green-20261009
   note: Reproduce admission-before-cap and async completion defects. Held SDK collection methods plus actual released ESM are source evidence, never native approval or live field/mood proof. Preserve all historical failures and current canonical repository attribution. No spore or promotion.
+
+- ts: 2026-10-09T16:33:06.327442Z
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Scoped source hosted verification and existing publisher preparation
+  p-efficiency: 0.62
+  p-friction: 0.34
+  p-skill-candidate: 0.2
+  spore: none
+  receipt-refs: cephalon-openplanner-scoped-review-route-20261009
+  note: Preserve actual compiler summaries and assertion exit evidence, distinguish missing review route from native quota. Reuse configured operator identity and never expose key contents. Independent source integration and live milestone remain owed.

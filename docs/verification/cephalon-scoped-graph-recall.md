@@ -124,3 +124,23 @@ The private npm configuration emits a missing-NPM_TOKEN warning; compiler and
 scoped lint warning counts are recorded independently. No credential is emitted.
 
 Process documentation: GPL-3.0-or-later.
+# Hosted source verification and review route
+
+The scoped source workflow runs the portable JVM laws, recall namespace lint,
+actual compiled Node suites and isolated assertion-failure proof, released ESM,
+and the runnable demonstration. Its compiler steps require the actual completed
+zero-warning summary. The existing broader Code Quality and Review Resolution
+jobs retain their obligations. Local evidence does not establish hosted success.
+
+The evidence review workflow uses the exact shared receiver
+`45ec644c2d15ed511e9bc1e797d1b4073b63dbfc` and canonical skill source
+`4b4f48dae1b804b2581974e604cca618ecedadf1`. Its own deterministic gates are
+diff statistics and hygiene; the separate scoped verification workflow supplies
+functional execution. The existing operator App and personal installation are
+reused through named encrypted GitHub secrets. No credential contents appear in
+source or evidence, and configured secrets do not prove a completed review.
+
+The frozen upstream source `07085d6557b75834ce6f50e6c54b8ca47e1c7c08` is a
+separate personal synchronization layer. Review of this bounded recall diff
+cannot qualify that larger synchronization diff. Both layers require their own
+current native review, check and merge evidence before release or consumption.

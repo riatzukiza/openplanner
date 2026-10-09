@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Scoped graph recall verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: DeLaGuardo/setup-clojure@13
+        with:
+          cli: latest
+          clj-kondo: latest
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.11.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.20.0"
+      - name: Install the owning graph package
+        run: pnpm --filter @open-hax/openplanner-graph-claim-core... install --frozen-lockfile
+      - name: Portable recall laws
+        working-directory: packages/graph/graph-claim-core
+        run: clojure -M:recall-test
+      - name: Changed recall namespace lint
+        working-directory: packages/graph/graph-claim-core
+        run: clj-kondo --lint src/openplanner/graph/recall test/openplanner/graph/recall
+      - name: Actual Node suites and forced assertion failure
+        working-directory: packages/graph/graph-claim-core
+        run: |
+          set -euo pipefail
+          pnpm exec shadow-cljs compile test --force-spawn 2>&1 | tee "$RUNNER_TEMP/scoped-recall-test-compile.log"
+          grep -Eq 'Build completed\..* 0 warnings[,)]' "$RUNNER_TEMP/scoped-recall-test-compile.log"
+          node scripts/verify-recall-test-exit.mjs
+      - name: Released ESM and runnable scoped recall demonstration
+        working-directory: packages/graph/graph-claim-core
+        run: |
+          set -euo pipefail
+          pnpm exec shadow-cljs release lib --force-spawn 2>&1 | tee "$RUNNER_TEMP/scoped-recall-release.log"
+          grep -Eq 'Build completed\..* 0 warnings[,)]' "$RUNNER_TEMP/scoped-recall-release.log"
+          node scripts/verify-scoped-recall.mjs
