@@ -40,7 +40,7 @@ next suite; otherwise shared test counters could overlap and corrupt evidence.
 
 ## Owning SDK/Mongo recall boundary
 
-`createScopedMongoRecall(sdk, resolveCurrentAuthority)` binds a trusted SDK
+`createScopedMongoRecall(sdk, resolveCurrentAuthority, formatQueryText)` binds a trusted SDK
 handle and a host callback. Its returned function accepts only the closed
 version1 recall request. The callback supplies the exact current principal,
 policy revision, project and admitted event IDs/text; neither tool JSON nor
@@ -48,6 +48,15 @@ previous admission receipts can supply a grant. Absence denies before index or
 embedding access. It refreshes the complete binding after index loading, query
 embedding and edge loading, refusing changed scope or text without stale hits.
 These are checked observations across awaits, not atomic grant fencing.
+
+The third argument is the owning SDK's `formatEmbeddingQueryText` export from
+`@open-hax/openplanner-sdk/embedding-text`. The trusted host passes this function;
+request JSON cannot supply or override it. This retains the SDK's actual query
+trim, configured prefix/template and escaped-newline behavior before generating
+the vector. Missing, malformed or throwing formatters refuse without sending
+text to the provider. `node scripts/verify-sdk-query-format.mjs` exercises the
+actual SDK source formatter with held storage/provider ports. It proves provider
+input parity, not live semantic ranking or model availability.
 
 The adapter uses existing `graphNodeEmbeddings` and `graphEdges` cursor methods,
 with a five-second server query limit and finite row limits. It selects the

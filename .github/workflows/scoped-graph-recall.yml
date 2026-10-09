@@ -54,3 +54,4 @@ jobs:
           pnpm exec shadow-cljs release lib --force-spawn 2>&1 | tee "$RUNNER_TEMP/scoped-recall-release.log"
           grep -Eq 'Build completed\..* 0 warnings[,)]' "$RUNNER_TEMP/scoped-recall-release.log"
           node scripts/verify-scoped-recall.mjs
+          node scripts/verify-sdk-query-format.mjs

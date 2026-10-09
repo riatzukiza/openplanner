@@ -3,7 +3,7 @@
  * Unknown input is validated at the owning Clojure boundary. */
 export declare function scopedGraphRecallPlan(snapshot: unknown, decisions: unknown, request: unknown): Record<string, unknown>;
 /** Host-bound SDK read port. Authority is freshly resolved by trusted host code, never request JSON. */
-export declare function createScopedMongoRecall(sdk: unknown, resolveCurrentAuthority: () => Promise<unknown>): (request: unknown) => Promise<Record<string, unknown>>;
+export declare function createScopedMongoRecall(sdk: unknown, resolveCurrentAuthority: () => Promise<unknown>, formatQueryText: (query: string) => string): (request: unknown) => Promise<Record<string, unknown>>;
 export declare function validScopedMongoRecallResult(result: unknown): boolean;
 
 export type EdgeClaimStatus =

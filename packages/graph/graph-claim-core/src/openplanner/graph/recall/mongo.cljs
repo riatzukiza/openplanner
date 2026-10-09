@@ -119,17 +119,20 @@
                                       :policy-revision (get-in authority [:scope :policy-revision])
                                       :allowed? true) (:records authority)) request))
 
-(defn- ^:async query-embedding! [sdk model query]
+(defn- ^:async query-embedding! [sdk model query format-query-text]
   (let [^js hot (native-path sdk ["embeddingRuntime" "hot"])
         ^js provider (.getEmbeddingFunctionForModel hot model)]
     (when-not (fn? (native-path provider ["generate"])) (fail! :unsupported-capability))
-    (let [values (try (js->clj (await (.generate provider (clj->js [query]))))
+    (let [text (try (format-query-text query)
+                    (catch :default _error (fail! :embedding-unavailable)))
+          _ (when-not (and (string? text) (seq (.trim text))) (fail! :invalid-embedding))
+          values (try (js->clj (await (.generate provider (clj->js [text]))))
                       (catch :default _error (fail! :embedding-unavailable)))]
       (when-not (and (vector? values) (= 1 (count values)) (contract/valid-embedding? (first values)))
         (fail! :invalid-embedding))
       (first values))))
 
-(defn- ^:async stored-selection! [sdk resolve-current-authority authority request]
+(defn- ^:async stored-selection! [sdk resolve-current-authority authority request format-query-text]
   (let [ids (mapv :id (:records authority))
         scope (:scope authority)
         ^js hot (native-path sdk ["embeddingRuntime" "hot"])
@@ -147,7 +150,7 @@
         (await (assert-current! resolve-current-authority authority))
         (if-not (= (set ids) (set (map :event-id indices)))
           (select authority (assoc (snapshot authority [] indices []) :index-status :pending) request)
-          (let [query-vector (await (query-embedding! sdk model (:query request)))
+          (let [query-vector (await (query-embedding! sdk model (:query request) format-query-text))
                 _ (await (assert-current! resolve-current-authority authority))
                 nodes (ranking/rank-nodes (:records authority) indices query-vector)
                 edges (decode-edges authority
@@ -165,10 +168,11 @@
             (select authority (snapshot authority nodes indices edges) request)))))))
 
 (defn create-scoped-mongo-recall-js
-  "Bind a trusted SDK handle and a fresh host callback; return a request-only
+  "Bind a trusted SDK handle, fresh host callback and owning SDK query formatter;
+   return a request-only
    reader. No callback or service credential can be supplied by request JSON.
    Read-only ordinary event profile; legacy aggregates/forces/REST are excluded."
-  [sdk resolve-current-authority]
+  [sdk resolve-current-authority format-query-text]
   (^:async fn [raw-request]
     (let [result
           (try
@@ -176,7 +180,8 @@
                   request (if (map? request) (update request :feedback #(if (string? %) (keyword %) %)) request)]
               (cond
                 (not (recall-contract/valid-request? request)) (contract/failed :invalid-request)
-                (not (and (supported? sdk) (fn? resolve-current-authority))) (contract/failed :unsupported-capability)
+                (not (and (supported? sdk) (fn? resolve-current-authority) (fn? format-query-text)))
+                (contract/failed :unsupported-capability)
                 :else
                 (let [authority (await (current-authority! resolve-current-authority))]
                   (if (nil? authority)
@@ -184,7 +189,7 @@
                      :selection {:status :denied :hits []
                                  :feedback {:status :not-requested :attempted 0 :completed 0}}}
                     {:version 1 :field-status :not-loaded
-                     :selection (await (stored-selection! sdk resolve-current-authority authority request))}))))
+                     :selection (await (stored-selection! sdk resolve-current-authority authority request format-query-text))}))))
             (catch :default error
               (contract/failed (or (:recall-code (ex-data error))
                                    (when (= 50 (native-path error ["code"])) :timeout) :transport-error))))]

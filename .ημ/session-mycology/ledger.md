@@ -73,3 +73,13 @@
   spore: none
   receipt-refs: cephalon-openplanner-sdk-query-format-red-20261009
   note: Reproduce configured-provider input mismatch before correction; bind actual SDK function without copying formatting semantics.
+
+- ts: 2026-10-09T16:41:29.819163Z
+  session: /home/err/spaces/cephalon-scoped-graph/openplanner
+  task: Bind owning SDK query formatter at trusted host boundary
+  p-efficiency: 0.69
+  p-friction: 0.27
+  p-skill-candidate: 0.22
+  spore: none
+  receipt-refs: cephalon-openplanner-sdk-query-format-green-20261009
+  note: Consume existing SDK formatting semantics through a function port, verify actual provider input parity, preserve missing-capability refusals and source versus live evidence boundaries.
