@@ -146,7 +146,8 @@
 
 (defn- claim-expiration-ms
   [input]
-  (let [value (or (jget input "validUntil") (jget input "valid_until"))]
+  (let [camel (jget input "validUntil")
+        value (if (some? camel) camel (jget input "valid_until"))]
     (when (some? value)
       (or (parse-ms value) js/NaN))))
 

@@ -79,11 +79,10 @@
        :hostname hostname
        :lake lake
        :contentHash content-hash
-       :cacheKey (if (or content-hash source-path url)
-                   ;; Preserve established hash/path/URL keys. Host-only references
-                   ;; use a separate namespace and require a stable document id.
-                   (str "openplanner:source:" (or lake "unknown") ":" (or content-hash source-path url))
-                   (str "openplanner:host-row:" (js/JSON.stringify (clj->js [lake hostname row-id]))))})))
+       ;; Versioned, typed tuples prevent delimiter and path/URL collisions.
+       ;; Old cache keys become misses; no source contents are migrated by guess.
+       :cacheKey (str "openplanner:source-ref:v2:"
+                      (js/JSON.stringify (clj->js [lake identity])))})))
 
 (defn document-source-ref
   [row]

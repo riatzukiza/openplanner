@@ -54,10 +54,12 @@ function norm(v: any): string | null {
 
 export function validateEvent(ev: EventEnvelopeV1) {
   if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
-  if (!ev.id) throw new Error("event.id required");
+  for (const field of ["id", "source", "kind"] as const) {
+    if (typeof ev[field] !== "string" || !ev[field].trim()) {
+      throw new Error(`event.${field} must be a nonblank string`);
+    }
+  }
   if (typeof ev.ts !== "string" || !ev.ts.trim() || !Number.isFinite(Date.parse(ev.ts))) throw new Error("event.ts must be a valid timestamp (ISO)");
-  if (!ev.source) throw new Error("event.source required");
-  if (!ev.kind) throw new Error("event.kind required");
   if (ev.kind === "graph.node" && ev.text !== undefined && typeof ev.text !== "string") {
     throw new Error("graph.node event text must be a string when supplied");
   }

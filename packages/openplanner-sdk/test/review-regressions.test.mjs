@@ -831,6 +831,12 @@ test('mongoBatchSize groups complete parent replacements into bounded transactio
   const mongo=mongoFixture();let transactions=0;mongo.client.startSession=()=>({withTransaction:async f=>{transactions++;await f();},endSession:async()=>{}});
   const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:Array.from({length:5},(_,n)=>item(`batch-parent-${n}`)),embeddingFunction:{generate:async texts=>texts.map(()=>[1,2])},config:{mongoBatchSize:2,concurrency:2}});
   assert.deepEqual(result,{indexed:5,failed:[]});assert.equal(transactions,3);
-  assert.deepEqual(mongo.hotVectors.calls.deletes.map(f=>f.parent_id.$in.length).sort(),[1,2,2]);
+  assert.deepEqual(mongo.hotVectors.calls.deletes.map(f=>typeof f.parent_id==='string'?1:f.parent_id.$in.length).sort(),[1,2,2]);
   assert.ok(mongo.hotVectors.rows.size>=5);
+});
+
+for(const name of ['events_ttl','compacted_ttl'])test(`fresh SDK retention leaves ${name} available to the retained writer`,async()=>{
+  const c=collection('fresh-retention');await reconcileManagedTtl(c,name,60);
+  assert.ok(c.calls.indexes.some(i=>i.opts.name===`${name}_absolute`&&i.keys.expiresAt===1));
+  assert.ok(!c.calls.indexes.some(i=>i.opts.name===name));
 });

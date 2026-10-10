@@ -21,7 +21,8 @@
                  :extra #js {:source_path "org/example/core.cljs"
                              :migration_2 #js {:text_hash_sha256 "abc123"}}}]
     (is (true? (hydration/document-needs-hydration row)))
-    (is (= "openplanner:source:devel:abc123" (hydration/document-cache-key row)))
+    (is (= "openplanner:source-ref:v2:[\"devel\",[\"hash\",\"abc123\"]]"
+           (hydration/document-cache-key row)))
     (let [result (hydration/hydrate-document-row row "source text")
           hydrated-row (.-row result)
           doc (hydration/row-to-document hydrated-row)]

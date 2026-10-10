@@ -80,12 +80,19 @@ async function ensureTtlIndex(
   });
 }
 
-/** Reconcile only the SDK-owned TTL index and expiration field. */
+/** Keep an older writer's relative TTL intact until that writer is migrated. */
 export async function reconcileManagedTtl(collection: Collection<any>, name: string, ttlSeconds: number): Promise<void> {
+  const indexes = await collection.indexes();
+  const existing = indexes.find(index => index.name === name);
+  const legacy = existing?.key?.createdAt === 1;
+  // Fresh SDK databases must also leave the retained writer's names available.
+  // Prior SDK-owned indexes keep their names; no legacy rows are rewritten.
+  const sharedWriterName = name === "events_ttl" || name === "compacted_ttl";
+  const managedName = legacy || (sharedWriterName && !existing) ? `${name}_absolute` : name;
   if (ttlSeconds > 0) {
-    await ensureTtlIndex(collection, { expiresAt: 1 }, { name, expireAfterSeconds: 0 });
+    await ensureTtlIndex(collection, { expiresAt: 1 }, { name: managedName, expireAfterSeconds: 0 });
   } else {
-    if ((await collection.indexes()).some(index => index.name === name)) await collection.dropIndex(name);
+    if (indexes.some(index => index.name === managedName)) await collection.dropIndex(managedName);
     await collection.updateMany({ expiresAt: { $type: "date" } }, { $unset: { expiresAt: "" } });
   }
 }

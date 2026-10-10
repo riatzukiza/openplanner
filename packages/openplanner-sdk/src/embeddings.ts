@@ -5,6 +5,37 @@ export interface IEmbeddingFunction {
   generate(texts: string[]): Promise<number[][]>;
 }
 
+class EmbedProviderError extends Error {}
+
+// Only a fixed overflow category crosses the boundary; diagnostics never do.
+async function isOverflowResponse(response: Response): Promise<boolean> {
+  if (response.status === 413) {
+    void response.body?.cancel().catch(() => {});
+    return true;
+  }
+  if (response.status !== 400 && response.status !== 422) {
+    void response.body?.cancel().catch(() => {});
+    return false;
+  }
+  const reader = response.body?.getReader();
+  if (!reader) return false;
+  const decoder = new TextDecoder();
+  let diagnostic = "";
+  let remaining = 8192;
+  try {
+    while (remaining > 0) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value.subarray(0, remaining);
+      diagnostic += decoder.decode(chunk, { stream: true });
+      remaining -= chunk.byteLength;
+    }
+    return isContextOverflowError(diagnostic);
+  } finally {
+    void reader.cancel().catch(() => {});
+  }
+}
+
 function averageEmbeddings(embeddings: number[][]): number[] {
   if (embeddings.length === 0) return [];
   if (embeddings.length === 1) return embeddings[0]!;
@@ -28,7 +59,6 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
   private maxConcurrentBatches: number;
   private pending = new Map<string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }>();
   private flushTimer: NodeJS.Timeout | null = null;
-  private flushing = false;
   private activeBatches = 0;
   private batchQueue: Array<() => Promise<void>> = [];
   private readonly MAX_CHARS_PER_BATCH = 4_000;
@@ -101,8 +131,8 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
       });
 
       if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        throw new Error(`Embed provider failed: ${res.status} ${res.statusText}${msg ? `\n${msg}` : ""}`);
+        const overflow = await isOverflowResponse(res).catch(() => false);
+        throw new EmbedProviderError(`Embed provider failed: HTTP ${res.status}${overflow ? " context window exceeded" : ""}`);
       }
 
       const data = (await res.json()) as { data?: Array<{ embedding?: number[] }>; embeddings?: number[][] };
@@ -112,15 +142,16 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
           ? data.data.map((d) => d.embedding ?? []).filter((e) => e.length > 0)
           : [];
       if (out.some(vector => !Array.isArray(vector) || vector.length === 0 || vector.some(value => typeof value !== "number" || !Number.isFinite(value)))) {
-        throw new Error("Embed provider returned an invalid or empty vector");
+        throw new EmbedProviderError("Embed provider returned an invalid or empty vector");
       }
       if (out.length !== texts.length) {
-        throw new Error(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
+        throw new EmbedProviderError(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
       }
       return out;
     } catch (err) {
-      console.error("Embed provider error:", err);
-      throw err;
+      const error = err instanceof EmbedProviderError ? err : new EmbedProviderError("Embed provider request failed");
+      console.error("Embed provider error:", error.message);
+      throw error;
     }
   }
 
@@ -185,42 +216,36 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
   }
 
   private async flushPending(): Promise<void> {
-    if (this.flushing) return;
-    this.flushing = true;
-    try {
-      while (this.pending.size > 0) {
-        const entries:
-          Array<[string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }]> = [];
-        let entriesChars = 0;
-        const allEntries = Array.from(this.pending.entries());
-        for (const entry of allEntries) {
-          if (entries.length >= this.maxBatchItems) break;
-          if (entriesChars + entry[1].text.length > this.MAX_CHARS_PER_BATCH && entries.length > 0) break;
-          entries.push(entry);
-          entriesChars += entry[1].text.length;
+    while (this.pending.size > 0) {
+      const entries:
+        Array<[string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }]> = [];
+      let entriesChars = 0;
+      const allEntries = Array.from(this.pending.entries());
+      for (const entry of allEntries) {
+        if (entries.length >= this.maxBatchItems) break;
+        if (entriesChars + entry[1].text.length > this.MAX_CHARS_PER_BATCH && entries.length > 0) break;
+        entries.push(entry);
+        entriesChars += entry[1].text.length;
+      }
+      for (const [key] of entries) this.pending.delete(key);
+
+      try {
+        const embeddings = await this.resolveBatch(entries);
+
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i]![1];
+          const vector = embeddings[i]!;
+          for (const waiter of entry.waiters) waiter.resolve(vector);
         }
-        for (const [key] of entries) this.pending.delete(key);
-
-        try {
-          const embeddings = await this.resolveBatch(entries);
-
-          for (let i = 0; i < entries.length; i++) {
-            const entry = entries[i]![1];
-            const vector = embeddings[i]!;
-            for (const waiter of entry.waiters) waiter.resolve(vector);
-          }
-          // Optional cache persistence cannot delay or reject valid provider output.
-          void Promise.resolve().then(() => this.cache?.putMany(
-            entries.map(([key], index) => ({ key, vector: embeddings[index]! })),
-          )).catch(() => console.warn("Embedding cache persistence failed"));
-        } catch (error) {
-          for (const [, entry] of entries) {
-            for (const waiter of entry.waiters) waiter.reject(error);
-          }
+        // Optional cache persistence cannot delay or reject valid provider output.
+        void Promise.resolve().then(() => this.cache?.putMany(
+          entries.map(([key], index) => ({ key, vector: embeddings[index]! })),
+        )).catch(() => console.warn("Embedding cache persistence failed"));
+      } catch (error) {
+        for (const [, entry] of entries) {
+          for (const waiter of entry.waiters) waiter.reject(error);
         }
       }
-    } finally {
-      this.flushing = false;
     }
   }
 

@@ -289,7 +289,8 @@ async function queryPartitionWithVexxTopK(params: {
   const validCandidates = params.candidates.filter(
     (doc) => Array.isArray(doc.embedding) && doc.embedding.length === params.queryEmbedding.length,
   );
-  if (validCandidates.length < Math.max(params.k, VEXX_MIN_CANDIDATES)) return null;
+  if (validCandidates.length === 0) return [];
+  if (!VEXX_ENFORCE && validCandidates.length < Math.max(params.k, VEXX_MIN_CANDIDATES)) return null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), VEXX_TIMEOUT_MS);
@@ -539,13 +540,20 @@ async function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTi
     cache.set(key, pending);
   }
   const result = await pending;
+  const partition = await refreshPartitionReadiness(mongo, result.partition);
+  return { ...result, partition };
+}
+
+async function refreshPartitionReadiness(mongo: MongoConnection, partition: MongoVectorPartitionDocument): Promise<MongoVectorPartitionDocument> {
+  if (partition.searchIndexStatus === "ready") return partition;
+  const key = JSON.stringify([partition.tier, partition.model, partition.dimensions]);
   let states = partitionSearchReadiness.get(mongo);
   if (!states) { states = new Map(); partitionSearchReadiness.set(mongo, states); }
   let state = states.get(key);
-  if (!state) { state = { status: "pending", retryAfter: 0 }; states.set(key, state); }
+  if (!state) { state = { status: partition.searchIndexStatus, retryAfter: 0 }; states.set(key, state); }
   if (state.status !== "ready" && !state.pending && Date.now() >= state.retryAfter) {
     const current = state;
-    current.pending = ensurePartitionVectorSearchIndex(mongo, result.partition).then(status => {
+    current.pending = ensurePartitionVectorSearchIndex(mongo, partition).then(status => {
       current.status = status;
       return status;
     }).finally(() => {
@@ -554,7 +562,7 @@ async function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTi
     });
   }
   if (state.pending) await state.pending;
-  return { ...result, partition: { ...result.partition, searchIndexStatus: state.status } };
+  return { ...partition, searchIndexStatus: state.status };
 }
 
 function isTransactionUnsupported(error: unknown): boolean {
@@ -883,6 +891,15 @@ export async function replaceMongoVectorEntries(
   parentId: string,
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
+  await replaceMongoVectorParents(mongo, tier, [parentId], entries);
+}
+
+async function replaceMongoVectorParents(
+  mongo: MongoConnection,
+  tier: MongoVectorTier,
+  parentIds: ReadonlyArray<string>,
+  entries: ReadonlyArray<MongoVectorEntry>,
+): Promise<void> {
   const now = new Date();
   const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
@@ -902,7 +919,10 @@ export async function replaceMongoVectorEntries(
   }
 
   await withMongoTransaction(mongo, async (session) => {
-    await deleteMongoVectorEntriesByParent(mongo, tier, parentId, session);
+    const filter = parentIds.length === 1 ? { parent_id: parentIds[0] } : { parent_id: { $in: [...parentIds] } };
+    await getFlatCollection(mongo, tier).deleteMany(filter, session ? { session } : undefined);
+    const partitions = await listMongoVectorPartitions(mongo, tier);
+    await deletePartitionDocuments(mongo, partitions.map(partition => partition.collectionName), filter, session);
     await bulkWriteVectorDocuments(getFlatCollection(mongo, tier), documents, now, session);
     for (const [key, group] of groups.entries()) {
       const collection = partitionCollections.get(key);
@@ -1107,7 +1127,8 @@ export async function queryMongoVectorsByText(params: {
   const unavailablePartitions: string[] = [];
   let availablePartitions = 0;
 
-  for (const partition of partitions) {
+  for (const storedPartition of partitions) {
+    const partition = await refreshPartitionReadiness(params.mongo, storedPartition);
     const collection = params.mongo.db.collection<MongoVectorDocument>(partition.collectionName);
     const cacheKey = `${partition.model}:${partition.dimensions}`;
     let queryEmbedding = queryEmbeddingsByPartitionKey.get(cacheKey);
@@ -1193,7 +1214,7 @@ export function buildMongoVectorDeleteFilter(where: Record<string, unknown>): Fi
  * Configuration for parallel batch indexing
  */
 export type BatchIndexConfig = {
-  /** Number of documents to process in parallel (default: 16) */
+  /** Number of Mongo replacement batches to process in parallel (default: 16) */
   concurrency?: number;
   /** Number of chunks to embed in a single batch (default: 256) */
   embeddingBatchSize?: number;
@@ -1351,43 +1372,27 @@ export async function batchIndexTextsInMongoVectors(params: {
 
   config.onProgress?.("indexing", 0, entriesByParent.size);
 
-  // Write to MongoDB with controlled concurrency
+  // Each transaction replaces an entire bounded parent batch, including stale copies.
   const parentIds = Array.from(entriesByParent.keys());
+  const queue: string[][] = [];
+  for (let offset = 0; offset < parentIds.length; offset += mongoBatchSize) {
+    queue.push(parentIds.slice(offset, offset + mongoBatchSize));
+  }
   let completedCount = 0;
-
-  const processParent = async (parentId: string): Promise<void> => {
-    const entries = entriesByParent.get(parentId);
-    if (!entries || entries.length === 0) return;
-
-    try {
-      await replaceMongoVectorEntries(params.mongo, params.tier, parentId, entries);
-      indexed.push(parentId);
-    } catch (error) {
-      failed.push({
-        id: parentId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    completedCount++;
-    if (completedCount % mongoBatchSize === 0) {
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const batch = queue.shift()!;
+      try {
+        await replaceMongoVectorParents(params.mongo, params.tier, batch, batch.flatMap(id => entriesByParent.get(id)!));
+        indexed.push(...batch);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        failed.push(...batch.map(id => ({ id, error: detail })));
+      }
+      completedCount += batch.length;
       config.onProgress?.("indexing", completedCount, parentIds.length);
     }
-  };
-
-  // Process with concurrency control
-  const queue = [...parentIds];
-  const workers: Promise<void>[] = [];
-
-  for (let i = 0; i < Math.min(concurrency, queue.length); i++) {
-    workers.push((async () => {
-      while (queue.length > 0) {
-        const parentId = queue.shift();
-        if (!parentId) break;
-        await processParent(parentId);
-      }
-    })());
-  }
+  });
 
   await Promise.all(workers);
 
