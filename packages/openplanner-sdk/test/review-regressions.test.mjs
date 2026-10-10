@@ -538,8 +538,8 @@ test('equal sentences from different sources keep independent retention and prov
 test('Atlas setup errors remain retryable on the same connection',async()=>{
   const mongo=mongoFixture();const original=mongo.db.collection;let attempts=0;
   mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{attempts++;if(attempts===1)throw new Error('transient Atlas failure');return [{status:'READY',queryable:true}];}});return c;};
-  await assert.rejects(upsertMongoVectorDocuments(mongo,'hot',[entry('first')]),/transient Atlas failure/);
-  assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'error');
+  await upsertMongoVectorDocuments(mongo,'hot',[entry('first')]);
+  assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'error');assert.ok(mongo.hotVectors.rows.has('first'));
   await upsertMongoVectorDocuments(mongo,'hot',[entry('retry')]);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.ok(attempts>1);
 });
 test('invalid embedding batch sizes refuse before provider or database work',async()=>{

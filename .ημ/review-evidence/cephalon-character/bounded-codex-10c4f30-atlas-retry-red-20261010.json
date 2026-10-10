@@ -1,0 +1,14 @@
+{
+  "tier": "actual isolated regression before cache-eviction repair; other prepared production fixes remain uncommitted",
+  "note": "Refines the earlier erroneous rejection expectation: non-Atlas fallback writes must remain supported while errored search setup retries. Earlier test and first prepared green captures retained in history/private evidence.",
+  "argv": [
+    "node",
+    "--test",
+    "--test-name-pattern=Atlas setup errors",
+    "test/review-regressions.test.mjs"
+  ],
+  "exit_code": 1,
+  "stdout": "\u2716 Atlas setup errors remain retryable on the same connection (3.82976ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 0\n\u2139 fail 1\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 166.618063\n\n\u2716 failing tests:\n\ntest at test/review-regressions.test.mjs:538:1\n\u2716 Atlas setup errors remain retryable on the same connection (3.82976ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'error' !== 'ready'\n  \n      at TestContext.<anonymous> (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/test/review-regressions.test.mjs:543:73)\n      at async Test.run (node:internal/test_runner/test:1125:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'error',\n    expected: 'ready',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+  "stderr": "",
+  "prepared_source_sha256": "62d6d6126e3830751689fa6bed7a60c6f98ce541a839466bee80806f5f7673bc"
+}
