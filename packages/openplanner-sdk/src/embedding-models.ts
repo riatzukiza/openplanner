@@ -18,7 +18,7 @@ export function parseModelDimensions(raw: string | undefined): Record<string, nu
   let entries: Record<string, unknown>;
   try {
     const input = raw.trim();
-    const parsed: unknown = input.startsWith("{") ? JSON.parse(input) : parsePairList(input);
+    const parsed: unknown = input.startsWith("{") ? JSON.parse(input) : parseDimensionPairList(input);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
     entries = parsed as Record<string, unknown>;
   } catch { throw new Error("Invalid embedding model dimension configuration"); }
@@ -38,6 +38,21 @@ function normKey(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/** Explicit contracts reject every malformed declaration rather than dropping it. */
+function parseDimensionPairList(raw: string): Record<string, string> {
+  const entries = raw.split(/[;,]/).map(entry => entry.trim()).filter(Boolean);
+  if (entries.length === 0) throw new Error("Missing model dimension declaration");
+  const out: Record<string, string> = {};
+  for (const entry of entries) {
+    const eq = entry.indexOf("=");
+    const key = eq > 0 ? normKey(entry.slice(0, eq)) : undefined;
+    const value = eq > 0 ? normKey(entry.slice(eq + 1)) : undefined;
+    if (!key || !value) throw new Error("Malformed model dimension declaration");
+    Object.defineProperty(out, key, { value, enumerable: true, writable: true, configurable: true });
+  }
+  return out;
 }
 
 function parsePairList(raw: string): Record<string, string> {

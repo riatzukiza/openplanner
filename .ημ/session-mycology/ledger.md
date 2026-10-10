@@ -415,3 +415,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-explicit-dimension-declarations-red-20261010
   note: A focused audit of the introduced explicit model dimension configuration found malformed pair-list declarations silently discarded and a prototype-named model contract dropped. Seven new regressions fail against unchanged production; no assertions weakened. Original56manifest and185receipt/reflection prefixes intact. No runtime, board, paid usage or spore action; current remote MiMo continues on0aa while local causal RED is prepared.
+
+- ts: 2026-10-10T18:42:59.604Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-explicit-dimension-declarations-green-20261010
+  note: A strict dimension pair-list parser rejects missing or malformed declarations instead of silently dropping them, and defines prototype-named model contracts as own properties. The legacy model-map parser is untouched. Seven causal regressions now pass without changing old assertions. Original56manifest and186receipt/reflection prefixes remain exact. Current remote0aa MiMo remains real historical review work until this substantive successor is pushed. No approval, runtime, board, paid or spore action.
