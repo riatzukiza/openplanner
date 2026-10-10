@@ -28,23 +28,31 @@
     :decision/data data}))
 
 (defn default-claim-decision
-  [claim]
-  (let [{:keys [valid? errors]} (schema/explain-edge-claim claim)]
-    (cond
-      (not valid?)
-      (decision :reject :invalid-claim {:errors errors})
+  ([claim] (default-claim-decision claim {}))
+  ([claim {:keys [now-ms]}]
+   (let [{:keys [valid? errors]} (schema/explain-edge-claim claim)
+         expiration (:valid-until-ms claim)]
+     (cond
+       (not valid?)
+       (decision :reject :invalid-claim {:errors errors})
 
-      (contains? claims/projectable-statuses (:status claim))
-      (decision :accept :projectable-status {:status (:status claim)})
+       (and (some? expiration) (not (and (number? now-ms) (js/Number.isFinite now-ms))))
+       (decision :defer :missing-evaluation-time)
 
-      (contains? #{:refuted :rejected :withdrawn :expired} (:status claim))
-      (decision :reject :negative-status {:status (:status claim)})
+       (and (some? expiration) (<= expiration now-ms))
+       (decision :reject :expired-claim {:valid-until-ms expiration :now-ms now-ms})
 
-      (= :superseded (:status claim))
-      (decision :supersede :superseded-status {:status (:status claim)})
+       (contains? claims/projectable-statuses (:status claim))
+       (decision :accept :projectable-status {:status (:status claim)})
 
-      :else
-      (decision :defer :not-yet-supported {:status (:status claim)}))))
+       (contains? #{:refuted :rejected :withdrawn :expired} (:status claim))
+       (decision :reject :negative-status {:status (:status claim)})
+
+       (= :superseded (:status claim))
+       (decision :supersede :superseded-status {:status (:status claim)})
+
+       :else
+       (decision :defer :not-yet-supported {:status (:status claim)})))))
 
 (defn evaluate-claim
   "Evaluates a normalized claim using an optional sequence of strategy fns.
@@ -52,9 +60,10 @@
   Strategy fns receive `(claim-context claim)` and should return nil when they
   do not apply, or a decision map with `:decision/kind` when they do. The first
   applicable strategy wins."
-  ([claim] (evaluate-claim claim []))
-  ([claim strategies]
-   (let [ctx (claim-context claim)]
+  ([claim] (evaluate-claim claim [] {}))
+  ([claim strategies] (evaluate-claim claim strategies {}))
+  ([claim strategies opts]
+   (let [ctx (assoc (claim-context claim) :evaluation/now-ms (:now-ms opts))]
      (or (some (fn [strategy]
                  (when (fn? strategy)
                    (let [result (strategy ctx)]
@@ -62,7 +71,7 @@
                                 (contains? decisions (:decision/kind result)))
                        result))))
                strategies)
-         (default-claim-decision claim)))))
+         (default-claim-decision claim opts)))))
 
 (defn accepted?
   [claim]

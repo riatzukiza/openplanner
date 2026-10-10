@@ -78,11 +78,13 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
   }
   assertSafeFilter(filter);
 
-  const rawLimit = Number(body.limit);
-  const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 50 : rawLimit, 500));
-
-  const rawSkip = Number(body.skip);
-  const skip = Math.max(0, isNaN(rawSkip) ? 0 : rawSkip);
+  const rawLimit = body.limit === undefined ? 50 : Number(body.limit);
+  const rawSkip = body.skip === undefined ? 0 : Number(body.skip);
+  if (!Number.isSafeInteger(rawLimit) || !Number.isSafeInteger(rawSkip)) {
+    throw new Error("browse pagination values must be finite integers");
+  }
+  const limit = Math.max(1, Math.min(rawLimit, 500));
+  const skip = Math.max(0, rawSkip);
 
   let sort: Record<string, 1 | -1> = { _id: -1 };
   if (body.sort && typeof body.sort === "object" && !Array.isArray(body.sort)) {

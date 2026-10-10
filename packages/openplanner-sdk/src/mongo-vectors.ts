@@ -1107,7 +1107,11 @@ async function queryPartitionWithNativeVectorSearch(params: {
   if (VEXX_ENFORCE) {
     throw vexxRequiredError(`native_vector_search:${params.partition.collectionName}`);
   }
-  return uniqueParentRows(rows.map((doc) => ({ doc, score: typeof doc.score === "number" ? doc.score : Number.NEGATIVE_INFINITY })), params.k);
+  // Native Atlas metadata is normalized; recompute from its projected vectors
+  // so native, Vexx and cosine fallback partitions share raw cosine distance.
+  return uniqueParentRows(rows
+    .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
+    .filter((entry) => Number.isFinite(entry.score)), params.k);
 }
 
 async function queryPartitionWithCosineScan(params: {

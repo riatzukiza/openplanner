@@ -12,7 +12,7 @@
   [value]
   (if (array? value)
     (->> (array-seq value)
-         (map #(some-> % str .trim))
+         (keep #(when (string? %) (.trim %)))
          (filter seq)
          distinct
          vec)

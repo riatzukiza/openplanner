@@ -499,10 +499,14 @@ test('changed graph-node text reconciles obsolete owned chunks and sentences',as
   const event={schema:'openplanner.event.v1',id:'changed-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Outside information changes remembered creative choices. '.repeat(4000),extra:{node_id:'changed-owner'}};
   const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;
   const oldDerived=[...mongo.events.rows.values()].filter(row=>row.source==='openplanner-derive');assert.ok(oldDerived.some(row=>row.extra.node_kind==='doc_chunk'));assert.ok(oldDerived.some(row=>row.extra.node_kind==='sentence'));
-  const oldIds=oldDerived.map(row=>row.id);const oldNodes=[...mongo.graphNodeEmbeddings.rows.values()].map(row=>row.node_id);
+  const oldIds=oldDerived.map(row=>row.id);const oldNodes=[...mongo.graphNodeEmbeddings.rows.values()].map(row=>row.node_id).filter(id=>id!==event.id);
+  const oldHash=createHash('sha256').update(event.text).digest('hex');
   const next=await ingestEvents({mongo,embeddingRuntime},[{...event,text:'A distinct later encounter reshapes this memory.'}]);await next.backgroundIndexing;
   for(const id of oldIds)assert.equal(mongo.events.rows.has(id),false);
   for(const node of oldNodes)assert.equal([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.node_id===node),false);
+  assert.equal([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.source_text_hash_sha256===oldHash),false);
+  const parent=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id===event.id);
+  assert.ok(parent);assert.equal(parent.source_event_id,event.id);assert.equal(parent.source_text_hash_sha256,createHash('sha256').update('A distinct later encounter reshapes this memory.').digest('hex'));
   const derived=[...mongo.events.rows.values()].filter(row=>row.source==='openplanner-derive');assert.ok(derived.length>0);assert.ok(derived.every(row=>row.extra.source_event_id===event.id));
 });
 test('equal graph-node text refreshes source and project without regenerating vectors',async()=>{
@@ -1129,4 +1133,31 @@ test('long explicit graph nodes materialize an admitted parent vector from bound
   const row=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id===event.id&&row.source_event_id===event.id);
   assert.ok(row,'parent vector admitted by the scoped recall reader must exist');assert.deepEqual(row.embedding,[1,0]);assert.ok(row.chunk_count>1);assert.equal(row.source_text_hash_sha256,createHash('sha256').update(text).digest('hex'));
   assert.ok(inputs.length>1);assert.ok(inputs.every(value=>value.length<180_100),'provider receives bounded chunks, never the entire long source');
+});
+
+// Supplemental controls for the repaired long-source parent, not new causal RED claims.
+test('graph parent aggregates every bound chunk and can be reconstructed from reused vectors',async()=>{
+  const mongo=ownedProjectionFixture();let calls=0;const provider={generate:async texts=>{calls++;return texts.map((_,i)=>[i+1,2*(i+1)]);}};
+  const event={...ordinaryEvent('mean-parent','Distinct outside encounter information. '.repeat(6000)),kind:'graph.node',extra:{node_id:'mean-parent'}};
+  const context={mongo,embeddingRuntime:eventRuntime(provider)};const first=await ingestEvents(context,[event]);await first.backgroundIndexing;
+  const rows=[...mongo.graphNodeEmbeddings.rows.values()];const parent=rows.find(row=>row.node_id===event.id);
+  const chunkIds=new Set([...mongo.events.rows.values()].filter(row=>row.extra?.node_kind==='doc_chunk'&&row.extra?.source_event_id===event.id).map(row=>row.extra.node_id));
+  const chunks=rows.filter(row=>chunkIds.has(row.node_id));assert.equal(chunks.length,chunkIds.size);
+  assert.ok(chunks.length>1);assert.equal(parent.chunk_count,chunks.length);
+  for(let dimension=0;dimension<2;dimension++)assert.ok(Math.abs(parent.embedding[dimension]-chunks.reduce((sum,row)=>sum+row.embedding[dimension],0)/chunks.length)<1e-10);
+  const expected=[...parent.embedding];for(const [key,row] of mongo.graphNodeEmbeddings.rows)if(row.node_id===event.id)mongo.graphNodeEmbeddings.rows.delete(key);
+  const before=calls;const replay=await ingestEvents(context,[event]);await replay.backgroundIndexing;
+  assert.equal(calls,before);assert.deepEqual([...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id===event.id).embedding,expected);
+});
+test('missing bound graph chunk never materializes a partially aggregated parent',async()=>{
+  const mongo=mongoFixture();const warnings=[];const event={...ordinaryEvent('missing-parent','Distinct outside encounter information. '.repeat(6000)),kind:'graph.node',extra:{node_id:'missing-parent'}};
+  const result=await ingestEvents({mongo,log:{warn:(data,message)=>warnings.push(String(data.err?.message)+' '+message)},embeddingRuntime:eventRuntime({generate:async texts=>texts.slice(1).map(()=>[1,0])})},[event]);await result.backgroundIndexing;
+  assert.equal([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.node_id===event.id),false);
+  assert.ok(warnings.some(value=>value.includes('Graph embedding batch size mismatch')));
+});
+test('calendar-valid ISO leap day and timezone offsets remain admissible',async()=>{
+  for(const ts of ['2024-02-29T23:59:59.999Z','2026-01-01T00:00:00+05:30','2026-01-01T00:00:00-06:00']){
+    const mongo=mongoFixture();const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[{...ordinaryEvent('valid-iso', 'Outside information.'),ts}]);await result.backgroundIndexing;
+    assert.ok(mongo.events.calls.writes.length>0);
+  }
 });

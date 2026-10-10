@@ -52,6 +52,19 @@ function norm(v: any): string | null {
   return String(v);
 }
 
+function validIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4}|[+-]\d{6})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1]
+    && Number(match[4]) < 24 && Number(match[5]) < 60 && Number(match[6]) < 60
+    && (!match[7] || (Number(match[8]) < 24 && Number(match[9]) < 60))
+    && Number.isFinite(Date.parse(value));
+}
+
 export function validateEvent(ev: EventEnvelopeV1) {
   if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
   for (const field of ["id", "source", "kind"] as const) {
@@ -59,7 +72,7 @@ export function validateEvent(ev: EventEnvelopeV1) {
       throw new Error(`event.${field} must be a nonblank string`);
     }
   }
-  if (typeof ev.ts !== "string" || !ev.ts.trim() || !Number.isFinite(Date.parse(ev.ts))) throw new Error("event.ts must be a valid timestamp (ISO)");
+  if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
   if (ev.text !== undefined && typeof ev.text !== "string") {
     throw new Error(`${ev.kind} event text must be a string when supplied`);
   }
@@ -207,7 +220,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     updated_at?: Date;
     expiresAt?: Date | null;
   }> = [];
-  const graphNodeEmbeddingInputs = new Map<string, {
+  type GraphNodeEmbeddingInput = {
     node_id: string;
     source_event_id: string;
     project?: string | null;
@@ -215,7 +228,9 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     source_text_hash_sha256: string;
     expiresAt: Date | null;
     chunk_count: number;
-  }>();
+  };
+  const graphNodeEmbeddingInputs = new Map<string, GraphNodeEmbeddingInput>();
+  const graphParentEmbeddingInputs = new Map<string, GraphNodeEmbeddingInput & { chunk_node_ids: string[] }>();
   const sourceExpiries = new Map<string, Date | null>();
 
   const derivedGraphNodeOps = new Map<string, any>();
@@ -408,15 +423,13 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
 
     if (ev.kind === "graph.node") {
       const nodeId = norm(extra.node_id)?.trim() ?? norm((sr as any).message)?.trim() ?? "";
-      const preview = norm(extra.preview)?.trim() ?? "";
-      const directText = norm(ev.text)?.trim() ?? "";
-      const body = directText || preview;
+      // Only admitted event text may influence an authority-hashed vector.
+      const body = norm(ev.text)?.trim() ?? "";
       if (nodeId && body) {
         const label = String(extra.label ?? extra.path ?? (sr as any).message ?? nodeId).trim() || nodeId;
         const prepared = prepareIndexDocument({
           parentId: nodeId,
           text: body,
-          extra,
           forceChunking: false,
           targetChunkTokens: 32_000,
           targetChunkChars: 180_000,
@@ -433,6 +446,14 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
             chunkCount: 1,
           });
         } else {
+          graphParentEmbeddingInputs.set(nodeId, {
+            node_id: nodeId, source_event_id: ev.id, project: project ?? null,
+            text: formatEmbeddingPassageText(prepared.normalizedText),
+            source_text_hash_sha256: createHash("sha256").update(ev.text ?? "", "utf8").digest("hex"),
+            expiresAt: sourceExpiries.get(ev.id) ?? null,
+            chunk_count: prepared.chunkCount,
+            chunk_node_ids: prepared.chunks.map(chunk => chunk.id),
+          });
           for (const chunk of prepared.chunks) {
             const chunkLabel = `${label} [chunk ${chunk.chunkIndex + 1}/${chunk.chunkCount}]`;
             const chunkPreview = chunk.text.slice(0, 800);
@@ -655,7 +676,8 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       .map((operation) => operation.updateOne.update.$set)
       .filter((row) => row.extra.source_event_id === sourceEventId)
       .map((row) => row.id);
-    const inputs = [...graphNodeEmbeddingInputs.values()].filter((row) => row.source_event_id === sourceEventId);
+    const inputs = [...graphNodeEmbeddingInputs.values(), ...graphParentEmbeddingInputs.values()]
+      .filter((row) => row.source_event_id === sourceEventId);
     await mongo.events.deleteMany({ source: "openplanner-derive", "extra.source_event_id": sourceEventId, id: { $nin: derivedIds } });
     await mongo.graphNodeEmbeddings.deleteMany({ source_event_id: sourceEventId, node_id: { $nin: inputs.map((row) => row.node_id) } });
     for (const input of inputs) {
@@ -684,15 +706,6 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
   const graphNodeEmbeddingTask = graphNodeEmbeddingInputs.size > 0
     ? (async () => {
         try {
-          type GraphNodeEmbeddingInput = {
-            node_id: string;
-            source_event_id: string;
-            project?: string | null;
-            text: string;
-            source_text_hash_sha256: string;
-            expiresAt: Date | null;
-            chunk_count: number;
-          };
           const groupedByModel = new Map<string, GraphNodeEmbeddingInput[]>();
 
           for (const input of graphNodeEmbeddingInputs.values()) {
@@ -710,6 +723,9 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
             try {
               const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunctionForModel(model);
               const expectedDimensions = embeddingRuntime.hot.getEmbeddingDimensionsForModel?.(model);
+              const parents = [...graphParentEmbeddingInputs.values()].filter(parent =>
+                embeddingRuntime.hot.getModel({ source: "graph-event", kind: "graph.node",
+                  project: parent.project ?? undefined }) === model);
               const nodeIds = rows.map((row) => row.node_id);
               const existing = await mongo.graphNodeEmbeddings
                 .find({ node_id: { $in: nodeIds }, embedding_model: model,
@@ -722,9 +738,10 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
               const reusable = (row: GraphNodeEmbeddingInput): boolean => {
                 const previous = existingById.get(row.node_id);
                 return Boolean(previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                  && Array.isArray(previous.embedding) && previous.embedding.length > 0
+                  && previous.embedding.every((value: unknown) => typeof value === "number" && Number.isFinite(value))
                   && (expectedDimensions === undefined || (previous.embedding_dimensions === expectedDimensions
-                    && Array.isArray(previous.embedding) && previous.embedding.length === expectedDimensions
-                    && previous.embedding.every((value: unknown) => typeof value === "number" && Number.isFinite(value)))));
+                    && previous.embedding.length === expectedDimensions)));
               };
 
               const toEmbed = rows.filter(row => !reusable(row));
@@ -744,17 +761,21 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
                 }
               }
 
-              if (toEmbed.length === 0) continue;
-
-              const embeddings = await withTimeout(
+              const embeddings = toEmbed.length === 0 ? [] : await withTimeout(
                 embeddingFunction.generate(toEmbed.map((row) => row.text)) as Promise<number[][]>,
                 30_000,
                 `graph node embedding batch ${model}`,
               );
+              if (!Array.isArray(embeddings) || embeddings.length !== toEmbed.length) {
+                throw new Error("Graph embedding batch size mismatch");
+              }
 
               const storedRows = toEmbed.flatMap((row, idx) => {
                 const embedding = embeddings[idx];
-                if (!Array.isArray(embedding) || embedding.length === 0) return [];
+                if (!Array.isArray(embedding) || embedding.length === 0
+                    || embedding.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+                  throw new Error("Graph embedding must be a nonempty finite vector");
+                }
                 if (expectedDimensions !== undefined && embedding.length !== expectedDimensions) {
                   throw new Error("Graph embedding violates declared model dimensions");
                 }
@@ -773,6 +794,28 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
                 }];
               });
 
+              const vectorsById = new Map<string, number[]>(rows.filter(reusable)
+                .map(row => [row.node_id, existingById.get(row.node_id)!.embedding]));
+              for (const row of storedRows) vectorsById.set(row.node_id, row.embedding);
+              for (const parent of parents) {
+                const vectors = parent.chunk_node_ids.map(id => vectorsById.get(id));
+                const dimensions = vectors[0]?.length ?? 0;
+                if (dimensions === 0 || vectors.some(vector => !vector || vector.length !== dimensions)) {
+                  throw new Error("Graph parent aggregation requires every bound chunk vector");
+                }
+                // A scaled mean avoids overflow while retaining all source chunks.
+                const embedding = Array.from({ length: dimensions }, (_, dimension) => {
+                  const scale = vectors.reduce((max, vector) => Math.max(max, Math.abs(vector![dimension])), 0);
+                  return scale === 0 ? 0 : vectors.reduce((sum, vector) => sum + vector![dimension] / scale, 0)
+                    / vectors.length * scale;
+                });
+                if (embedding.some(value => !Number.isFinite(value))) {
+                  throw new Error("Graph parent aggregation must produce a finite vector");
+                }
+                const { chunk_node_ids: _chunkIds, ...input } = parent;
+                storedRows.push({ ...input, project: input.project ?? null, embedding_model: model, embedding_dimensions: dimensions,
+                  embedding, updated_at: new Date() });
+              }
               if (storedRows.length > 0) {
                 await upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings, storedRows);
                 if (expectedDimensions !== undefined) for (const row of storedRows) {
@@ -817,7 +860,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     indexed: true,
     indexing: eventVectorTasks.length > 0 || graphNodeEmbeddingInputs.size > 0 ? "queued" : "skipped",
     queuedEventVectors: eventVectorTasks.length,
-    queuedGraphNodeEmbeddings: graphNodeEmbeddingInputs.size,
+    queuedGraphNodeEmbeddings: graphNodeEmbeddingInputs.size + graphParentEmbeddingInputs.size,
     acceptedEvents,
     backgroundIndexing,
   };

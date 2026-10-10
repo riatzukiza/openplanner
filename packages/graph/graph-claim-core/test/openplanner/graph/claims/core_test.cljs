@@ -282,3 +282,13 @@
           (is (= kind (aget (boundary/evaluate-edge-claim-js claim) "kind")))
           (is (= (= "accept" kind) (some? (boundary/project-edge-claim-js claim #js {:now 1000}))))))
       (finally (set! (.-now js/Date) old-now)))))
+
+(deftest pure-default-policy-requires-explicit-time-for-expiring-claims
+  (let [claim {:claim-id "edge_claim:explicit-clock"
+               :source-node-id "node:a" :target-node-id "node:b"
+               :relation-kind "supports" :direction :directed :scope-json "{}"
+               :scope {} :confidence 0.8 :status :active :valid-until-ms 1000}]
+    (is (= :missing-evaluation-time (:decision/reason (policy/evaluate-claim claim))))
+    (is (= :accept (:decision/kind (policy/evaluate-claim claim [] {:now-ms 999}))))
+    (is (= :expired-claim (:decision/reason (policy/evaluate-claim claim [] {:now-ms 1000}))))
+    (is (= :reject (:decision/kind (policy/evaluate-claim claim [] {:now-ms 1001}))))))

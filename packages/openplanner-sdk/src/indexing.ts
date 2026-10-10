@@ -225,9 +225,14 @@ export function prepareIndexDocument(params: {
     ? chunkText(normalizedText, targetChunkTokens, targetChunkChars, overlapChars)
     : [normalizedText];
 
+  // The generated namespace escapes reserved raw parents, with a distinct
+  // null discriminator for unchunked documents. Both mappings are injective.
+  const chunkId = (index: number): string => parts.length === 1 && !params.parentId.startsWith("index_chunk:")
+    ? params.parentId
+    : "index_chunk:" + JSON.stringify([params.parentId, parts.length === 1 ? null : index]);
   const offsets = locateChunkOffsets(normalizedText, parts);
   const chunks = parts.map((text, index) => ({
-    id: parts.length === 1 ? params.parentId : `${params.parentId}#chunk:${String(index).padStart(4, "0")}`,
+    id: chunkId(index),
     text,
     chunkIndex: index,
     chunkCount: parts.length,

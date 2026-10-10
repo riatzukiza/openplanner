@@ -5854,3 +5854,363 @@ Native review5480466640 at exactff5d6ff supplies nine verified roots4238883893/3
   ]
 }
 ```
+
+
+## Nine exact-ff5 Codex boundaries repaired — 2026-10-10T19:42:00.667703+00:00
+
+Native review5480466640 exposed roots4238883893/3896/3897/3901/3906/3908/3911/3914/3918. Causal RED is committed in4a2fb9556a62776502ae5af2a0983180e996aa7b. SDK174tests156pass18fail and graph60tests354assertions9fail0errors reproduced unchanged production.
+
+Repairs: injective generated chunk namespace; agreeing explicit claim aliases; safe integer pagination before effects; recomputed raw cosine across native/fallback partitions; ISO calendar/time validation; string-only evidence identities; explicit default-policy evaluation time and expiration; graph embeddings from admitted event text rather than preview/HTML; admitted long-source parent vector aggregated from every bound chunk. Parent reuse reconstructs the parent without a provider call. Incomplete provider batches cannot materialize that parent.
+
+Actual final SDK177/177 and graph61tests358assertions0fail/error. Added valid leap/offset controls and explicit pure clock controls. The old changed-text fixture retains all obsolete chunk/sentence removal assertions and now also requires removal of the old source hash and the correctly rebound current parent; the parent identity is legitimately stable across replacement. Supplemental fixture corrections restrict averaging to actual doc_chunk identities (sentences are separately indexed) and read the structured logged error rather than String(object). Their two failed assertions are preserved below; they are fixture failures, not causal production RED. A first GREEN TypeScript project-nullability error and one stale parent-absence expectation were also preserved.
+
+All19 bounded gates passed. First8 actual successful checkpoints are reused only after confirming unchanged production/configuration inputs;11 remaining gates were refreshed after supplemental fixture correction. Compiler/lint warnings0; injected assertion actually exits1. Missing NPM_TOKEN host config notices are separate. Released graph and actual SDK query formatter checks passed. No hosted approval, merged pin, live Mongo/model/maker, physical field, mood deployment, board or availability claim. Original56 import manifest and191 prior journal/reflection prefixes remain immutable.
+
+Frozen private output hashes:
+
+```json
+[
+  {
+    "name": "openplanner-ff5-nine-native-boundaries-causal-red-20261010.json",
+    "bytes": 60129,
+    "sha256": "7d8a518558c3864bffc47eeac1e72d7944c24460aee762a99eca4f1516798104"
+  },
+  {
+    "name": "openplanner-4a2-nine-native-boundaries-first-green-20261010.json",
+    "bytes": 1831,
+    "sha256": "e43e665aebdc330c1a4ef1e9dabb379f2d65232a530a715e45a7730c89347034"
+  },
+  {
+    "name": "bounded-4a2-nine-native-boundaries-complete-green-20261010.json",
+    "bytes": 114351,
+    "sha256": "4f0ba180dec20e463d126f722ce39ff7c2a34bd69065898a14a977ba22e52e62"
+  },
+  {
+    "name": "bounded-4a2-nine-native-boundaries-final-green-20261010.json",
+    "bytes": 236828,
+    "sha256": "550258cc47eeb7abe908265d4b362442da3cc4590d3759d52f51e0117bc86ba3"
+  },
+  {
+    "name": "openplanner-4a2-nine-controls-corrected-green-20261010.json",
+    "bytes": 43463,
+    "sha256": "2e91d54ad28a5e8ab3716be75a3046206b1a6ec08dd16378ae5825c5aa48d91a"
+  },
+  {
+    "name": "bounded-4a2-nine-native-boundaries-complete-verified-green-20261010.json",
+    "bytes": 545004,
+    "sha256": "2c21df5f1591b67705483cecc07c6e9a4dddf835086cfd8463579a1910031ac8"
+  }
+]
+```
+
+Actual successful gate outputs (checkpoint provenance retained):
+
+```json
+[
+  {
+    "name": "frozen scoped install",
+    "argv": [
+      "pnpm",
+      "--dir",
+      "packages",
+      "--filter",
+      "@open-hax/openplanner-sdk...",
+      "--filter",
+      "@open-hax/openplanner-graph-claim-core...",
+      "install",
+      "--frozen-lockfile",
+      "--offline"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.582,
+    "stdout": "Scope: 4 of 5 workspace projects\nLockfile is up to date, resolution step is skipped\nDone in 349ms using pnpm v10.11.0\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "cache released ESM",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "release",
+      "lib",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 9.553,
+    "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (53 files, 0 compiled, 0 warnings, 5.45s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "cache compile tests",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "compile",
+      "test",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 5.552,
+    "stdout": "[:test] Compiling ...\n[:test] Build completed. (56 files, 0 compiled, 0 warnings, 1.56s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "cache actual tests",
+    "argv": [
+      "node",
+      "target/test.cjs"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.157,
+    "stdout": "\nTesting openplanner.stores.cache-test\n\nRan 11 tests containing 47 assertions.\n0 failures, 0 errors.\n",
+    "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "document-hydration released ESM",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "release",
+      "lib",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 11.555,
+    "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (54 files, 0 compiled, 0 warnings, 7.13s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "document-hydration compile tests",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "compile",
+      "test",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 6.189,
+    "stdout": "[:test] Compiling ...\n[:test] Build completed. (57 files, 0 compiled, 0 warnings, 1.68s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "document-hydration actual tests",
+    "argv": [
+      "node",
+      "target/test.cjs"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.171,
+    "stdout": "\nTesting openplanner.stores.document-hydration-test\n\nRan 7 tests containing 24 assertions.\n0 failures, 0 errors.\n",
+    "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "SDK TypeScript build",
+    "argv": [
+      "pnpm",
+      "--dir",
+      "packages",
+      "--filter",
+      "@open-hax/openplanner-sdk",
+      "build"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 1.734,
+    "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 build /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+    "checkpoint_source": "bounded-4a2-nine-native-boundaries-final-green-20261010.json; actual successful commands with unchanged production/configuration inputs"
+  },
+  {
+    "name": "actual clean SDK package test rebuilds source and runs regressions",
+    "argv": [
+      "pnpm",
+      "--dir",
+      "packages",
+      "--filter",
+      "@open-hax/openplanner-sdk",
+      "test"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 5.593,
+    "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 pretest /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\n\n> @open-hax/openplanner-sdk@0.1.0 test /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> node --test --test-reporter=tap test/*.test.mjs\n\nTAP version 13\n# Subtest: event single admission is replay-safe and uses configured retention\nok 1 - event single admission is replay-safe and uses configured retention\n  ---\n  duration_ms: 2.407591\n  type: 'test'\n  ...\n# Subtest: event batch admission is replay-safe and uses configured retention\nok 2 - event batch admission is replay-safe and uses configured retention\n  ---\n  duration_ms: 0.293252\n  type: 'test'\n  ...\n# Subtest: tenant policy payload cannot replace the authoritative tenant ID\nok 3 - tenant policy payload cannot replace the authoritative tenant ID\n  ---\n  duration_ms: 0.221006\n  type: 'test'\n  ...\n# Subtest: policy updates preserve stored creation time even when the payload supplies it\nok 4 - policy updates preserve stored creation time even when the payload supplies it\n  ---\n  duration_ms: 0.148229\n  type: 'test'\n  ...\n# Subtest: all embedding-cache methods share entries and support invalidation\nok 5 - all embedding-cache methods share entries and support invalidation\n  ---\n  duration_ms: 1.055684\n  type: 'test'\n  ...\n# Subtest: an invalid later ingest event prevents every event write and embedding call\nok 6 - an invalid later ingest event prevents every event write and embedding call\n  ---\n  duration_ms: 0.706804\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 7 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.327283\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 8 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.133503\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 9 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.231216\n  type: 'test'\n  ...\n# Subtest: permitted raw browse filters carry time limits to count and find\nok 10 - permitted raw browse filters carry time limits to count and find\n  ---\n  duration_ms: 0.488696\n  type: 'test'\n  ...\n# Subtest: embedding keys distinguish suffixes and models\nok 11 - embedding keys distinguish suffixes and models\n  ---\n  duration_ms: 0.452281\n  type: 'test'\n  ...\n# Subtest: same-prefix inputs reach the provider separately and retain their own cached vectors\nok 12 - same-prefix inputs reach the provider separately and retain their own cached vectors\n  ---\n  duration_ms: 31.541907\n  type: 'test'\n  ...\n# Embed provider error: Embed provider failed: HTTP 400 context window exceeded\n# Embed provider error: Embed provider failed: HTTP 401\n# Subtest: overflow fallback propagates 401 and retries later\nok 13 - overflow fallback propagates 401 and retries later\n  ---\n  duration_ms: 3.612668\n  type: 'test'\n  ...\n# Embed provider error: Embed provider failed: HTTP 400 context window exceeded\n# Embed provider error: Embed provider failed: HTTP 503\n# Subtest: overflow fallback propagates 503 and retries later\nok 14 - overflow fallback propagates 503 and retries later\n  ---\n  duration_ms: 6.787649\n  type: 'test'\n  ...\n# Embed provider error: Embed provider returned an invalid or empty vector\n# Subtest: invalid provider vectors fail without poisoning the cache\nok 15 - invalid provider vectors fail without poisoning the cache\n  ---\n  duration_ms: 2.302751\n  type: 'test'\n  ...\n# Subtest: embedding POST carries a timeout cancellation signal\nok 16 - embedding POST carries a timeout cancellation signal\n  ---\n  duration_ms: 0.796121\n  type: 'test'\n  ...\n# Subtest: template substitution preserves dollar sequences literally\nok 17 - template substitution preserves dollar sequences literally\n  ---\n  duration_ms: 0.238524\n  type: 'test'\n  ...\n# Subtest: hot vector expiry uses connection configuration instead of process env\nok 18 - hot vector expiry uses connection configuration instead of process env\n  ---\n  duration_ms: 1.747973\n  type: 'test'\n  ...\n# Subtest: compact vector expiry uses connection configuration instead of process env\nok 19 - compact vector expiry uses connection configuration instead of process env\n  ---\n  duration_ms: 0.425689\n  type: 'test'\n  ...\n# Subtest: configured Mongo retention and partial graph-version index survive opening the connection\nok 20 - configured Mongo retention and partial graph-version index survive opening the connection\n  ---\n  duration_ms: 6.786318\n  type: 'test'\n  ...\n# Subtest: substring fallback escapes all regular-expression metacharacters\nok 21 - substring fallback escapes all regular-expression metacharacters\n  ---\n  duration_ms: 0.274948\n  type: 'test'\n  ...\n# Subtest: full-text search respects hot tier, labels rows, and merges within limit\nok 22 - full-text search respects hot tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.600898\n  type: 'test'\n  ...\n# Subtest: full-text search respects compact tier, labels rows, and merges within limit\nok 23 - full-text search respects compact tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.170263\n  type: 'test'\n  ...\n# Subtest: full-text search respects both tier, labels rows, and merges within limit\nok 24 - full-text search respects both tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.133298\n  type: 'test'\n  ...\n# Subtest: full-text fallback handles compact tier and preserves good-first ordering across both tiers\nok 25 - full-text fallback handles compact tier and preserves good-first ordering across both tiers\n  ---\n  duration_ms: 0.412345\n  type: 'test'\n  ...\n# Subtest: total embedding failure reports parent without replacing any of its vectors\nok 26 - total embedding failure reports parent without replacing any of its vectors\n  ---\n  duration_ms: 1.595768\n  type: 'test'\n  ...\n# Subtest: partial embedding failure reports parent without replacing any of its vectors\nok 27 - partial embedding failure reports parent without replacing any of its vectors\n  ---\n  duration_ms: 31.741675\n  type: 'test'\n  ...\n# Subtest: thrown embedding batch errors report each affected parent\nok 28 - thrown embedding batch errors report each affected parent\n  ---\n  duration_ms: 0.914156\n  type: 'test'\n  ...\n# Subtest: normalized source chunks remain references and hydrate exactly\nok 29 - normalized source chunks remain references and hydrate exactly\n  ---\n  duration_ms: 9.541978\n  type: 'test'\n  ...\n# Subtest: normalized source chunks remain references and hydrate exactly\nok 30 - normalized source chunks remain references and hydrate exactly\n  ---\n  duration_ms: 6.332994\n  type: 'test'\n  ...\n# Subtest: legacy normalized coordinates hydrate the matching chunk rather than a shifted raw slice\nok 31 - legacy normalized coordinates hydrate the matching chunk rather than a shifted raw slice\n  ---\n  duration_ms: 1.496934\n  type: 'test'\n  ...\n# Subtest: partition setup is reused per connection and failed setup can be retried\nok 32 - partition setup is reused per connection and failed setup can be retried\n  ---\n  duration_ms: 0.964126\n  type: 'test'\n  ...\n# Subtest: hydration-cache initialization can retry after an actual LMDB path failure\nok 33 - hydration-cache initialization can retry after an actual LMDB path failure\n  ---\n  duration_ms: 70.380779\n  type: 'test'\n  ...\n# Embed provider error: Embed provider failed: HTTP 400 context window exceeded\n# Embed provider error: Embed provider failed: HTTP 400 context window exceeded\n# Subtest: one-character overflow fails terminally instead of recursively retrying unchanged input\nok 34 - one-character overflow fails terminally instead of recursively retrying unchanged input\n  ---\n  duration_ms: 2.424463\n  type: 'test'\n  ...\n# Subtest: removing the last vector label uses the same configured retention and timestamp\nok 35 - removing the last vector label uses the same configured retention and timestamp\n  ---\n  duration_ms: 0.375967\n  type: 'test'\n  ...\n# Subtest: disabled retention removes managed flat and existing partition TTLs without dropping unrelated indexes\nok 36 - disabled retention removes managed flat and existing partition TTLs without dropping unrelated indexes\n  ---\n  duration_ms: 1.540668\n  type: 'test'\n  ...\n# Subtest: opening the SDK preserves customized default tenant and policy settings\nok 37 - opening the SDK preserves customized default tenant and policy settings\n  ---\n  duration_ms: 1.344331\n  type: 'test'\n  ...\n# Subtest: tenant updates cannot change storage identity, tenant ID or creation time\nok 38 - tenant updates cannot change storage identity, tenant ID or creation time\n  ---\n  duration_ms: 0.219547\n  type: 'test'\n  ...\n# Subtest: invalid later timestamp prevents all ingest effects including graph projections\nok 39 - invalid later timestamp prevents all ingest effects including graph projections\n  ---\n  duration_ms: 0.311941\n  type: 'test'\n  ...\n# Subtest: label nodes distinguish punctuation, Unicode and long common prefixes and keep replay IDs\nok 40 - label nodes distinguish punctuation, Unicode and long common prefixes and keep replay IDs\n  ---\n  duration_ms: 2.103105\n  type: 'test'\n  ...\n# Subtest: embedding cache flush is durable and invalidations survive a new process\nok 41 - embedding cache flush is durable and invalidations survive a new process\n  ---\n  duration_ms: 86.35745\n  type: 'test'\n  ...\n# Subtest: absolute in-root hydration paths remain absolute while escape paths are rejected\nok 42 - absolute in-root hydration paths remain absolute while escape paths are rejected\n  ---\n  duration_ms: 0.288982\n  type: 'test'\n  ...\n# Subtest: URL-only sources keep vector text inline\nok 43 - URL-only sources keep vector text inline\n  ---\n  duration_ms: 0.591207\n  type: 'test'\n  ...\n# Subtest: URL-only sources keep vector text inline\nok 44 - URL-only sources keep vector text inline\n  ---\n  duration_ms: 0.299774\n  type: 'test'\n  ...\n# Subtest: single vector indexing formats provider passages but keeps stored chunk text\nok 45 - single vector indexing formats provider passages but keeps stored chunk text\n  ---\n  duration_ms: 1.237704\n  type: 'test'\n  ...\n# Subtest: batch vector indexing formats provider passages but keeps stored chunk text\nok 46 - batch vector indexing formats provider passages but keeps stored chunk text\n  ---\n  duration_ms: 0.287641\n  type: 'test'\n  ...\n# Subtest: background indexing cannot settle after a timeout while its underlying task can still write\nok 47 - background indexing cannot settle after a timeout while its underlying task can still write\n  ---\n  duration_ms: 27.09455\n  type: 'test'\n  ...\n# Subtest: ordinary graph embedding persistence binds the exact untrimmed Unicode source text\nok 48 - ordinary graph embedding persistence binds the exact untrimmed Unicode source text\n  ---\n  duration_ms: 2.007068\n  type: 'test'\n  ...\n# Subtest: explicit graph-node embeddings bind the authoritative raw event text\nok 49 - explicit graph-node embeddings bind the authoritative raw event text\n  ---\n  duration_ms: 2.400284\n  type: 'test'\n  ...\n# Subtest: session updates retain immutable identity and creation time\nok 50 - session updates retain immutable identity and creation time\n  ---\n  duration_ms: 0.269051\n  type: 'test'\n  ...\n# Subtest: event replacement removes only its previously projected edges\nok 51 - event replacement removes only its previously projected edges\n  ---\n  duration_ms: 0.638096\n  type: 'test'\n  ...\n# Subtest: two source events with equal endpoints retain independent projection ownership\nok 52 - two source events with equal endpoints retain independent projection ownership\n  ---\n  duration_ms: 0.366436\n  type: 'test'\n  ...\n# Subtest: replacement refuses unattributed legacy edge ownership before event mutation\nok 53 - replacement refuses unattributed legacy edge ownership before event mutation\n  ---\n  duration_ms: 0.212227\n  type: 'test'\n  ...\n# Subtest: conflicting replacements for one event in a batch refuse before any effects\nok 54 - conflicting replacements for one event in a batch refuse before any effects\n  ---\n  duration_ms: 0.177045\n  type: 'test'\n  ...\n# Subtest: embedding uniqueness admits separate chunks and replaces only the obsolete owned index\nok 55 - embedding uniqueness admits separate chunks and replaces only the obsolete owned index\n  ---\n  duration_ms: 1.25774\n  type: 'test'\n  ...\n# Subtest: unknown session detail modes refuse before reading history\nok 56 - unknown session detail modes refuse before reading history\n  ---\n  duration_ms: 0.306953\n  type: 'test'\n  ...\n# Subtest: derived graph-node event content follows resolved retention and label exemptions\nok 57 - derived graph-node event content follows resolved retention and label exemptions\n  ---\n  duration_ms: 1.038759\n  type: 'test'\n  ...\n# Subtest: RRF contributes one vote per parent per tier while retaining its best displayed chunk\nok 58 - RRF contributes one vote per parent per tier while retaining its best displayed chunk\n  ---\n  duration_ms: 0.305991\n  type: 'test'\n  ...\n# Subtest: derived sentence and chunk events inherit the owning source retention labels\nok 59 - derived sentence and chunk events inherit the owning source retention labels\n  ---\n  duration_ms: 273.317003\n  type: 'test'\n  ...\n# Subtest: explicit graph-node chunk and sentence embeddings bind their authoritative raw source\nok 60 - explicit graph-node chunk and sentence embeddings bind their authoritative raw source\n  ---\n  duration_ms: 246.654315\n  type: 'test'\n  ...\n# Subtest: malformed graph-node text refuses the complete batch before admission\nok 61 - malformed graph-node text refuses the complete batch before admission\n  ---\n  duration_ms: 0.473263\n  type: 'test'\n  ...\n# Subtest: empty replacement removes owned derived content and embeddings without TTL\nok 62 - empty replacement removes owned derived content and embeddings without TTL\n  ---\n  duration_ms: 0.955694\n  type: 'test'\n  ...\n# Subtest: changed graph-node text reconciles obsolete owned chunks and sentences\nok 63 - changed graph-node text reconciles obsolete owned chunks and sentences\n  ---\n  duration_ms: 298.503807\n  type: 'test'\n  ...\n# Subtest: equal graph-node text refreshes source and project without regenerating vectors\nok 64 - equal graph-node text refreshes source and project without regenerating vectors\n  ---\n  duration_ms: 0.909168\n  type: 'test'\n  ...\n# Subtest: edge uniqueness includes source ownership and migrates only the exact legacy SDK index\nok 65 - edge uniqueness includes source ownership and migrates only the exact legacy SDK index\n  ---\n  duration_ms: 1.342053\n  type: 'test'\n  ...\n# Subtest: arbitrary source metadata cannot replace derived identity or content\nok 66 - arbitrary source metadata cannot replace derived identity or content\n  ---\n  duration_ms: 0.63872\n  type: 'test'\n  ...\n# Subtest: equal sentences from different sources keep independent retention and provenance in either order\nok 67 - equal sentences from different sources keep independent retention and provenance in either order\n  ---\n  duration_ms: 1.296625\n  type: 'test'\n  ...\n# Subtest: Atlas setup errors remain retryable on the same connection\nok 68 - Atlas setup errors remain retryable on the same connection\n  ---\n  duration_ms: 0.688987\n  type: 'test'\n  ...\n# Subtest: invalid embedding batch sizes refuse before provider or database work\nok 69 - invalid embedding batch sizes refuse before provider or database work\n  ---\n  duration_ms: 186.320055\n  type: 'test'\n  ...\n# Subtest: embedding flush scheduling drains every queued completion under saturation\nok 70 - embedding flush scheduling drains every queued completion under saturation\n  ---\n  duration_ms: 1.264571\n  type: 'test'\n  ...\n# Subtest: hydration refuses file and directory symlinks escaping the configured root\nok 71 - hydration refuses file and directory symlinks escaping the configured root\n  ---\n  duration_ms: 1.886125\n  type: 'test'\n  ...\n# Subtest: owning hydration cache exposes idempotent LMDB close and can reopen persisted entries\nok 72 - owning hydration cache exposes idempotent LMDB close and can reopen persisted entries\n  ---\n  duration_ms: 92.876072\n  type: 'test'\n  ...\n# Subtest: failed Mongo initialization closes its owned client and preserves the original error\nok 73 - failed Mongo initialization closes its owned client and preserves the original error\n  ---\n  duration_ms: 0.949586\n  type: 'test'\n  ...\n# Subtest: non-indexable source replacements remove all owned hot-vector copies without TTL\nok 74 - non-indexable source replacements remove all owned hot-vector copies without TTL\n  ---\n  duration_ms: 1.911561\n  type: 'test'\n  ...\n# Subtest: successive parent ingests cannot let an older detached embedding overwrite the current text\nok 75 - successive parent ingests cannot let an older detached embedding overwrite the current text\n  ---\n  duration_ms: 20.728985\n  type: 'test'\n  ...\n# Subtest: same path reindexing uses the computed source hash to avoid stale hydration cache entries\nok 76 - same path reindexing uses the computed source hash to avoid stale hydration cache entries\n  ---\n  duration_ms: 2.526447\n  type: 'test'\n  ...\n# Subtest: identical event payloads fan out once while conflicting IDs still refuse\nok 77 - identical event payloads fan out once while conflicting IDs still refuse\n  ---\n  duration_ms: 0.325244\n  type: 'test'\n  ...\n# Subtest: native Atlas vector projection preserves retention labels in returned metadata\nok 78 - native Atlas vector projection preserves retention labels in returned metadata\n  ---\n  duration_ms: 0.896688\n  type: 'test'\n  ...\n# Subtest: round-trip policy update excludes immutable Mongo storage identity\nok 79 - round-trip policy update excludes immutable Mongo storage identity\n  ---\n  duration_ms: 0.146393\n  type: 'test'\n  ...\n# Subtest: an unavailable historical model preserves healthy results and reports incomplete partition coverage\nok 80 - an unavailable historical model preserves healthy results and reports incomplete partition coverage\n  ---\n  duration_ms: 0.28615\n  type: 'test'\n  ...\n# Subtest: visibility detail mode cannot exceed the bounded session row limit\nok 81 - visibility detail mode cannot exceed the bounded session row limit\n  ---\n  duration_ms: 0.209625\n  type: 'test'\n  ...\n# Subtest: when every query model is unavailable, search reports a named failure\nok 82 - when every query model is unavailable, search reports a named failure\n  ---\n  duration_ms: 0.205402\n  type: 'test'\n  ...\n# Subtest: failed base projection starts no detached provider work\nok 83 - failed base projection starts no detached provider work\n  ---\n  duration_ms: 0.321837\n  type: 'test'\n  ...\n# Subtest: source expiry and exemption propagate to graph node embeddings and their owned TTL index\nok 84 - source expiry and exemption propagate to graph node embeddings and their owned TTL index\n  ---\n  duration_ms: 1.867418\n  type: 'test'\n  ...\n# Subtest: browse projections reject recursive server Javascript before collection access\nok 85 - browse projections reject recursive server Javascript before collection access\n  ---\n  duration_ms: 0.202002\n  type: 'test'\n  ...\n# Subtest: tier and quality fusion retain incomplete vector partition coverage\nok 86 - tier and quality fusion retain incomplete vector partition coverage\n  ---\n  duration_ms: 1.046631\n  type: 'test'\n  ...\n# Subtest: an empty second tier cannot turn all unavailable query models into success\nok 87 - an empty second tier cannot turn all unavailable query models into success\n  ---\n  duration_ms: 0.202446\n  type: 'test'\n  ...\n# Embedding cache persistence failed\n# Subtest: provider vectors survive failed or pending optional cache persistence\nok 88 - provider vectors survive failed or pending optional cache persistence\n  ---\n  duration_ms: 3.595855\n  type: 'test'\n  ...\n# Subtest: cache batch returns before persistence while explicit flush remains durable\nok 89 - cache batch returns before persistence while explicit flush remains durable\n  ---\n  duration_ms: 16.54375\n  type: 'test'\n  ...\n# Subtest: SDK runtime construction failures occur before opening Mongo\nok 90 - SDK runtime construction failures occur before opening Mongo\n  ---\n  duration_ms: 1.557397\n  type: 'test'\n  ...\n# Subtest: SDK protocol setup rejection closes the newly connected client\nok 91 - SDK protocol setup rejection closes the newly connected client\n  ---\n  duration_ms: 167.191854\n  type: 'test'\n  ...\n# Subtest: SDK close persists recent embeddings and deletions before closing Mongo\nok 92 - SDK close persists recent embeddings and deletions before closing Mongo\n  ---\n  duration_ms: 46.960221\n  type: 'test'\n  ...\n# Subtest: SDK close still closes Mongo after a cache flush failure and reports only a fixed warning\nok 93 - SDK close still closes Mongo after a cache flush failure and reports only a fixed warning\n  ---\n  duration_ms: 1.84454\n  type: 'test'\n  ...\n# Subtest: duplicate vector parent IDs refuse the complete batch before provider or writes\nok 94 - duplicate vector parent IDs refuse the complete batch before provider or writes\n  ---\n  duration_ms: 0.262284\n  type: 'test'\n  ...\n# Subtest: owned graph edges and delayed hot vectors retain exact source expiry\nok 95 - owned graph edges and delayed hot vectors retain exact source expiry\n  ---\n  duration_ms: 0.665541\n  type: 'test'\n  ...\n# Subtest: graph model failures do not skip independently healthy groups\nok 96 - graph model failures do not skip independently healthy groups\n  ---\n  duration_ms: 0.684241\n  type: 'test'\n  ...\n# Subtest: TTL disable reconciles stored dates without rewriting explicit nonexpiring rows\nok 97 - TTL disable reconciles stored dates without rewriting explicit nonexpiring rows\n  ---\n  duration_ms: 0.087069\n  type: 'test'\n  ...\n# Subtest: opening Mongo indexes source-owned cleanup and retained graph edges\nok 98 - opening Mongo indexes source-owned cleanup and retained graph edges\n  ---\n  duration_ms: 1.430441\n  type: 'test'\n  ...\n# Subtest: unavailable Atlas retries do not repeat partition storage setup or probe every write\nok 99 - unavailable Atlas retries do not repeat partition storage setup or probe every write\n  ---\n  duration_ms: 0.346606\n  type: 'test'\n  ...\n# Subtest: building Atlas indexes preserve writes and become ready without repeating storage setup\nok 100 - building Atlas indexes preserve writes and become ready without repeating storage setup\n  ---\n  duration_ms: 0.419936\n  type: 'test'\n  ...\n# Subtest: read queries refresh a pending Atlas index once per bounded cadence without another write\nok 101 - read queries refresh a pending Atlas index once per bounded cadence without another write\n  ---\n  duration_ms: 0.489034\n  type: 'test'\n  ...\n# Subtest: embedding batches overlap up to the configured cap and all queued waiters complete\nok 102 - embedding batches overlap up to the configured cap and all queued waiters complete\n  ---\n  duration_ms: 1.762916\n  type: 'test'\n  ...\n# Subtest: embedding provider errors never consume or expose arbitrary error bodies\nok 103 - embedding provider errors never consume or expose arbitrary error bodies\n  ---\n  duration_ms: 0.506376\n  type: 'test'\n  ...\n# Subtest: non-string and whitespace event identities refuse the complete batch before writes or indexing\nok 104 - non-string and whitespace event identities refuse the complete batch before writes or indexing\n  ---\n  duration_ms: 0.662237\n  type: 'test'\n  ...\n# Subtest: legacy relative TTL remains owned by its retained writer when SDK TTL is 60\nok 105 - legacy relative TTL remains owned by its retained writer when SDK TTL is 60\n  ---\n  duration_ms: 0.22068\n  type: 'test'\n  ...\n# Subtest: legacy relative TTL remains owned by its retained writer when SDK TTL is 0\nok 106 - legacy relative TTL remains owned by its retained writer when SDK TTL is 0\n  ---\n  duration_ms: 0.065351\n  type: 'test'\n  ...\n# Subtest: enforced Vexx ranks small nonempty partitions and accepts empty search results\nok 107 - enforced Vexx ranks small nonempty partitions and accepts empty search results\n  ---\n  duration_ms: 203.266427\n  type: 'test'\n  ...\n# Subtest: mongoBatchSize groups complete parent replacements into bounded transactions\nok 108 - mongoBatchSize groups complete parent replacements into bounded transactions\n  ---\n  duration_ms: 1.013228\n  type: 'test'\n  ...\n# Subtest: fresh SDK retention leaves events_ttl available to the retained writer\nok 109 - fresh SDK retention leaves events_ttl available to the retained writer\n  ---\n  duration_ms: 0.156965\n  type: 'test'\n  ...\n# Subtest: fresh SDK retention leaves compacted_ttl available to the retained writer\nok 110 - fresh SDK retention leaves compacted_ttl available to the retained writer\n  ---\n  duration_ms: 0.05133\n  type: 'test'\n  ...\n# Subtest: failed embedding replacement removes obsolete hot vectors across partitions\nok 111 - failed embedding replacement removes obsolete hot vectors across partitions\n  ---\n  duration_ms: 1.11387\n  type: 'test'\n  ...\n# Subtest: failed storage replacement removes obsolete hot vectors across partitions\nok 112 - failed storage replacement removes obsolete hot vectors across partitions\n  ---\n  duration_ms: 1.18391\n  type: 'test'\n  ...\n# Subtest: failed pending scan partition preserves healthy vector hits\nok 113 - failed pending scan partition preserves healthy vector hits\n  ---\n  duration_ms: 0.480885\n  type: 'test'\n  ...\n# Subtest: failed native and fallback partition preserves healthy vector hits\nok 114 - failed native and fallback partition preserves healthy vector hits\n  ---\n  duration_ms: 0.231225\n  type: 'test'\n  ...\n# Subtest: all failed partition executions produce a named unavailable error without provider diagnostics\nok 115 - all failed partition executions produce a named unavailable error without provider diagnostics\n  ---\n  duration_ms: 0.217435\n  type: 'test'\n  ...\n# Subtest: fractional environment batch limits never normalize to zero\nok 116 - fractional environment batch limits never normalize to zero\n  ---\n  duration_ms: 0.175667\n  type: 'test'\n  ...\n# Subtest: fractional maxBatchItems cannot stall the provider drain\nok 117 - fractional maxBatchItems cannot stall the provider drain\n  ---\n  duration_ms: 117.027924\n  type: 'test'\n  ...\n# Subtest: fractional maxConcurrentBatches cannot stall the provider drain\nok 118 - fractional maxConcurrentBatches cannot stall the provider drain\n  ---\n  duration_ms: 102.453928\n  type: 'test'\n  ...\n# Subtest: SDK shutdown drains admitted background indexing before cache flush and Mongo close\nok 119 - SDK shutdown drains admitted background indexing before cache flush and Mongo close\n  ---\n  duration_ms: 4.114613\n  type: 'test'\n  ...\n# Subtest: every event kind rejects supplied non-string text before admitting any batch row\nok 120 - every event kind rejects supplied non-string text before admitting any batch row\n  ---\n  duration_ms: 0.735786\n  type: 'test'\n  ...\n# Subtest: fts search refuses non-finite or fractional limits before any storage/provider work\nok 121 - fts search refuses non-finite or fractional limits before any storage/provider work\n  ---\n  duration_ms: 0.369982\n  type: 'test'\n  ...\n# Subtest: vector search refuses non-finite or fractional limits before any storage/provider work\nok 122 - vector search refuses non-finite or fractional limits before any storage/provider work\n  ---\n  duration_ms: 0.248897\n  type: 'test'\n  ...\n# Subtest: event retention ignores caller expiry without conflicting update paths (0)\nok 123 - event retention ignores caller expiry without conflicting update paths (0)\n  ---\n  duration_ms: 0.170418\n  type: 'test'\n  ...\n# Subtest: event retention ignores caller expiry without conflicting update paths (60)\nok 124 - event retention ignores caller expiry without conflicting update paths (60)\n  ---\n  duration_ms: 0.060017\n  type: 'test'\n  ...\n# Subtest: compacted retention ignores caller expiry without conflicting update paths (0)\nok 125 - compacted retention ignores caller expiry without conflicting update paths (0)\n  ---\n  duration_ms: 0.106077\n  type: 'test'\n  ...\n# Subtest: compacted retention ignores caller expiry without conflicting update paths (60)\nok 126 - compacted retention ignores caller expiry without conflicting update paths (60)\n  ---\n  duration_ms: 0.048319\n  type: 'test'\n  ...\n# Subtest: embedding provider base URLs accept ordinary trailing slash configuration\nok 127 - embedding provider base URLs accept ordinary trailing slash configuration\n  ---\n  duration_ms: 3.56025\n  type: 'test'\n  ...\n# Subtest: session creation applies event retention and ignores caller expiry (60/0)\nok 128 - session creation applies event retention and ignores caller expiry (60/0)\n  ---\n  duration_ms: 0.252248\n  type: 'test'\n  ...\n# Subtest: session creation applies event retention and ignores caller expiry (0/0)\nok 129 - session creation applies event retention and ignores caller expiry (0/0)\n  ---\n  duration_ms: 0.055602\n  type: 'test'\n  ...\n# Subtest: session creation applies event retention and ignores caller expiry (60/1)\nok 130 - session creation applies event retention and ignores caller expiry (60/1)\n  ---\n  duration_ms: 0.043637\n  type: 'test'\n  ...\n# Subtest: declared model dimension changes refresh unchanged graph text and bypass the old persistent cache\nok 131 - declared model dimension changes refresh unchanged graph text and bypass the old persistent cache\n  ---\n  duration_ms: 60.528618\n  type: 'test'\n  ...\n# Embed provider error: Embed provider vector violates declared model dimensions\n# Subtest: declared embedding dimensions reject a provider vector that violates the model contract\nok 132 - declared embedding dimensions reject a provider vector that violates the model contract\n  ---\n  duration_ms: 3.021223\n  type: 'test'\n  ...\n# Subtest: dimension configuration preserves positive integer model contracts and refuses malformed declarations\nok 133 - dimension configuration preserves positive integer model contracts and refuses malformed declarations\n  ---\n  duration_ms: 0.97803\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \"bad\"\nok 134 - dimension pair configuration rejects silently discarded declaration \"bad\"\n  ---\n  duration_ms: 0.388075\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \"[]\"\nok 135 - dimension pair configuration rejects silently discarded declaration \"[]\"\n  ---\n  duration_ms: 0.167122\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \"fixture=\"\nok 136 - dimension pair configuration rejects silently discarded declaration \"fixture=\"\n  ---\n  duration_ms: 0.117358\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \"fixture=3;bad\"\nok 137 - dimension pair configuration rejects silently discarded declaration \"fixture=3;bad\"\n  ---\n  duration_ms: 0.124319\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \"=3\"\nok 138 - dimension pair configuration rejects silently discarded declaration \"=3\"\n  ---\n  duration_ms: 0.325982\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration rejects silently discarded declaration \";\"\nok 139 - dimension pair configuration rejects silently discarded declaration \";\"\n  ---\n  duration_ms: 0.076174\n  type: 'test'\n  ...\n# Subtest: dimension pair configuration preserves own prototype-named model contract\nok 140 - dimension pair configuration preserves own prototype-named model contract\n  ---\n  duration_ms: 0.23726\n  type: 'test'\n  ...\n# Subtest: session update reconciles managed retention {\"extra\":{\"openplanner_labels\":{\"labels\":[\"keep\"]}}}\nok 141 - session update reconciles managed retention {\"extra\":{\"openplanner_labels\":{\"labels\":[\"keep\"]}}}\n  ---\n  duration_ms: 0.248735\n  type: 'test'\n  ...\n# Subtest: session update reconciles managed retention {\"extra\":{\"openplanner_labels\":{\"labels\":[]}}}\nok 142 - session update reconciles managed retention {\"extra\":{\"openplanner_labels\":{\"labels\":[]}}}\n  ---\n  duration_ms: 0.071796\n  type: 'test'\n  ...\n# Subtest: session update reconciles managed retention {\"expiresAt\":\"1970-01-01T00:00:00.000Z\"}\nok 143 - session update reconciles managed retention {\"expiresAt\":\"1970-01-01T00:00:00.000Z\"}\n  ---\n  duration_ms: 0.093762\n  type: 'test'\n  ...\n# Subtest: session update reconciles managed retention {\"extra.openplanner_labels\":{\"labels\":[\"keep\"]}}\nok 144 - session update reconciles managed retention {\"extra.openplanner_labels\":{\"labels\":[\"keep\"]}}\n  ---\n  duration_ms: 0.070205\n  type: 'test'\n  ...\n# Subtest: embedding scope ignores inherited model {\"project\":\"constructor\"}\nok 145 - embedding scope ignores inherited model {\"project\":\"constructor\"}\n  ---\n  duration_ms: 0.056589\n  type: 'test'\n  ...\n# Subtest: embedding scope ignores inherited model {\"source\":\"toString\"}\nok 146 - embedding scope ignores inherited model {\"source\":\"toString\"}\n  ---\n  duration_ms: 0.025617\n  type: 'test'\n  ...\n# Subtest: embedding scope ignores inherited model {\"kind\":\"__proto__\"}\nok 147 - embedding scope ignores inherited model {\"kind\":\"__proto__\"}\n  ---\n  duration_ms: 0.022899\n  type: 'test'\n  ...\n# Subtest: model precedence accepts only own nonempty string entries\nok 148 - model precedence accepts only own nonempty string entries\n  ---\n  duration_ms: 0.068234\n  type: 'test'\n  ...\n# Subtest: explicit prototype-named model map remains own __proto__=fixture\nok 149 - explicit prototype-named model map remains own __proto__=fixture\n  ---\n  duration_ms: 0.105173\n  type: 'test'\n  ...\n# Subtest: explicit prototype-named model map remains own {\"__proto__\":\"fixture\"}\nok 150 - explicit prototype-named model map remains own {\"__proto__\":\"fixture\"}\n  ---\n  duration_ms: 0.074487\n  type: 'test'\n  ...\n# Subtest: vector native fills unique parents before final limit\nok 151 - vector native fills unique parents before final limit\n  ---\n  duration_ms: 0.471942\n  type: 'test'\n  ...\n# Subtest: vector cosine fills unique parents before final limit\nok 152 - vector cosine fills unique parents before final limit\n  ---\n  duration_ms: 0.230538\n  type: 'test'\n  ...\n# Subtest: vector native quality backfill excludes already selected good parents\nok 153 - vector native quality backfill excludes already selected good parents\n  ---\n  duration_ms: 0.370881\n  type: 'test'\n  ...\n# Subtest: vector cosine quality backfill excludes already selected good parents\nok 154 - vector cosine quality backfill excludes already selected good parents\n  ---\n  duration_ms: 0.319744\n  type: 'test'\n  ...\n# Subtest: ftsSearch snippets truncate at Unicode code point boundaries\nok 155 - ftsSearch snippets truncate at Unicode code point boundaries\n  ---\n  duration_ms: 0.323631\n  type: 'test'\n  ...\n# Subtest: ilikeSearch snippets truncate at Unicode code point boundaries\nok 156 - ilikeSearch snippets truncate at Unicode code point boundaries\n  ---\n  duration_ms: 0.091417\n  type: 'test'\n  ...\n# Subtest: generated chunk identities cannot alias another parent\nok 157 - generated chunk identities cannot alias another parent\n  ---\n  duration_ms: 9.389803\n  type: 'test'\n  ...\n# Subtest: batch indexing preserves distinct parents and their own vectors when an ID looks like a generated chunk\nok 158 - batch indexing preserves distinct parents and their own vectors when an ID looks like a generated chunk\n  ---\n  duration_ms: 28.630239\n  type: 'test'\n  ...\n# Subtest: raw browse rejects noninteger pagination before Mongo effects {\"limit\":1.5}\nok 159 - raw browse rejects noninteger pagination before Mongo effects {\"limit\":1.5}\n  ---\n  duration_ms: 0.388279\n  type: 'test'\n  ...\n# Subtest: raw browse rejects noninteger pagination before Mongo effects {\"skip\":0.5}\nok 160 - raw browse rejects noninteger pagination before Mongo effects {\"skip\":0.5}\n  ---\n  duration_ms: 0.218516\n  type: 'test'\n  ...\n# Subtest: raw browse rejects noninteger pagination before Mongo effects {\"limit\":null}\nok 161 - raw browse rejects noninteger pagination before Mongo effects {\"limit\":null}\n  ---\n  duration_ms: 0.078573\n  type: 'test'\n  ...\n# Subtest: raw browse rejects noninteger pagination before Mongo effects {\"skip\":null}\nok 162 - raw browse rejects noninteger pagination before Mongo effects {\"skip\":null}\n  ---\n  duration_ms: 0.093781\n  type: 'test'\n  ...\n# Subtest: mixed native and fallback vector partitions use one cosine score and distance scale\nok 163 - mixed native and fallback vector partitions use one cosine score and distance scale\n  ---\n  duration_ms: 0.44046\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 0\nok 164 - ingest refuses non-ISO or rollover timestamp before any effects 0\n  ---\n  duration_ms: 0.218044\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 2020\nok 165 - ingest refuses non-ISO or rollover timestamp before any effects 2020\n  ---\n  duration_ms: 0.097541\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 01/02/2026\nok 166 - ingest refuses non-ISO or rollover timestamp before any effects 01/02/2026\n  ---\n  duration_ms: 0.061491\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 2021-02-30\nok 167 - ingest refuses non-ISO or rollover timestamp before any effects 2021-02-30\n  ---\n  duration_ms: 0.049927\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 2021-02-30T00:00:00Z\nok 168 - ingest refuses non-ISO or rollover timestamp before any effects 2021-02-30T00:00:00Z\n  ---\n  duration_ms: 0.046005\n  type: 'test'\n  ...\n# Subtest: ingest refuses non-ISO or rollover timestamp before any effects 2026-01-01T24:00:00Z\nok 169 - ingest refuses non-ISO or rollover timestamp before any effects 2026-01-01T24:00:00Z\n  ---\n  duration_ms: 0.049254\n  type: 'test'\n  ...\n# Subtest: preview-only graph metadata cannot create an authority-hashed embedding undefined\nok 170 - preview-only graph metadata cannot create an authority-hashed embedding undefined\n  ---\n  duration_ms: 0.265338\n  type: 'test'\n  ...\n# Subtest: preview-only graph metadata cannot create an authority-hashed embedding \nok 171 - preview-only graph metadata cannot create an authority-hashed embedding \n  ---\n  duration_ms: 0.106881\n  type: 'test'\n  ...\n# Subtest: preview-only graph metadata cannot create an authority-hashed embedding   \nok 172 - preview-only graph metadata cannot create an authority-hashed embedding   \n  ---\n  duration_ms: 0.097724\n  type: 'test'\n  ...\n# Subtest: explicit graph embedding normalization uses admitted event text rather than alternative HTML metadata\nok 173 - explicit graph embedding normalization uses admitted event text rather than alternative HTML metadata\n  ---\n  duration_ms: 0.552048\n  type: 'test'\n  ...\n# Subtest: long explicit graph nodes materialize an admitted parent vector from bounded chunk embeddings\nok 174 - long explicit graph nodes materialize an admitted parent vector from bounded chunk embeddings\n  ---\n  duration_ms: 415.82941\n  type: 'test'\n  ...\n# Subtest: graph parent aggregates every bound chunk and can be reconstructed from reused vectors\nok 175 - graph parent aggregates every bound chunk and can be reconstructed from reused vectors\n  ---\n  duration_ms: 625.191256\n  type: 'test'\n  ...\n# Subtest: missing bound graph chunk never materializes a partially aggregated parent\nok 176 - missing bound graph chunk never materializes a partially aggregated parent\n  ---\n  duration_ms: 284.72919\n  type: 'test'\n  ...\n# Subtest: calendar-valid ISO leap day and timezone offsets remain admissible\nok 177 - calendar-valid ISO leap day and timezone offsets remain admissible\n  ---\n  duration_ms: 1.153066\n  type: 'test'\n  ...\n1..177\n# tests 177\n# suites 0\n# pass 177\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 3774.533059\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+  },
+  {
+    "name": "SDK released import",
+    "argv": [
+      "node",
+      "--input-type=module",
+      "-e",
+      "import(\"./dist/index.js\").then(m => { if(typeof m.createOpenPlannerSdk !== \"function\")throw Error(\"missing SDK entry point\"); console.log(\"PASS released SDK entry point\"); })"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.142,
+    "stdout": "PASS released SDK entry point\n",
+    "stderr": ""
+  },
+  {
+    "name": "portable recall laws",
+    "argv": [
+      "clojure",
+      "-M:recall-test"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 1.57,
+    "stdout": "\nTesting openplanner.graph.recall.core-test\n\nRan 17 tests containing 100 assertions.\n0 failures, 0 errors.\n",
+    "stderr": ""
+  },
+  {
+    "name": "all bounded CLJS namespace lint",
+    "argv": [
+      "clj-kondo",
+      "--lint",
+      "packages/stores/cache/src",
+      "packages/stores/cache/test",
+      "packages/stores/document-hydration/src",
+      "packages/stores/document-hydration/test",
+      "packages/graph/graph-claim-core/src",
+      "packages/graph/graph-claim-core/test"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.3,
+    "stdout": "linting took 285ms, errors: 0, warnings: 0\n",
+    "stderr": ""
+  },
+  {
+    "name": "graph compile tests",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "compile",
+      "test",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 6.049,
+    "stdout": "[:test] Compiling ...\n[:test] Build completed. (84 files, 0 compiled, 0 warnings, 2.07s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+  },
+  {
+    "name": "graph real runner and injected failure",
+    "argv": [
+      "node",
+      "scripts/verify-recall-test-exit.mjs"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.65,
+    "stdout": "\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 61 tests containing 358 assertions.\n0 failures, 0 errors.\nISOLATED_IN_MEMORY_ASSERTION_FAILURE\n\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nFAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:13:9)\nexpected: (= \"completed\" (aget result \"status\"))\n  actual: (not (= \"completed\" \"forced-review-failure\"))\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 61 tests containing 358 assertions.\n1 failures, 0 errors.\nObserved isolated runner exit=1\nPASS actual compiled Node runner exits 1 for the forced assertion failure\n",
+    "stderr": ""
+  },
+  {
+    "name": "graph released ESM",
+    "argv": [
+      "pnpm",
+      "exec",
+      "shadow-cljs",
+      "release",
+      "lib",
+      "--force-spawn"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 13.528,
+    "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (70 files, 4 compiled, 0 warnings, 9.46s)\n",
+    "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+  },
+  {
+    "name": "graph released demonstration",
+    "argv": [
+      "node",
+      "scripts/verify-scoped-recall.mjs"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.083,
+    "stdout": "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n{\n  \"feedback\": {\n    \"status\": \"not-requested\",\n    \"attempted\": 0,\n    \"completed\": 0\n  },\n  \"diagnostics\": {\n    \"denied-nodes\": 0,\n    \"authorized-nodes\": 2,\n    \"admitted-edges\": 1\n  },\n  \"hits\": [\n    {\n      \"path\": [\n        \"outside-encounter\"\n      ],\n      \"event-id\": \"event:outside-encounter\",\n      \"reason\": \"semantic-seed\",\n      \"id\": \"outside-encounter\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [],\n      \"cost\": 0,\n      \"seed?\": true,\n      \"text\": \"memory:outside-encounter\"\n    },\n    {\n      \"path\": [\n        \"outside-encounter\",\n        \"graph-only-neighbor\"\n      ],\n      \"event-id\": \"event:graph-only-neighbor\",\n      \"reason\": \"graph-neighbor\",\n      \"id\": \"graph-only-neighbor\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [\n        \"edge:encounter:neighbor\"\n      ],\n      \"cost\": 1,\n      \"seed?\": false,\n      \"text\": \"memory:graph-only-neighbor\"\n    }\n  ],\n  \"graph-revision\": \"fixture-graph:23\",\n  \"recall-id\": \"fixture-turn:17\",\n  \"field-revision\": \"fixture-field:11\",\n  \"status\": \"completed\",\n  \"visited-count\": 2,\n  \"policy-revision\": \"fixture-policy:7\",\n  \"budget\": {\n    \"k\": 6,\n    \"fetch\": 18,\n    \"max-nodes\": 64,\n    \"max-cost\": 4\n  },\n  \"field-owner\": \"eros-eris-field\"\n}\nPASS missing decisions refuse recall; retrieval schedules zero feedback writes\nWARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\nCLEAN removed only this demonstration's dedicated temporary fixture\n",
+    "stderr": ""
+  },
+  {
+    "name": "actual SDK formatter integration",
+    "argv": [
+      "node",
+      "scripts/verify-sdk-query-format.mjs"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.123,
+    "stdout": "PASS actual SDK trim/prefix/template/escaped newline and invalid formatter refusals; no live model or Mongo proof\n",
+    "stderr": ""
+  },
+  {
+    "name": "workflow syntax",
+    "argv": [
+      "actionlint",
+      ".github/workflows/scoped-graph-recall.yml",
+      ".github/workflows/eta-mu-review.yml"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.02,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "name": "diff hygiene",
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+    "passed": true,
+    "exit_code": 0,
+    "duration_seconds": 0.007,
+    "stdout": "",
+    "stderr": ""
+  }
+]
+```

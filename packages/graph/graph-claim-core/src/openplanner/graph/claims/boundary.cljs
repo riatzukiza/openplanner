@@ -170,8 +170,9 @@
   (let [fields (when (js-object? input)
                  (filter #(js/Object.hasOwn input %) ["claimId" "claim_id"]))]
     (if (seq fields)
-      (when (every? #(nonblank (jget input %)) fields)
-        (nonblank (jget input (first fields))))
+      (let [values (map #(nonblank (jget input %)) fields)]
+        (when (and (every? some? values) (= 1 (count (set values))))
+          (first values)))
       (fallback))))
 
 (defn edge-claim-from-js
@@ -278,4 +279,5 @@
 
 (defn evaluate-edge-claim-js
   [claim]
-  (decision->js (policy/evaluate-claim (edge-claim-from-js-soft claim))))
+  (decision->js (policy/evaluate-claim (edge-claim-from-js-soft claim) []
+                                     {:now-ms (.now js/Date)})))
