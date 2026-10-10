@@ -151,3 +151,12 @@
   spore: none
   receipt-refs: cephalon-bounded-native-review-green-20261010
   note: Preserve failed execution evidence and fixed timestamp semantics; package-scoped closure keeps the selected dependency boundary concrete. Local passes remain separate from fresh native approval and live B3.
+
+- ts: 2026-10-10
+  task: Reproduce remaining bounded source review findings
+  p-efficiency: 0.78
+  p-friction: 0.22
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-second-native-review-red-20261010
+  note: A clean checkout test must compile current source; partial batch admission and identity precedence require independent negative assertions. Preserve actual RED output before repairs.

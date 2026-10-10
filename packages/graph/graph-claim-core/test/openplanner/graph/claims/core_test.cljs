@@ -168,3 +168,12 @@
         result (mongo/project-mongo-edge-claims-js rows #js {:now "2026-01-01T00:00:00.000Z"})]
     (is (= "stored-only-id" (aget result "edges" 0 "claim_id")))
     (is (= "tenant-a" (aget result "edges" 0 "scope" "tenant_id")))))
+
+(deftest mongo-object-id-never-replaces-an-explicit-claim-identity
+  (let [row #js {:_id #js {:objectId "mongo-storage-id"}
+                 :claim_id "explicit-claim-id"
+                 :source_node_id "a" :target_node_id "b"
+                 :relation_kind "supports" :status "supported" :confidence 0.8}
+        result (mongo/project-mongo-edge-claims-js #js [row] #js {:now "2026-01-01T00:00:00.000Z"})]
+    (is (= 1 (aget result "stats" "edges")))
+    (is (= "explicit-claim-id" (aget result "edges" 0 "claim_id")))))

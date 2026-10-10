@@ -16,6 +16,8 @@ import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/em
 import { ftsSearchWithQuality } from '../dist/search-core.js';
 import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel } from '../dist/mongo-vectors.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
+import { ingestEvents } from '../dist/ingest.js';
+import { queryCollectionResponse } from '../dist/mongo-browse.js';
 
 function collection(name, initial = []) {
   const rows = new Map(initial.map(r => [r._id ?? r.id, r]));
@@ -93,6 +95,54 @@ for (const batch of [false,true]) test(`event ${batch ? 'batch' : 'single'} admi
 test('tenant policy payload cannot replace the authoritative tenant ID',async () => {
   const mongo = mongoFixture(); const doc = await createProtocols({mongo}).tenantManagement.setPolicy('tenant-a',{tenant_id:'tenant-b',retention_days:4});
   assert.equal(doc.tenant_id,'tenant-a'); assert.equal(mongo.db.collection('tenant_policies').rows.get('tenant-a').tenant_id,'tenant-a');
+});
+test('policy updates preserve stored creation time even when the payload supplies it',async()=>{
+  const mongo=mongoFixture();const policies=mongo.db.collection('tenant_policies');
+  const created=new Date('2025-01-01T00:00:00Z');
+  policies.rows.set('tenant-a',{tenant_id:'tenant-a',created_at:created});
+  await createProtocols({mongo}).tenantManagement.setPolicy('tenant-a',{created_at:new Date('2024-01-01'),retention_days:4});
+  assert.equal(policies.rows.get('tenant-a').created_at,created);
+  const update=policies.calls.writes[0].update;
+  assert.equal(Object.hasOwn(update.$set,'created_at'),false);
+  assert.ok(update.$setOnInsert.created_at instanceof Date);
+  assert.ok(update.$set.updated_at instanceof Date);
+});
+test('all embedding-cache methods share entries and support invalidation',async()=>{
+  const cache=new PersistentEmbeddingCache();
+  cache.set('single',{embedding:[1,2],cachedAt:1});
+  assert.equal(cache.has('single'),true);
+  assert.deepEqual((await cache.getMany(['single'])).get('single'),[1,2]);
+  await cache.putMany([{key:'batch',vector:[3,4]}]);
+  assert.equal(cache.has('batch'),true);
+  cache.delete('batch');cache.delete('single');
+  assert.equal(cache.has('batch'),false);
+  assert.equal(cache.size,0);
+  assert.equal((await cache.getMany(['batch','single'])).size,0);
+});
+test('an invalid later ingest event prevents every event write and embedding call',async()=>{
+  const mongo=mongoFixture();let embedded=0;
+  const valid={schema:'openplanner.event.v1',id:'valid-first',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory'};
+  const embeddingRuntime={hot:{getBackgroundEmbeddingFunction(){embedded++;return {generate:async texts=>texts.map(()=>[1,2])};},getModel(){return 'fixture';}}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime},[valid,{...valid,id:''}]),/id/i);
+  assert.equal(mongo.events.calls.writes.length,0);
+  assert.equal(mongo.events.rows.size,0);
+  assert.equal(embedded,0);
+});
+for(const filter of [{$where:'true'},{$and:[{nested:{$function:{body:'return true',args:[],lang:'js'}}}]},{nested:{$accumulator:{init:'function() {}'}}}])test('raw browse refuses server-side JavaScript before accessing a collection',async()=>{
+  let accessed=0;
+  const mongo={db:{collection(){accessed++;return {countDocuments:async()=>0,find(){throw new Error('fixture database reached');}};}}};
+  await assert.rejects(queryCollectionResponse({mongo},{collection:'events',filter}),/server-side JavaScript/);
+  assert.equal(accessed,0);
+});
+test('permitted raw browse filters carry time limits to count and find',async()=>{
+  const calls=[];const filter={$and:[{kind:'message'},{count:{$gt:1}}]};
+  const cursor={sort(){return this;},skip(){return this;},limit(){return this;},async toArray(){return [{id:'one'}];}};
+  const mongo={db:{collection:()=>({async countDocuments(query,options){calls.push({query,options});return 1;},find(query,options){calls.push({query,options});return cursor;}})}};
+  const result=await queryCollectionResponse({mongo},{collection:'events',filter,projection:{id:1}});
+  assert.deepEqual(result.rows,[{id:'one'}]);
+  assert.equal(calls.length,2);
+  for(const call of calls){assert.equal(call.query,filter);assert.ok(call.options?.maxTimeMS>0);assert.ok(call.options.maxTimeMS<=5000);}
+  assert.deepEqual(calls[1].options.projection,{id:1});
 });
 test('embedding keys distinguish suffixes and models',() => {
   const prefix = 'common-header-'.repeat(12);
