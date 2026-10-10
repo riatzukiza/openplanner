@@ -1003,3 +1003,22 @@ test('dimension configuration preserves positive integer model contracts and ref
   await withEnv({EMBED_PROVIDER_MODEL_DIMENSIONS:'{"fixture":3,"other":"4"}'},async()=>assert.deepEqual(loadConfig().embeddingModels.dimensionsByModel,{fixture:3,other:4}));
   for(const raw of ['{"fixture":0}','{"fixture":1.5}','{"fixture":"bad"}'])await withEnv({EMBED_PROVIDER_MODEL_DIMENSIONS:raw},async()=>assert.throws(()=>loadConfig(),/dimension/i));
 });
+
+// Explicit dimension contracts cannot be partially admitted by a forgiving model-map parser.
+for (const raw of ["bad", "[]", "fixture=", "fixture=3;bad", "=3", ";"]) {
+  test(`dimension pair configuration rejects silently discarded declaration ${JSON.stringify(raw)}`, async () => {
+    await withEnv({ EMBED_PROVIDER_MODEL_DIMENSIONS: raw }, async () => {
+      assert.throws(() => loadConfig(), /dimension/i);
+    });
+  });
+}
+
+test("dimension pair configuration preserves own prototype-named model contract", async () => {
+  await withEnv({ EMBED_PROVIDER_MODEL_DIMENSIONS: "fixture=3;__proto__=4" }, async () => {
+    const dimensions = loadConfig().embeddingModels.dimensionsByModel;
+    assert.equal(dimensions.fixture, 3);
+    assert.equal(Object.hasOwn(dimensions, "__proto__"), true);
+    assert.equal(dimensions.__proto__, 4);
+    assert.equal(Object.getPrototypeOf(dimensions), Object.prototype);
+  });
+});

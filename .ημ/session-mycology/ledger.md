@@ -406,3 +406,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-dfc1-public-boundary-complete-green-20261010
   note: SDK close drains admitted background indexing before cache/Mongo closure. Text and limits reject malformed inputs before effects; event/session retention shares one decision and strips caller expiry; provider URLs normalize trailing slashes. Explicit configured dimension contracts refresh graph rows and persistent cache; no opaque alias inference. First GREEN 132/133 failed on obsolete dimensions and remains retained; successful replacement now cleans only owned old-dimensional rows. Original 56-file manifest and all 184 receipt/reflection bytes remain exact prefixes. New Codex completion restores availability; current native full scope/checks still required. No live runtime, board, paid usage or spore action.
+
+- ts: 2026-10-10T18:40:27.844Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-explicit-dimension-declarations-red-20261010
+  note: A focused audit of the introduced explicit model dimension configuration found malformed pair-list declarations silently discarded and a prototype-named model contract dropped. Seven new regressions fail against unchanged production; no assertions weakened. Original56manifest and185receipt/reflection prefixes intact. No runtime, board, paid usage or spore action; current remote MiMo continues on0aa while local causal RED is prepared.
