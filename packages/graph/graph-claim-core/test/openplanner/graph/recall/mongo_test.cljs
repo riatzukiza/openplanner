@@ -265,3 +265,14 @@
       (is (= "indexing-pending" (get-in result [:selection :status])))
       (is (empty? @(:embeddings* s)))
       (is (= [:indices] (mapv :collection @(:reads* s)))))))
+
+(deftest ^:async obsolete-dimensions-do-not-break-current-model-recall
+  (let [state (state) read! (reader state)
+        before (await (recall! read! fixture/request))]
+    (swap! (:indices* state) into
+           (mapv #(assoc % :_id (str (:_id %) ":old-dimensions")
+                         :embedding_dimensions 3 :embedding [1.0 0.0 0.0]) indices))
+    (let [after (await (recall! read! fixture/request))]
+      (is (= before after))
+      (is (= "completed" (get-in after [:selection :status])))
+      (is (= 0 @(:writes* state))))))

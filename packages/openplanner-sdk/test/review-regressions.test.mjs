@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm, symlink, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
@@ -11,7 +11,7 @@ import { MongoClient } from 'mongodb';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ilikeSearch } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
-import { safeSourceFilePath } from '../dist/source-hydration.js';
+import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality } from '../dist/search-core.js';
@@ -506,4 +506,78 @@ test('equal graph-node text refreshes source and project without regenerating ve
   const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;const previousCalls=calls;
   const second=await ingestEvents({mongo,embeddingRuntime},[{...event,id:'source-b',source_ref:{project:'second'}}]);await second.backgroundIndexing;
   const row=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id==='shared-node');assert.equal(row.source_event_id,'source-b');assert.equal(row.project,'second');assert.deepEqual(row.embedding,[1,2]);assert.equal(calls,previousCalls);
+});
+
+// Native Codex review 5479596524: actual public operations and owned collection fixtures.
+const openingConfig = {uri:'mongodb://fixture.invalid',dbName:'fixture',eventsCollection:'events',compactedCollection:'compacted',vectorHotCollection:'hot_vectors',vectorCompactCollection:'compact_vectors',graphLayoutCollection:'layout',graphNodeEmbeddingCollection:'embeddings'};
+test('edge uniqueness includes source ownership and migrates only the exact legacy SDK index',async()=>{
+  const mongo=mongoFixture();const c=mongo.graphEdges;
+  c.indexes=async()=>[{name:'source_node_id_1_target_node_id_1_edge_kind_1',key:{source_node_id:1,target_node_id:1,edge_kind:1},unique:true},{name:'unrelated_unique',key:{project:1},unique:true}];
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await openMongoDB(openingConfig);
+    assert.ok(c.calls.indexes.some(i=>i.opts.unique&&i.keys['data.source_event_id']===1));
+    assert.deepEqual(c.calls.drops,['source_node_id_1_target_node_id_1_edge_kind_1']);
+  }finally{connect.mock.restore();db.mock.restore();}
+});
+test('arbitrary source metadata cannot replace derived identity or content',async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const text='Authoritative outside information.';const event={schema:'openplanner.event.v1',id:'reserved-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text,source_ref:{project:'owned-project'},extra:{node_id:'spoof',node_kind:'spoof',preview:'spoof',label:'spoof',lake:'spoof',content_hash:'spoof',source_event_id:'spoof',custom:'retained'}};
+  const result=await ingestEvents({mongo,embeddingRuntime},[event]);await result.backgroundIndexing;
+  const row=mongo.events.rows.get('graph.node:derive:reserved-owner');assert.equal(row.extra.node_id,event.id);assert.equal(row.extra.node_kind,'message');assert.equal(row.extra.preview,text);assert.equal(row.extra.lake,'owned-project');assert.notEqual(row.extra.content_hash,'spoof');assert.equal(row.extra.source_event_id,event.id);assert.equal(row.extra.custom,'retained');
+});
+test('equal sentences from different sources keep independent retention and provenance in either order',async()=>{
+  const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  for(const reversed of [false,true]){
+    const mongo=ownedProjectionFixture();const event={schema:'openplanner.event.v1',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Outside information changes remembered creative choices.',source_ref:{project:'same-project'}};
+    const rows=[{...event,id:'ordinary-owner',extra:{node_id:'ordinary-owner'}},{...event,id:'retained-owner',extra:{node_id:'retained-owner',openplanner_labels:{labels:['keep']}}}];
+    const result=await ingestEvents({mongo,embeddingRuntime},reversed?rows.reverse():rows);await result.backgroundIndexing;
+    const sentences=[...mongo.events.rows.values()].filter(row=>row.extra?.node_kind==='sentence');assert.equal(sentences.length,2);
+    const ordinary=sentences.find(row=>row.extra.source_event_id==='ordinary-owner');const retained=sentences.find(row=>row.extra.source_event_id==='retained-owner');assert.ok(ordinary.expiresAt instanceof Date);assert.equal(retained.expiresAt,undefined);assert.notEqual(ordinary.extra.node_id,retained.extra.node_id);
+  }
+});
+test('Atlas setup errors remain retryable on the same connection',async()=>{
+  const mongo=mongoFixture();const original=mongo.db.collection;let attempts=0;
+  mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{attempts++;if(attempts===1)throw new Error('transient Atlas failure');return [{status:'READY',queryable:true}];}});return c;};
+  await assert.rejects(upsertMongoVectorDocuments(mongo,'hot',[entry('first')]),/transient Atlas failure/);
+  assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'error');
+  await upsertMongoVectorDocuments(mongo,'hot',[entry('retry')]);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.ok(attempts>1);
+});
+test('invalid embedding batch sizes refuse before provider or database work',async()=>{
+  const script=`import assert from 'node:assert/strict';const {batchIndexTextsInMongoVectors}=await import(process.argv[1]);
+    for(const value of [0,-1,0.5,NaN,Infinity]){let calls=0;
+      await assert.rejects(batchIndexTextsInMongoVectors({mongo:{},tier:'hot',items:[{id:'invalid',text:'outside information',metadata:{embedding_model:'fixture'}}],embeddingFunction:{generate:async()=>{calls++;throw new Error('provider must not be reached');}},config:{embeddingBatchSize:value}}),/embeddingBatchSize.*positive integer/i);
+      assert.equal(calls,0);}`;
+  await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/mongo-vectors.js',import.meta.url).href],{timeout:3000});
+});
+test('embedding flush scheduling drains every queued completion under saturation',async()=>{
+  let release;const gate=new Promise(resolve=>release=resolve);let started;const admitted=new Promise(resolve=>started=resolve);
+  await withFetch(async request=>{started();await gate;return response([[1,2]]);},async()=>{
+    const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{maxConcurrentBatches:1,maxBatchItems:1});
+    const result=provider.generate(['one','two','three','four','five']);await admitted;release();assert.equal((await result).length,5);
+    // Exercise the compiled scheduler completion under saturation, including queued no-op callbacks.
+    const completions=Array.from({length:5},()=>provider.scheduleFlush());
+    const all=Promise.all(completions).then(()=>true);
+    assert.equal(await Promise.race([all,new Promise(resolve=>setTimeout(()=>resolve(false),100))]),true);
+  });
+});
+test('hydration refuses file and directory symlinks escaping the configured root',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-symlink-'));const root=join(dir,'root');await mkdir(root);await writeFile(join(dir,'secret.txt'),'outside secret');await symlink(join(dir,'secret.txt'),join(root,'linked-file'));await symlink(dir,join(root,'linked-dir'));await writeFile(join(root,'inside.txt'),'inside content');
+  try{await withEnv({OPENPLANNER_SOURCE_ROOT:root},async()=>{
+    assert.equal(await loadHydrationSourceText({id:'file-link',extra:{source_path:'linked-file'}}),null);
+    assert.equal(await loadHydrationSourceText({id:'dir-link',extra:{source_path:'linked-dir/secret.txt'}}),null);
+    assert.equal(await loadHydrationSourceText({id:'inside',extra:{source_path:'inside.txt'}}),'inside content');
+  });}finally{await rm(dir,{recursive:true,force:true});}
+});
+test('owning hydration cache exposes idempotent LMDB close and can reopen persisted entries',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-close-hydration-'));
+  const script=`import assert from 'node:assert/strict';process.env.OPENPLANNER_HYDRATION_LMDB_PATH=process.argv[1];
+    const h=await import(process.argv[2]);const {cachePut,cacheGet}=await import('@open-hax/openplanner-document-hydration');
+    assert.equal(typeof h.closeHydrationCache,'function');const first=await h.getHydrationCache();await cachePut(first,'persisted','kept');
+    await Promise.all([h.closeHydrationCache(),h.closeHydrationCache()]);const second=await h.getHydrationCache();assert.notEqual(first,second);assert.equal(await cacheGet(second,'persisted'),'kept');await h.closeHydrationCache();`;
+  try{await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,dir,new URL('../dist/source-hydration.js',import.meta.url).href],{timeout:10_000});}finally{await rm(dir,{recursive:true,force:true});}
+});
+test('failed Mongo initialization closes its owned client and preserves the original error',async()=>{
+  const mongo=mongoFixture();const original=new Error('index initialization failed');mongo.events.createIndex=async()=>{throw original;};let closes=0;
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);const close=mock.method(MongoClient.prototype,'close',async()=>{closes++;});
+  try{await assert.rejects(openMongoDB(openingConfig),error=>error===original);assert.equal(closes,1);}finally{connect.mock.restore();db.mock.restore();close.mock.restore();}
 });

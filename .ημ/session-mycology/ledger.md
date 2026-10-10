@@ -232,3 +232,12 @@
   spore: none
   receipt-refs: cephalon-bounded-coderabbit-10c4f30-native-green-20261010
   note: Supplied graph-node text validates before admission; source-owned obsolete derived events and embeddings reconcile on replacement without TTL; unchanged vectors receive conditional source/project metadata refresh without regeneration. Unknown historical ownership stays retained for migration. Correction to historical reflection line 198: native Codex review 5479413326 superseded the earlier quota observation, its findings were open at that recorded time, and the original raw review/comments remain preserved. Prior observations are not rewritten. The report now separates joined prose tokens; this readable correction is appended under the user instruction. Standard $ne support was added to held collection matching, with causal assertions unchanged. Complete new-head review/hosted CI remain owed, with actual CodeRabbit hourly cooldown; no runtime, board, publication, paid usage or spore.
+
+- ts: 2026-10-10T15:42:12.470Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-10c-native-red-20261010
+  note: Late exact10c Codex review adds 12 roots. Empty replacement is already repaired in e3; the other confirmed defects have causal regression failures before production changes. Invalid zero batch loop is contained by an owned child-process timeout. The original-kind assertion fixture was corrected from event to message before this RED commit and the actual SDK run repeated with unchanged 9 causal failures. Both actual captures remain. Original 56 selection and exact prior receipt/reflection bytes remain; no runtime, board, paid usage or spore.

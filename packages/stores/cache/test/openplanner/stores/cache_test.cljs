@@ -113,5 +113,29 @@
         (is (false? (boundary/cache-touch-js cache "expired" 20)))
         (is (nil? (boundary/cache-get-js cache "expired")))))))
 
+(deftest layered-promotion-preserves-lower-expiration
+  (async done
+    (let [clock (atom 100)
+          original core/now-ms
+          store (atom {})
+          db #js {:get #(get @store %)
+                  :put (fn [k v] (swap! store assoc k v) true)
+                  :remove (fn [k] (swap! store dissoc k) true)}]
+      (set! core/now-ms #(deref clock))
+      (let [hot (boundary/create-memory-lru-cache #js {:defaultTtlMs 10000})
+            warm (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 1000})
+            layered (boundary/create-layered-cache #js [hot warm])]
+        (boundary/cache-put-js warm "k" "value")
+        (reset! clock 1099)
+        (-> (boundary/cache-get-js layered "k")
+            (p-> (fn [value]
+                   (is (= "value" value))
+                   (is (= "value" (boundary/cache-get-js hot "k")))
+                   (reset! clock 1101)
+                   (is (nil? (boundary/cache-get-js hot "k")))
+                   (is (nil? (boundary/cache-get-js warm "k")))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn [] (set! core/now-ms original) (done))))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))
