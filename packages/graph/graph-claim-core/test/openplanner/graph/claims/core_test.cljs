@@ -320,3 +320,15 @@
     (is (= "z" (aget left "target")))
     (is (= (js->clj right) (js->clj left)))
     (is (= (js->clj left) (js->clj stored)))))
+
+(deftest every-supplied-lifecycle-evidence-alias-must-agree
+  (doseq [[action specific] [["support" "support_event_ids"] ["refute" "refute_event_ids"]]
+          [left right] [["event_ids" "eventIds"] ["event_ids" specific] ["eventIds" specific]]]
+    (let [bad #js {} good #js {}]
+      (aset bad left #js [])
+      (aset bad right #js ["event:1"])
+      (aset good left #js [" event:1 " "event:1"])
+      (aset good right #js ["event:1"])
+      (is (thrown-with-msg? js/Error #"evidence.*aliases|aliases.*evidence"
+            (lifecycle/transition-plan-js action bad)))
+      (is (= ["event:1"] (js->clj (aget (lifecycle/transition-plan-js action good) "eventIds")))))))

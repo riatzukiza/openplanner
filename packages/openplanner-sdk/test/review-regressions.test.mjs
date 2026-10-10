@@ -1186,3 +1186,47 @@ for(const name of ['ftsSearchWithQuality','vectorSearchWithQuality'])test(name+'
   const context={mongo:{events:c,compacted:c,vectorPartitions:c},embeddingRuntime:{hot:{getEmbeddingFunctionForModel(){effects++;return provider;}}}};
   await assert.rejects((name==='ftsSearchWithQuality'?ftsSearchWithQuality:vectorSearchWithQuality)(context,{q:' \t\n ',quality:'any'}),/q is required/i);assert.equal(effects,0);
 });
+
+// Native Codex5480976255 exactdfa287c: causal lifecycle/metadata/source/filter/cosine regressions.
+for (const field of ['project','session','message']) for (const invalid of [42,{},false])
+  test(`source reference ${field} refuses malformed identity ${JSON.stringify(invalid)} before batch IO`,async()=>{
+    const mongo=mongoFixture();let providers=0;
+    const event={schema:'openplanner.event.v1',id:'source-ref',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'outside'};
+    const embeddingRuntime={hot:{getBackgroundEmbeddingFunction(){providers++;return {generate:async texts=>texts.map(()=>[1,0])};},getModel(){return 'fixture';}}};
+    await assert.rejects(ingestEvents({mongo,embeddingRuntime},[{...event,id:'first'},{...event,source_ref:{[field]:invalid}}]),/source.reference|source_ref/i);
+    assert.equal(mongo.events.calls.writes.length,0);assert.equal(providers,0);
+  });
+for (const field of ['source','kind','project','session','visibility']) for(const invalid of [{$ne:'expected'},42,false]) for(const fallback of [false,true])
+  test(`FTS ${fallback?'fallback':'native'} rejects malformed exact ${field} filter ${JSON.stringify(invalid)} before IO`,async()=>{
+    const mongo=mongoFixture();mongo.events.failText=fallback;
+    await assert.rejects(ftsSearchWithQuality({mongo},{q:'outside',tier:'hot',quality:'any',[field]:invalid}),/filter.*string|string.*filter/i);
+    assert.equal(mongo.events.calls.searches.length,0);
+  });
+for(const dotted of [
+  {'extra.openplanner_labels':{labels:['keep'],quality:'good'}},
+  {'extra.openplanner_labels.labels':['keep']},
+  {'extra.openplanner_labels':{labels:[],quality:'good'},'extra.openplanner_labels.labels':['keep']},
+])test(`session parent/child metadata updates normalize before Mongo ${JSON.stringify(dotted)}`,async()=>{
+  const mongo=mongoFixture();let stored={_id:'session-marker',session:'owned',kind:'session',extra:{original:true},expiresAt:new Date(0)};
+  mongo.events.findOne=async()=>({...stored});
+  mongo.events.updateOne=async(filter,update)=>{
+    const keys=Object.keys(update.$set??{});
+    if(keys.some(a=>keys.some(b=>b.startsWith(a+'.'))))throw new Error('MongoDB parent and child update path conflict');
+    mongo.events.calls.writes.push({filter,update});Object.assign(stored,update.$set);
+    for(const field of Object.keys(update.$unset??{}))delete stored[field];
+  };
+  const result=await createProtocols({mongo}).sessionManagement.updateSession('owned',{extra:{preserved:'outside',openplanner_labels:{labels:[],quality:'neutral'}},...dotted});
+  assert.equal(result.extra.preserved,'outside');assert.deepEqual(result.extra.openplanner_labels.labels,['keep']);
+  assert.equal(Object.hasOwn(result,'expiresAt'),false);assert.equal(mongo.events.calls.writes.length,1);
+  assert.equal(Object.keys(mongo.events.calls.writes[0].update.$set).some(k=>k.startsWith('extra.')),false);
+});
+for(const ready of [false,true])test(`cosine ${ready?'native-unavailable':'pending-index'} fallback scores older matching documents across the full filtered partition`,async()=>{
+  const rows=Array.from({length:1001},(_,i)=>({...vectorRow('new-'+String(i).padStart(4,'0'),'new-parent-'+i,0.1),ts:new Date('2026-10-10T00:00:00Z')}));
+  rows.push({...vectorRow('old-perfect','old-perfect-parent',1),ts:new Date('2020-01-01T00:00:00Z')});
+  rows.push({...vectorRow('old-next','old-next-parent',0.9),ts:new Date('2019-01-01T00:00:00Z')});
+  const mongo=parentQueryFixture('cosine',rows);const partition=mongo.vectorPartitions.rows.get('healthy');
+  assert.ok(partition);partition.searchIndexStatus=ready?'ready':'pending';
+  const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+  assert.deepEqual(result.ids,[['old-perfect','old-next']]);assert.deepEqual(result.metadatas[0].map(x=>x.parent_id),['old-perfect-parent','old-next-parent']);
+  assert.equal(result.distances[0][0],0);
+});
