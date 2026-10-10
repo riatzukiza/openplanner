@@ -74,7 +74,9 @@
     (cond-> (assoc entry :cache/touched-at-ms now :touchedAt now)
       (and (number? ttl-ms) (pos? ttl-ms))
       (assoc :cache/expires-at-ms (+ now ttl-ms)
-             :expiresAt (+ now ttl-ms)))))
+             :expiresAt (+ now ttl-ms))
+      (= ttl-ms 0)
+      (dissoc :cache/expires-at-ms :expiresAt :expires-at))))
 
 (defn cache-entry-errors
   [entry]

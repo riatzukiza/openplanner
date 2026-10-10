@@ -203,6 +203,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     source?: string | null;
     data?: Record<string, unknown> | null;
     updated_at?: Date;
+    expiresAt?: Date | null;
   }> = [];
   const graphNodeEmbeddingInputs = new Map<string, {
     node_id: string;
@@ -585,6 +586,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     for (let index = projectionStart; index < projectedGraphEdges.length; index++) {
       const edge = projectedGraphEdges[index]!;
       edge.data = { ...edge.data, source_event_id: ev.id };
+      edge.expiresAt = sourceExpiries.get(ev.id) ?? null;
     }
 
     if (shouldIndexEventHotVectors(ev)) {
@@ -615,6 +617,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
               model: model ?? "",
               embedding_model: embeddingModel ?? "",
               search_tier: "hot",
+              source_expires_at: sourceExpiries.get(ev.id) ?? null,
               visibility: extra.visibility ?? "internal",
               quality_label: ((extra.openplanner_labels as any)?.quality ?? ""),
               labels,
@@ -698,62 +701,66 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
           }
 
           for (const [model, rows] of groupedByModel) {
-            const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunctionForModel(model);
-            const nodeIds = rows.map((row) => row.node_id);
-            const existing = await mongo.graphNodeEmbeddings
-              .find({ node_id: { $in: nodeIds }, embedding_model: model })
-              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1, expiresAt: 1 })
-              .toArray();
-            const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
+            try {
+              const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunctionForModel(model);
+              const nodeIds = rows.map((row) => row.node_id);
+              const existing = await mongo.graphNodeEmbeddings
+                .find({ node_id: { $in: nodeIds }, embedding_model: model })
+                .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1, expiresAt: 1 })
+                .toArray();
+              const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
 
-            const toEmbed = rows.filter((row) => {
-              const previous = existingById.get(row.node_id);
-              return !previous || previous.text !== row.text || previous.source_text_hash_sha256 !== row.source_text_hash_sha256;
-            });
+              const toEmbed = rows.filter((row) => {
+                const previous = existingById.get(row.node_id);
+                return !previous || previous.text !== row.text || previous.source_text_hash_sha256 !== row.source_text_hash_sha256;
+              });
 
-            for (const row of rows) {
-              const previous = existingById.get(row.node_id);
-              if (previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
-                  && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
-                      || previous.chunk_count !== row.chunk_count
-                      || (previous.expiresAt?.getTime() ?? null) !== (row.expiresAt?.getTime() ?? null))) {
-                await mongo.graphNodeEmbeddings.updateMany({
-                  node_id: row.node_id, embedding_model: model, text: row.text,
-                  source_text_hash_sha256: row.source_text_hash_sha256,
-                  source_event_id: previous.source_event_id, project: previous.project ?? null,
-                }, { $set: { source_event_id: row.source_event_id, project: row.project ?? null,
-                  chunk_count: row.chunk_count, expiresAt: row.expiresAt, updated_at: new Date(), updatedAt: new Date() } });
+              for (const row of rows) {
+                const previous = existingById.get(row.node_id);
+                if (previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                    && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
+                        || previous.chunk_count !== row.chunk_count
+                        || (previous.expiresAt?.getTime() ?? null) !== (row.expiresAt?.getTime() ?? null))) {
+                  await mongo.graphNodeEmbeddings.updateMany({
+                    node_id: row.node_id, embedding_model: model, text: row.text,
+                    source_text_hash_sha256: row.source_text_hash_sha256,
+                    source_event_id: previous.source_event_id, project: previous.project ?? null,
+                  }, { $set: { source_event_id: row.source_event_id, project: row.project ?? null,
+                    chunk_count: row.chunk_count, expiresAt: row.expiresAt, updated_at: new Date(), updatedAt: new Date() } });
+                }
               }
-            }
 
-            if (toEmbed.length === 0) continue;
+              if (toEmbed.length === 0) continue;
 
-            const embeddings = await withTimeout(
-              embeddingFunction.generate(toEmbed.map((row) => row.text)) as Promise<number[][]>,
-              30_000,
-              `graph node embedding batch ${model}`,
-            );
+              const embeddings = await withTimeout(
+                embeddingFunction.generate(toEmbed.map((row) => row.text)) as Promise<number[][]>,
+                30_000,
+                `graph node embedding batch ${model}`,
+              );
 
-            const storedRows = toEmbed.flatMap((row, idx) => {
-              const embedding = embeddings[idx];
-              if (!Array.isArray(embedding) || embedding.length === 0) return [];
-              return [{
-                node_id: row.node_id,
-                source_event_id: row.source_event_id,
-                project: row.project ?? null,
-                embedding_model: model,
-                embedding_dimensions: embedding.length,
-                embedding,
-                chunk_count: row.chunk_count ?? 1,
-                text: row.text,
-                source_text_hash_sha256: row.source_text_hash_sha256,
-                expiresAt: row.expiresAt,
-                updated_at: new Date(),
-              }];
-            });
+              const storedRows = toEmbed.flatMap((row, idx) => {
+                const embedding = embeddings[idx];
+                if (!Array.isArray(embedding) || embedding.length === 0) return [];
+                return [{
+                  node_id: row.node_id,
+                  source_event_id: row.source_event_id,
+                  project: row.project ?? null,
+                  embedding_model: model,
+                  embedding_dimensions: embedding.length,
+                  embedding,
+                  chunk_count: row.chunk_count ?? 1,
+                  text: row.text,
+                  source_text_hash_sha256: row.source_text_hash_sha256,
+                  expiresAt: row.expiresAt,
+                  updated_at: new Date(),
+                }];
+              });
 
-            if (storedRows.length > 0) {
-              await upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings, storedRows);
+              if (storedRows.length > 0) {
+                await upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings, storedRows);
+              }
+            } catch (err) {
+              log.warn({ err, model, count: rows.length }, "Failed graph embedding model group; continuing independent groups");
             }
           }
         } catch (err) {

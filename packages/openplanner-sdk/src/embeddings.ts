@@ -204,13 +204,15 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         try {
           const embeddings = await this.resolveBatch(entries);
 
-          await this.cache?.putMany(entries.map(([key], index) => ({ key, vector: embeddings[index]! })));
-
           for (let i = 0; i < entries.length; i++) {
             const entry = entries[i]![1];
             const vector = embeddings[i]!;
             for (const waiter of entry.waiters) waiter.resolve(vector);
           }
+          // Optional cache persistence cannot delay or reject valid provider output.
+          void Promise.resolve().then(() => this.cache?.putMany(
+            entries.map(([key], index) => ({ key, vector: embeddings[index]! })),
+          )).catch(() => console.warn("Embedding cache persistence failed"));
         } catch (error) {
           for (const [, entry] of entries) {
             for (const waiter of entry.waiters) waiter.reject(error);

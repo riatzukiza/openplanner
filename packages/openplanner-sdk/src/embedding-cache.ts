@@ -4,7 +4,8 @@ export interface EmbeddingCacheEntry {
 }
 
 import { createHash, randomUUID } from "node:crypto";
-import { readFileSync, mkdirSync, openSync, writeFileSync, fsyncSync, closeSync, renameSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { mkdir, open, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 
 export function makeEmbeddingCacheKey(params: {
@@ -18,6 +19,8 @@ export function makeEmbeddingCacheKey(params: {
 export class PersistentEmbeddingCache {
   private map = new Map<string, number[]>();
   private readonly maxEntries = 10000;
+  private flushTimer?: ReturnType<typeof setTimeout>;
+  private flushQueue: Promise<void> = Promise.resolve();
 
   constructor(private _cachePath?: string) {
     if (!_cachePath) return;
@@ -63,6 +66,7 @@ export class PersistentEmbeddingCache {
     this.map.delete(key);
     this.map.set(key, value.embedding);
     this.trimToLimit();
+    this.scheduleFlush();
   }
 
   has(key: string): boolean {
@@ -71,10 +75,12 @@ export class PersistentEmbeddingCache {
 
   delete(key: string): void {
     this.map.delete(key);
+    this.scheduleFlush();
   }
 
   clear(): void {
     this.map.clear();
+    this.scheduleFlush();
   }
 
   get size(): number {
@@ -87,28 +93,53 @@ export class PersistentEmbeddingCache {
       this.map.set(key, vector);
     }
     this.trimToLimit();
-    await this.flush();
+    this.scheduleFlush();
   }
 
-  /** Atomically persist this process's bounded snapshot; no distributed writer lock. */
-  async flush(): Promise<void> {
-    if (!this._cachePath) return;
-    const directory = dirname(this._cachePath);
-    mkdirSync(directory, { recursive: true, mode: 0o700 });
-    const temporary = `${this._cachePath}.${process.pid}.${randomUUID()}.tmp`;
-    let file: number | undefined;
+  private scheduleFlush(): void {
+    if (!this._cachePath || this.flushTimer) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = undefined;
+      void this.flush().catch(() => console.warn("Embedding cache persistence failed"));
+    }, 5_000);
+    this.flushTimer.unref();
+  }
+
+  /** Explicitly await an atomic durable snapshot; ordinary batches only schedule it. */
+  flush(): Promise<void> {
+    if (!this._cachePath) return Promise.resolve();
+    if (this.flushTimer) clearTimeout(this.flushTimer);
+    this.flushTimer = undefined;
+    const snapshot = [...this.map];
+    const cachePath = this._cachePath;
+    const next = this.flushQueue.catch(() => {}).then(() => this.persist(cachePath, snapshot));
+    this.flushQueue = next;
+    return next;
+  }
+
+  private async persist(cachePath: string, snapshot: Array<[string, number[]]>): Promise<void> {
+    const directory = dirname(cachePath);
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    const temporary = `${cachePath}.${process.pid}.${randomUUID()}.tmp`;
+    let file: Awaited<ReturnType<typeof open>> | undefined;
     try {
-      file = openSync(temporary, "wx", 0o600);
-      writeFileSync(file, JSON.stringify([...this.map]));
-      fsyncSync(file);
-      closeSync(file);
+      file = await open(temporary, "wx", 0o600);
+      // Keep the existing array format without allocating or stringifying one
+      // giant snapshot on the provider's completion path.
+      await file.writeFile("[");
+      for (let i = 0; i < snapshot.length; i++) {
+        await file.writeFile((i === 0 ? "" : ",") + JSON.stringify(snapshot[i]));
+      }
+      await file.writeFile("]");
+      await file.sync();
+      await file.close();
       file = undefined;
-      renameSync(temporary, this._cachePath);
-      const parent = openSync(directory, "r");
-      try { fsyncSync(parent); } finally { closeSync(parent); }
+      await rename(temporary, cachePath);
+      const parent = await open(directory, "r");
+      try { await parent.sync(); } finally { await parent.close(); }
     } finally {
-      if (file !== undefined) closeSync(file);
-      rmSync(temporary, { force: true });
+      if (file !== undefined) await file.close();
+      await rm(temporary, { force: true });
     }
   }
 }

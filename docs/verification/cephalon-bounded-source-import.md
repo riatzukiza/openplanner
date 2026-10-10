@@ -317,3 +317,58 @@ Current hosted CI, native settlements and full approving reviews remain separate
 obligations. This verifies the B3 dependency source; live B1/B2/B3, character,
 mood, social behavior and physical graph admission remain incomplete. No runtime,
 board, deployment, publication, paid usage or spore change was made.
+
+## Seventeen native findings on bdc8909: repaired bounded candidate
+
+CodeRabbit full review 5479846417 completed on bdc8909 with nine findings;
+native Codex review 5479837704 identified eight. These COMMENTED findings
+supply no approval. The full CodeRabbit selection covered 146 changed inputs.
+The later authenticated Codex account quota reply 6099664761 followed the
+exact-head request 6099663737; it supplies no review credit. Original native
+responses and the initial RED outputs remain immutable. RED commits 02e24ce
+and a1ba71c precede this production repair.
+
+| Native roots | Repair and actual regression coverage |
+| --- | --- |
+| 4238317165, 4238326186 | Construct the embedding runtime before Mongo connects, and close the connected client when protocol construction rejects. The corrected isolated fixture reaches the actual REST protocol rejection and verifies one close. |
+| 4238317169 | Reject duplicate parent IDs across the entire batch before embedding or database writes. |
+| 4238317170 | Apply nil/undefined confidence defaults before numeric conversion; retain explicit zero and the separate support default. |
+| 4238317173, 4238317178 | Carry the authoritative source expiry into source-owned edges and hot vectors; install the managed graph-edge TTL and validate provided vector expiry as a finite Date or null. The held delayed-provider fixture checks exact timestamps. |
+| 4238317179 | Catch each model group's failure independently so later healthy graph groups continue. |
+| 4238317184 | Reject invalid supplied expiration instead of treating it as an unbounded claim. |
+| 4238317186 | An explicit zero-TTL memory touch clears all expiry aliases; omitted TTL preserves the prior policy. |
+| 4238326168, 4238326170 | Resolve valid provider vectors independently of optional cache errors or pending persistence. Batch writes schedule a five-second background flush. Explicit flush serializes asynchronous atomic/fsynced snapshots, writing individual entries in the existing JSON array format rather than allocating one giant JSON string. |
+| 4238326173 | Index both existing source-owned cleanup filters: events by extra.source_event_id and source, graph edges by data.source_event_id. |
+| 4238326175 | Memoize successful storage setup independently of search readiness. Unsupported/building search retries at most once per five-second cadence, with one readiness observation and truthful pending/error/ready metadata. Building search preserves writes and the scan fallback. Actual storage failures remain retryable. |
+| 4238326179 | Disabled-TTL reconciliation matches stored Date fields only, retaining explicit nonexpiring null rows. |
+| 4238326192 | Align the SDK manifest to its already-resolved exact MongoDB 7.2.0 pin, preserving the lock and SOCKS 2.8.9. Both earlier and current actual frozen installs passed; the prior override is not mislabeled a reproduced frozen-install failure. |
+| 4238326208, 4238326212 | Declare nullable hydration sourceRef. Hostname-only cache references require a stable document identity and use a separate key namespace; established hash/path/URL keys remain compatible. |
+
+The actual complete local gate executes all 19 commands: clean-dist SDK 98/98,
+cache 10 tests/41 assertions, hydration 6/21, JVM recall 17/100 and compiled
+graph 54/255, with zero failures/errors. All six compiler invocations report
+zero warnings and full bounded CLJS lint reports 0 errors/0 warnings. Frozen
+scoped install, released exports, demonstration, actual SDK formatter, workflow
+syntax and hygiene pass. The deliberate graph assertion failure actually
+exits 1, and its owning verifier passes. The single combined proof is
+`bounded-bdc8909-complete-green-20261010.json` (184337 bytes, SHA256 cb34115b8ed6864d4ef3204f24f1ff6c087f52cb008b44e6106b8d937e18859a).
+
+Fixture corrections remain explicit. The first two protocol RED attempts failed
+before protocol construction; only the third establishes the client-close
+leak. Receipt 176 corrects receipt 175 without rewriting it. The first repair
+build exposed TypeScript errors; the next run exposed incorrect new mock cleanup
+calls and the obsolete two-probe count. Cleanup now uses the actual Node mock
+API. The probe count is stricter at one, and transient search retry advances a
+controlled clock beyond the declared cadence. The first complete gate exposed
+a changed legacy hydration key; production was corrected while preserving its
+original assertion. Every failed output and the final successful output are
+retained in the combined proof. No test was removed or skipped.
+
+The earlier bdc8909 hosted run 38066665846 and its isolated Knoxx consumer
+1977 tests/11459 assertions passed on that earlier source. They do not qualify
+this new repair. Fresh hosted verification and complete current-head reviewer
+verdicts remain required. Original 56-source manifest, ordinary history and
+all previous receipt/reflection bytes remain intact. The cumulative selection
+is 149 changed inputs, including the complete receipt journal and reflection,
+inside the observed included 150-file limit. No live Mongo, maker, clock,
+runtime, board, cloud, social, paid usage or spore operation occurred.

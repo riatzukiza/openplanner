@@ -251,7 +251,7 @@ test('legacy normalized coordinates hydrate the matching chunk rather than a shi
 });
 test('partition setup is reused per connection and failed setup can be retried',async()=>{
   const mongo=mongoFixture(); await Promise.all([upsertMongoVectorDocuments(mongo,'hot',[entry('a')]),upsertMongoVectorDocuments(mongo,'hot',[entry('b')])]);
-  const part=[...mongo.collections.values()].find(c=>c.collectionName.includes('__'));const setups=part.calls.indexes.length;await upsertMongoVectorDocuments(mongo,'hot',[entry('c')]);assert.equal(part.calls.indexes.length,setups);assert.equal(part.calls.setups,2);
+  const part=[...mongo.collections.values()].find(c=>c.collectionName.includes('__'));const setups=part.calls.indexes.length;await upsertMongoVectorDocuments(mongo,'hot',[entry('c')]);assert.equal(part.calls.indexes.length,setups);assert.equal(part.calls.setups,1);
   const other=mongoFixture();other.vectorPartitions.failSetup=true;await assert.rejects(upsertMongoVectorDocuments(other,'hot',[entry()]),/temporary/);await upsertMongoVectorDocuments(other,'hot',[entry()]);assert.ok(other.hotVectors.rows.has('chunk'));
 });
 
@@ -541,9 +541,12 @@ test('equal sentences from different sources keep independent retention and prov
 test('Atlas setup errors remain retryable on the same connection',async()=>{
   const mongo=mongoFixture();const original=mongo.db.collection;let attempts=0;
   mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{attempts++;if(attempts===1)throw new Error('transient Atlas failure');return [{status:'READY',queryable:true}];}});return c;};
-  await upsertMongoVectorDocuments(mongo,'hot',[entry('first')]);
-  assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'error');assert.ok(mongo.hotVectors.rows.has('first'));
-  await upsertMongoVectorDocuments(mongo,'hot',[entry('retry')]);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.ok(attempts>1);
+  const clock=mock.method(Date,'now',()=>1000);
+  try{await upsertMongoVectorDocuments(mongo,'hot',[entry('first')]);
+    assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'error');assert.ok(mongo.hotVectors.rows.has('first'));
+    clock.mock.mockImplementation(()=>6001);
+    await upsertMongoVectorDocuments(mongo,'hot',[entry('retry')]);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.ok(attempts>1);
+  }finally{clock.mock.restore();}
 });
 test('invalid embedding batch sizes refuse before provider or database work',async()=>{
   const script=`import assert from 'node:assert/strict';const {batchIndexTextsInMongoVectors}=await import(process.argv[1]);
@@ -709,7 +712,7 @@ test('cache batch returns before persistence while explicit flush remains durabl
 test('SDK runtime construction failures occur before opening Mongo',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'openplanner-sdk-init-'));const path=join(dir,'invalid.json');await writeFile(path,'invalid JSON');let connected=0;
   const mongo=mongoFixture();const connect=mock.method(MongoClient.prototype,'connect',async function(){connected++;return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
-  try{await assert.rejects(createOpenPlannerSdk({config:{embedProviderCachePath:path,mongodb:openingConfig}}));assert.equal(connected,0);}finally{connect.restore();db.restore();await rm(dir,{recursive:true,force:true});}
+  try{await assert.rejects(createOpenPlannerSdk({config:{embedProviderCachePath:path,mongodb:openingConfig}}));assert.equal(connected,0);}finally{connect.mock.restore();db.mock.restore();await rm(dir,{recursive:true,force:true});}
 });
 test('SDK protocol setup rejection closes the newly connected client',async()=>{
   const script=`import assert from 'node:assert/strict';const {MongoClient}=await import('mongodb');
@@ -745,11 +748,24 @@ test('opening Mongo indexes source-owned cleanup and retained graph edges',async
   try{await openMongoDB({...openingConfig,eventsTtlSeconds:60});const edges=mongo.db.collection('graph_edges');
     assert.ok(mongo.events.calls.indexes.some(x=>x.keys['extra.source_event_id']===1 && x.keys.source===1));
     assert.ok(edges.calls.indexes.some(x=>x.keys['data.source_event_id']===1));assert.ok(edges.calls.indexes.some(x=>x.opts.name==='graph_edges_ttl'));
-  }finally{connect.restore();db.restore();}
+  }finally{connect.mock.restore();db.mock.restore();}
 });
 test('unavailable Atlas retries do not repeat partition storage setup or probe every write',async()=>{
   const mongo=mongoFixture();const original=mongo.db.collection;let probes=0;
   mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{probes++;throw new Error('unsupported search');}});return c;};
   await upsertMongoVectorDocuments(mongo,'hot',[entry('one')]);const c=[...mongo.collections.values()].find(c=>c.collectionName.includes('__'));const count=c.calls.indexes.length;
   await upsertMongoVectorDocuments(mongo,'hot',[entry('two')]);assert.equal(c.calls.indexes.length,count);assert.equal(probes,1);assert.ok(c.rows.has('two'));
+});
+
+test('building Atlas indexes preserve writes and become ready without repeating storage setup',async()=>{
+  const mongo=mongoFixture();const original=mongo.db.collection;let probes=0;let ready=false;
+  mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{probes++;return [{status:ready?'READY':'BUILDING',queryable:ready}];}});return c;};
+  const clock=mock.method(Date,'now',()=>1000);
+  try{const outcome=await Promise.race([upsertMongoVectorDocuments(mongo,'hot',[entry('building')]).then(()=>true),new Promise(resolve=>setTimeout(()=>resolve(false),80))]);
+    assert.equal(outcome,true);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'pending');assert.ok(mongo.hotVectors.rows.has('building'));
+    const part=[...mongo.collections.values()].find(c=>c.collectionName.includes('__'));const indexes=part.calls.indexes.length;
+    await upsertMongoVectorDocuments(mongo,'hot',[entry('pending')]);assert.equal(probes,1);
+    ready=true;clock.mock.mockImplementation(()=>6001);await upsertMongoVectorDocuments(mongo,'hot',[entry('ready')]);
+    assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.equal(probes,2);assert.equal(part.calls.indexes.length,indexes);assert.ok(part.rows.has('ready'));
+  }finally{clock.mock.restore();}
 });

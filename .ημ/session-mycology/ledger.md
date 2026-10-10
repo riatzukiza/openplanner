@@ -295,3 +295,12 @@
   spore: none
   receipt-refs: cephalon-bounded-bdc-protocol-causal-red-correction-20261010
   note: Correction to receipt175: first fixture failedrequiredcacheenv; second failedmissingvectorPartitions.find before protocolsetup. Neither proves clientclose leak. Third correctedfixture supplies the existingcursor shape, reaches actual protocolfailure and causally failsclosecount0. Preserve all failedattemptbytes in priorRED and private logs; final GREEN will include exactthirdoutput. No assertion removed. Actualrawnativebundle has17findingroots;54 is testcount, not findingcount. No approval/runtime/board/spore.
+
+- ts: 2026-10-10T16:44:12.492Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-bdc-native-green-20261010
+  note: All17 native findings repaired and all19 local gates PASS. Original56 manifest and historical ledger/reflection prefixes preserved. New mock cleanup fixture corrections and changed-key compatibility failure retained in combined proof; no tests removed. Earlier hosted/Knoxx pass binds bdc, not this repair. Complete149 changed inputs/full journals await fresh hosted and full exact-head reviews. No approval/runtime/board/social/paid/spore claim.

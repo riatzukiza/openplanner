@@ -31,7 +31,7 @@
 
 (defn- clamp-confidence
   [value fallback]
-  (let [n (js/Number value)]
+  (let [n (if (nil? value) fallback (js/Number value))]
     (if (js/Number.isFinite n)
       (max 0 (min 1 n))
       fallback)))

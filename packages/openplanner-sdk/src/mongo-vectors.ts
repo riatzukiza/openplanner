@@ -396,39 +396,6 @@ function makePartitionKey(model: string, dimensions: number): string {
   return `${model}::${dimensions}`;
 }
 
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function waitForQueryableSearchIndex(
-  collection: Collection<MongoVectorDocument>,
-  indexName: string,
-  timeoutMs = 60_000,
-  pollMs = 2_000,
-): Promise<void> {
-  const startedAt = Date.now();
-  let lastState = "missing";
-
-  while (Date.now() - startedAt < timeoutMs) {
-    const [index] = await collection.listSearchIndexes(indexName).toArray() as Array<Record<string, unknown>>;
-    if (index) {
-      const status = String(index.status ?? "UNKNOWN").toUpperCase();
-      const queryable = index.queryable === true;
-      lastState = `${status} queryable=${String(queryable)}`;
-      if (status === "READY" && queryable) {
-        return;
-      }
-      if (status === "FAILED" || status === "DOES_NOT_EXIST") {
-        throw new Error(`vector search index ${indexName} failed: ${lastState}`);
-      }
-    }
-
-    await sleep(pollMs);
-  }
-
-  throw new Error(`timed out waiting for vector search index ${indexName} to become queryable (${lastState})`);
-}
-
 async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier, ttlSeconds: number): Promise<void> {
   await collection.createIndex({ parent_id: 1, chunk_index: 1 });
   await collection.createIndex({ ts: -1 });
@@ -447,7 +414,7 @@ async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorD
 async function ensurePartitionVectorSearchIndex(
   mongo: MongoConnection,
   partition: MongoVectorPartitionDocument,
-): Promise<boolean> {
+): Promise<MongoVectorPartitionDocument["searchIndexStatus"]> {
   const collection = mongo.db.collection<MongoVectorDocument>(partition.collectionName);
   try {
     const existing = await collection.listSearchIndexes(partition.searchIndexName).toArray();
@@ -469,19 +436,26 @@ async function ensurePartitionVectorSearchIndex(
       });
     }
 
-    await waitForQueryableSearchIndex(collection, partition.searchIndexName);
+    // One readiness observation per attempt. Building indexes retain the scan
+    // fallback rather than holding ingestion for a minute.
+    const index = existing[0] as Record<string, unknown> | undefined;
+    const nativeStatus = String(index?.status ?? "UNKNOWN").toUpperCase();
+    if (nativeStatus === "FAILED" || nativeStatus === "DOES_NOT_EXIST") {
+      throw new Error(`vector search index ${partition.searchIndexName} failed: ${nativeStatus}`);
+    }
+    const status = nativeStatus === "READY" && index?.queryable === true ? "ready" : "pending";
 
     await mongo.vectorPartitions.updateOne(
       { _id: partition._id },
       {
         $set: {
-          searchIndexStatus: "ready",
+          searchIndexStatus: status,
           lastError: null,
           updatedAt: new Date(),
         },
       },
     );
-    return true;
+    return status;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     await mongo.vectorPartitions.updateOne(
@@ -495,7 +469,7 @@ async function ensurePartitionVectorSearchIndex(
       },
       { upsert: true },
     );
-    return false;
+    return "error";
   }
 }
 
@@ -537,31 +511,50 @@ async function materializeVectorPartition(
 
   const collection = mongo.db.collection<MongoVectorDocument>(collectionName);
   await ensurePartitionSupportIndexes(collection, tier, vectorTtlSeconds(mongo, tier));
-  const ready = await ensurePartitionVectorSearchIndex(mongo, partition);
-  return { partition: { ...partition, collectionName, searchIndexStatus: ready ? "ready" : "error" }, collection };
+  return { partition: { ...partition, collectionName }, collection };
 }
 
 const partitionSetup = new WeakMap<MongoConnection, Map<string, Promise<{ partition: MongoVectorPartitionDocument; collection: Collection<MongoVectorDocument> }>>>();
 
-function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTier, model: string, dimensions: number) {
+type SearchReadiness = {
+  status: MongoVectorPartitionDocument["searchIndexStatus"];
+  retryAfter: number;
+  pending?: Promise<MongoVectorPartitionDocument["searchIndexStatus"]>;
+};
+const partitionSearchReadiness = new WeakMap<MongoConnection, Map<string, SearchReadiness>>();
+
+async function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTier, model: string, dimensions: number) {
   let cache = partitionSetup.get(mongo);
   if (!cache) { cache = new Map(); partitionSetup.set(mongo, cache); }
   const key = JSON.stringify([tier, model, dimensions]);
   let pending = cache.get(key);
   if (!pending) {
     const owner = cache;
-    pending = materializeVectorPartition(mongo, tier, model, dimensions).then(result => {
-      // Non-Atlas writes retain their fallback. A transient or unsupported search
-      // setup is not cached as success and can be retried by the next operation.
-      if (result.partition.searchIndexStatus !== "ready" && owner.get(key) === pending) owner.delete(key);
-      return result;
-    }).catch(error => {
+    pending = materializeVectorPartition(mongo, tier, model, dimensions).catch(error => {
+      // Retry actual storage failures; unavailable search does not invalidate
+      // completed collection/index/retention setup.
       if (owner.get(key) === pending) owner.delete(key);
       throw error;
     });
     cache.set(key, pending);
   }
-  return pending;
+  const result = await pending;
+  let states = partitionSearchReadiness.get(mongo);
+  if (!states) { states = new Map(); partitionSearchReadiness.set(mongo, states); }
+  let state = states.get(key);
+  if (!state) { state = { status: "pending", retryAfter: 0 }; states.set(key, state); }
+  if (state.status !== "ready" && !state.pending && Date.now() >= state.retryAfter) {
+    const current = state;
+    current.pending = ensurePartitionVectorSearchIndex(mongo, result.partition).then(status => {
+      current.status = status;
+      return status;
+    }).finally(() => {
+      current.retryAfter = Date.now() + 5_000;
+      current.pending = undefined;
+    });
+  }
+  if (state.pending) await state.pending;
+  return { ...result, partition: { ...result.partition, searchIndexStatus: state.status } };
 }
 
 function isTransactionUnsupported(error: unknown): boolean {
@@ -640,6 +633,12 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
   const ts = asDate(entry.metadata.ts);
   const sourceTextRedacted = entry.metadata.source_text_redacted === true;
   const labels = toStringArray(entry.metadata.labels);
+  const hasSourceExpiry = Object.hasOwn(entry.metadata, "source_expires_at");
+  const sourceExpiry = entry.metadata.source_expires_at;
+  if (hasSourceExpiry && sourceExpiry !== null
+      && (!(sourceExpiry instanceof Date) || !Number.isFinite(sourceExpiry.getTime()))) {
+    throw new Error("source_expires_at must be a valid Date or null");
+  }
   return {
     _id: entry.id,
     parent_id: entry.parentId,
@@ -679,7 +678,9 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
     char_end: toNumberOrNull(entry.metadata.char_end),
     schema_version: OPENPLANNER_SCHEMA_TARGETS.vectorChunk,
     migration_state: vectorChunkMigrationState(now),
-    expiresAt: labels.length > 0 ? null : ttlExpiryFromNow(ttlSeconds, now) ?? null,
+    expiresAt: hasSourceExpiry
+      ? sourceExpiry as Date | null
+      : labels.length > 0 ? null : ttlExpiryFromNow(ttlSeconds, now) ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -1233,6 +1234,13 @@ export async function batchIndexTextsInMongoVectors(params: {
 
   const indexed: string[] = [];
   const failed: Array<{ id: string; error: string }> = [];
+
+  // Duplicate parents would reuse chunk identities and pair another text's vector.
+  const seenParentIds = new Set<string>();
+  for (const item of items) {
+    if (seenParentIds.has(item.id)) throw new Error(`Duplicate vector parent ID: ${item.id}`);
+    seenParentIds.add(item.id);
+  }
 
   // Prepare all documents first
   const preparedItems: Array<{

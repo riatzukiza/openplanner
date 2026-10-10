@@ -14,7 +14,7 @@ export interface DocumentSourceRef {
 export interface HydrationResult {
   row: Record<string, unknown>;
   hydrated: boolean;
-  sourceRef?: DocumentSourceRef;
+  sourceRef: DocumentSourceRef | null;
 }
 
 export function documentNeedsHydration(row: Record<string, unknown>): boolean;

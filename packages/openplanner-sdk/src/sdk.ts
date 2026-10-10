@@ -53,9 +53,11 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
     mongodb: { ...base.mongodb, ...(options.config?.mongodb ?? {}) },
   };
 
-  const mongo = await openMongoDB(config.mongodb);
   const embeddingRuntime = createEmbeddingRuntime(config);
-  const protocols = createProtocols({ mongo });
+  const mongo = await openMongoDB(config.mongodb);
+  let protocols: Protocols;
+  try { protocols = createProtocols({ mongo }); }
+  catch (error) { await closeMongoDB(mongo); throw error; }
   const log = options.log;
 
   return {

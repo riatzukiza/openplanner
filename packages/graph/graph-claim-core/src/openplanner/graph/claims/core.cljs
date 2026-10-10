@@ -90,10 +90,14 @@
 (defn valid-confidence? [value]
   (and (number? value) (<= 0 value 1)))
 
+(defn valid-expiration? [value]
+  (or (nil? value) (and (number? value) (js/Number.isFinite value))))
+
 (defn valid-edge-claim?
-  [{:keys [claim-id status confidence scope] :as claim}]
+  [{:keys [claim-id status confidence scope valid-until-ms] :as claim}]
   (and (nonblank-string? claim-id)
        (valid-claim-key? claim)
        (contains? statuses status)
        (valid-confidence? confidence)
+       (valid-expiration? valid-until-ms)
        (or (nil? scope) (map? scope))))

@@ -67,16 +67,23 @@
                  (nonblank (jget meta "lake")))
         content-hash (or (nonblank (jget extra "content_hash"))
                          (nonblank (jget meta "content_hash"))
-                         (nonblank (jget (jget extra "migration_2") "text_hash_sha256")))]
-    (when (or source-path url hostname)
+                         (nonblank (jget (jget extra "migration_2") "text_hash_sha256")))
+        row-id (nonblank (or (jget row "id") (jget row "_id")))
+        identity (cond content-hash [:hash content-hash]
+                       source-path [:path source-path]
+                       url [:url url]
+                       (and hostname row-id) [:host-row hostname row-id])]
+    (when (and identity (or source-path url hostname))
       {:sourcePath source-path
        :url url
        :hostname hostname
        :lake lake
        :contentHash content-hash
-       :cacheKey (str "openplanner:source:"
-                      (or lake "unknown") ":"
-                      (or content-hash source-path url hostname "unknown"))})))
+       :cacheKey (if (or content-hash source-path url)
+                   ;; Preserve established hash/path/URL keys. Host-only references
+                   ;; use a separate namespace and require a stable document id.
+                   (str "openplanner:source:" (or lake "unknown") ":" (or content-hash source-path url))
+                   (str "openplanner:host-row:" (js/JSON.stringify (clj->js [lake hostname row-id]))))})))
 
 (defn document-source-ref
   [row]

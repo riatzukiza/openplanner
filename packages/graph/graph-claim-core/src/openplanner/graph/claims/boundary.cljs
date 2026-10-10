@@ -139,10 +139,16 @@
 
 (defn- clamp-confidence
   [value fallback]
-  (let [n (js/Number value)]
+  (let [n (if (nil? value) fallback (js/Number value))]
     (if (js/Number.isFinite n)
       (max 0 (min 1 n))
       fallback)))
+
+(defn- claim-expiration-ms
+  [input]
+  (let [value (or (jget input "validUntil") (jget input "valid_until"))]
+    (when (some? value)
+      (or (parse-ms value) js/NaN))))
 
 (defn- status-set-from-js
   [value]
@@ -166,8 +172,7 @@
            :claim-id claim-id
            :status (normalize-edge-claim-status (jget input "status") :proposed)
            :confidence (clamp-confidence (jget input "confidence") 0.5)
-           :valid-until-ms (parse-ms (or (jget input "validUntil")
-                                         (jget input "valid_until"))))))
+           :valid-until-ms (claim-expiration-ms input))))
 
 (defn- edge-claim-from-js-soft
   [input]
@@ -183,8 +188,7 @@
            :claim-id claim-id
            :status (normalize-edge-claim-status (jget input "status") :proposed)
            :confidence (clamp-confidence (jget input "confidence") 0.5)
-           :valid-until-ms (parse-ms (or (jget input "validUntil")
-                                         (jget input "valid_until"))))))
+           :valid-until-ms (claim-expiration-ms input))))
 
 (defn- edge-claim->wire-js
   [claim]

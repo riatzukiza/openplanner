@@ -86,7 +86,7 @@ export async function reconcileManagedTtl(collection: Collection<any>, name: str
     await ensureTtlIndex(collection, { expiresAt: 1 }, { name, expireAfterSeconds: 0 });
   } else {
     if ((await collection.indexes()).some(index => index.name === name)) await collection.dropIndex(name);
-    await collection.updateMany({ expiresAt: { $exists: true } }, { $unset: { expiresAt: "" } });
+    await collection.updateMany({ expiresAt: { $type: "date" } }, { $unset: { expiresAt: "" } });
   }
 }
 
@@ -369,6 +369,7 @@ export interface GraphEdgeDocument {
   updated_at: Date;
   createdAt: Date;
   updatedAt: Date;
+  expiresAt?: Date | null;
 }
 
 export type GraphEdgeClaimStatus =
@@ -621,6 +622,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     // Create indexes for events
     await events.createIndex({ ts: -1 });
     await events.createIndex({ source: 1, ts: -1 });
+    await events.createIndex({ "extra.source_event_id": 1, source: 1 });
     await events.createIndex({ kind: 1, ts: -1 });
     await events.createIndex({ project: 1, ts: -1 });
     await events.createIndex({ session: 1, ts: -1 });
@@ -718,6 +720,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     await graphEdges.createIndex({ target_node_id: 1, edge_kind: 1 });
     await graphEdges.createIndex({ edge_kind: 1, updated_at: -1 as IndexDirection });
     await graphEdges.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+    await graphEdges.createIndex({ "data.source_event_id": 1 });
 
     // Evidence-backed edge claims. These are graph truth candidates; semantic
     // force samples must not be promoted here without explicit evidence.
@@ -831,6 +834,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
     await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
     await reconcileManagedTtl(graphNodeEmbeddings, "graph_node_embeddings_ttl", eventsTtl);
+    await reconcileManagedTtl(graphEdges, "graph_edges_ttl", eventsTtl);
     await reconcileManagedTtl(compactVectors, "compact_vectors_ttl", compactedTtl);
     // Disabled retention must also reconcile already materialized model partitions.
     for (const [tier, ttl, name] of [["hot", eventsTtl, "hot_vectors_ttl"], ["compact", compactedTtl, "compact_vectors_ttl"]] as const) {
@@ -1200,6 +1204,7 @@ export async function upsertGraphEdges(
     source?: string | null;
     data?: Record<string, unknown> | null;
     updated_at?: Date;
+    expiresAt?: Date | null;
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
@@ -1225,6 +1230,7 @@ export async function upsertGraphEdges(
               project: row.project ?? null,
               source: row.source ?? null,
               data: row.data ?? null,
+              ...(Object.hasOwn(row, "expiresAt") ? { expiresAt: row.expiresAt ?? null } : {}),
               updated_at: row.updated_at ?? now,
               updatedAt: now,
             },

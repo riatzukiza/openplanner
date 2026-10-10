@@ -41,7 +41,7 @@
   (claims/valid-edge-claim? claim))
 
 (defn edge-claim-errors
-  [{:keys [claim-id source-node-id target-node-id relation-kind direction scope-json status confidence scope]}]
+  [{:keys [claim-id source-node-id target-node-id relation-kind direction scope-json status confidence scope valid-until-ms]}]
   (cond-> []
     (not (claims/nonblank-string? claim-id))
     (conj {:path [:claim-id] :error :required-nonblank-string :value claim-id})
@@ -69,6 +69,9 @@
 
     (not (valid-confidence? confidence))
     (conj {:path [:confidence] :error :number-between-zero-and-one :value confidence})
+
+    (not (claims/valid-expiration? valid-until-ms))
+    (conj {:path [:valid-until-ms] :error :optional-finite-timestamp :value valid-until-ms})
 
     (not (or (nil? scope) (map? scope)))
     (conj {:path [:scope] :error :optional-map :value scope})))
