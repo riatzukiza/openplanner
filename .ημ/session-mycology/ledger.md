@@ -532,3 +532,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-62d9fa7-four-native-boundaries-red-20261010
   note: Four actual Codex findings reproduced with30newSDKcases andonegraphlaw; complete Vexx controls pass. Initial operator print31 corrected by actual30count; no historical edit. No production repair yet;198immutableprefixes preserved; old62proof bound only to62; no runtime/board/paid/spore.
+
+- ts: 2026-10-10T22:52:48.621Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-7ea-missing-row-expiry-fixture-repair-20261010
+  note: Mock had invented expiry-only existing row for Mongo findOne null. Minimalone-line fix preserves all old expiry/new collision assertions and production ownership refusal. Source199prefixes preserved; no live/runtime/board/paid/spore; no passing fullgate claimed.

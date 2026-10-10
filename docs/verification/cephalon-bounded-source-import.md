@@ -7452,3 +7452,22 @@ Actual causal capture 94938bytes/SHA256`e7bf3ed45ab40ee36f3ee33296594f61146e3ccd
   ]
 }
 ```
+
+## Missing-row expiry fixture correction during four-finding GREEN
+
+The first full GREEN attempt stopped at TypeScript boundary narrowing in two Mongo extra field accesses; actual error output is retained. After narrowing, SDK280 had279PASS/1FAIL in the pre-existing owned graph expiry test: its mock wrapped missing Mongo rows into `{expiresAt:expiry}`, falsely claiming an existing generated-ID owner. The one-line fixture repair returnsnull for a genuinely missing row and wraps expiry only for actual rows, matching the existing Mongo fixture contract. All expiry assertions and new collision assertions remain unchanged; production must continue refusing real unowned rows. This minimal owned fixture repair is included under the already authorized bounded review repairs. No provider/runtime or board action;199journal prefixes unchanged. Actual retained unsuccessful attempts:
+
+```json
+[
+  {
+    "name": "bounded-7ea-four-native-findings-complete-green-20261010.json",
+    "bytes": 106512,
+    "sha256": "616435ff8d33da01db72f4011ea5f30851e4701540a53725f9c57840038e3578"
+  },
+  {
+    "name": "bounded-7ea-four-native-findings-typed-complete-green-20261010.json",
+    "bytes": 286056,
+    "sha256": "da5c0af4424f67b6774639611d151d0c59d8f21e0898fc295473896d5470d151"
+  }
+]
+```

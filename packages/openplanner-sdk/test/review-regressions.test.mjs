@@ -774,7 +774,7 @@ test('duplicate vector parent IDs refuse the complete batch before provider or w
 });
 test('owned graph edges and delayed hot vectors retain exact source expiry',async()=>{
   const mongo=mongoFixture();const expiry=new Date('2026-01-01T00:01:00Z');const original=mongo.events.findOne;
-  mongo.events.findOne=async filter=>({...await original.call(mongo.events,filter),expiresAt:expiry});
+  mongo.events.findOne=async filter=>{const row=await original.call(mongo.events,filter);return row?{...row,expiresAt:expiry}:null;};
   const rows=[{...ordinaryEvent('message-ttl','Outside information.'),extra:{}},{...ordinaryEvent('edge-ttl',''),kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}}];
   const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,2])})},rows);await result.backgroundIndexing;
   assert.ok(mongo.hotVectors.rows.size);for(const row of mongo.hotVectors.rows.values())assert.equal(row.expiresAt?.getTime(),expiry.getTime());
