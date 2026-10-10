@@ -514,3 +514,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-4ad-three-coderabbit-red-20261010
   note: All3native issues reproduced before production. First two undefined-helper errors retained but not causal; corrected6failures are actual assertions with prior244pass. Hosteddfa run metadata SUCCESS is not enforced exact-checkout proof; correction preserved.196prefixes intact; no runtime, board, paid, spore or approval/publication.
+
+- ts: 2026-10-10T22:33:54.936Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-4f6-eight-native-findings-green-20261010
+  note: All eight verified findings fixed with causal RED retained; independent raw-source memoization preserves alternative-HTML boundary. Terminal index failure stops immediately. New CI selects/verifies actual intended SHA, but hosted proof pending. Correction: olddfaCI virtualmerge did not enforce exact HEAD despite successful metadata/testcounts. MiMo olddfa omitted review_submit twice/FAILURE, no verdict credit. Existing197prefixes and original56manifest preserved;149inputs. Consumer refresh, push, settlement and exacthead approvals pending; no live/runtime/board/paid/spore.

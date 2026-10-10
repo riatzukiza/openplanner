@@ -120,6 +120,9 @@ async function waitForQueryableSearchIndex(
     if (status === "READY" && current?.queryable === true) {
       return;
     }
+    if (status === "FAILED" || status === "DOES_NOT_EXIST") {
+      throw new Error(`graph search index ${indexName} unavailable: ${status}`);
+    }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
 

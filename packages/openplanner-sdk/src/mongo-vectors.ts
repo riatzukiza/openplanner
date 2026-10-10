@@ -184,6 +184,7 @@ function sha256Text(text: string): string {
 function sourceRedactionMetadata(params: {
   extra?: Record<string, unknown>;
   rawText: string;
+  normalizedSource: () => string;
   chunkText: string;
   charStart?: number | null;
   charEnd?: number | null;
@@ -195,7 +196,7 @@ function sourceRedactionMetadata(params: {
     && params.rawText.slice(params.charStart, params.charEnd) === params.chunkText;
   // Only redact normalized references that can be reconstructed from the saved
   // source itself. Caller-supplied alternative HTML is not a hydration authority.
-  const normalized = rawMatches ? null : prepareIndexDocument({ parentId: "source-reference", text: params.rawText }).normalizedText;
+  const normalized = rawMatches ? null : params.normalizedSource();
   if (!rawMatches && (!normalized || params.charEnd > normalized.length
     || normalized.slice(params.charStart, params.charEnd) !== params.chunkText)) return {};
   return {
@@ -943,6 +944,9 @@ export async function indexTextInMongoVectors(params: {
   metadata: Record<string, unknown>;
   embeddingFunction: IEmbeddingFunction;
 }): Promise<void> {
+  let normalizedSource: string | undefined;
+  const getNormalizedSource = () => normalizedSource ??=
+    prepareIndexDocument({ parentId: "source-reference", text: params.text }).normalizedText;
   const tryIndex = async (forceChunking: boolean): Promise<void> => {
     const prepared = prepareIndexDocument({
       parentId: params.parentId,
@@ -978,6 +982,7 @@ export async function indexTextInMongoVectors(params: {
             ...sourceRedactionMetadata({
               extra: params.extra,
               rawText: params.text,
+              normalizedSource: getNormalizedSource,
               chunkText: chunk.text,
               charStart: chunk.charStart,
               charEnd: chunk.charEnd,
@@ -1314,6 +1319,9 @@ export async function batchIndexTextsInMongoVectors(params: {
   // Collect all chunks for batch embedding
   const allChunks: Array<{ chunkId: string; parentId: string; text: string; metadata: Record<string, unknown> }> = [];
   for (const item of preparedItems) {
+    let normalizedSource: string | undefined;
+    const getNormalizedSource = () => normalizedSource ??=
+      prepareIndexDocument({ parentId: "source-reference", text: item.rawText }).normalizedText;
     for (const chunk of item.prepared.chunks) {
       allChunks.push({
         chunkId: chunk.id,
@@ -1324,6 +1332,7 @@ export async function batchIndexTextsInMongoVectors(params: {
           ...sourceRedactionMetadata({
             extra: item.extra,
             rawText: item.rawText,
+            normalizedSource: getNormalizedSource,
             chunkText: chunk.text,
             charStart: chunk.charStart,
             charEnd: chunk.charEnd,
