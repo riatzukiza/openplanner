@@ -381,7 +381,7 @@ test('event replacement removes only its previously projected edges',async()=>{
   await ingestEvents({mongo,embeddingRuntime:{}},[{...event,extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]);
   const owned=[...edges.rows.values()].filter(r=>r.data?.source_event_id==='edge-source');
   assert.equal(owned.length,1);assert.equal(owned[0].target_node_id,'c');assert.ok(edges.rows.has('unrelated'));assert.equal([...edges.rows.values()].some(r=>r.target_node_id==='b'||r.edge_kind==='has_label'),false);
-  await ingestEvents({mongo,embeddingRuntime:{}},[{...event,kind:'message',text:''}]);
+  await ingestEvents({mongo,embeddingRuntime:{}},[{...event,kind:'message',text:'',extra:{}}]);
   assert.equal([...edges.rows.values()].filter(r=>r.data?.source_event_id==='edge-source').length,0);
 });
 test('two source events with equal endpoints retain independent projection ownership',async()=>{
@@ -398,6 +398,11 @@ test('replacement refuses unattributed legacy edge ownership before event mutati
   mongo.events.rows.set('legacy',previous);mongo.graphEdges.rows.set('a||b||related',{source_node_id:'a',target_node_id:'b',edge_kind:'related',data:{}});
   await assert.rejects(ingestEvents({mongo,embeddingRuntime:{}},[{schema:'openplanner.event.v1',id:'legacy',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]),/projection ownership/i);
   assert.equal(mongo.events.calls.writes.length,0);assert.deepEqual(mongo.events.rows.get('legacy'),previous);assert.equal(mongo.graphEdges.calls.deletes.length,0);
+});
+test('conflicting replacements for one event in a batch refuse before any effects',async()=>{
+  const mongo=mongoFixture();const event={schema:'openplanner.event.v1',id:'conflict',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:{}},[event,{...event,extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]),/conflicting event replacements/i);
+  assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.deletes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);
 });
 test('embedding uniqueness admits separate chunks and replaces only the obsolete owned index',async()=>{
   const mongo=mongoFixture();const c=mongo.graphNodeEmbeddings;
@@ -425,4 +430,25 @@ test('RRF contributes one vote per parent per tier while retaining its best disp
   const hit=(id,parent,rank,distance,tier='hot')=>({id,tier,rank,distance,document:id,metadata:{parent_id:parent}});
   const result=mergeTieredVectorHits([[hit('a1','a',0,.4),hit('a2','a',1,.1),hit('b1','b',2,.2)],[hit('b2','b',0,.2,'compact')]],2);
   assert.deepEqual(result.ids,[['b','a']]);assert.equal(result.metadatas[0][1].best_match_id,'a2');assert.equal(result.metadatas[0][1].rrf_score,Number((1/61).toFixed(8)));
+});
+test('derived sentence and chunk events inherit the owning source retention labels',async()=>{
+  const provider={generate:async texts=>texts.map(()=>[1,2])};
+  const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  for(const text of ['Outside information changes remembered creative choices.', 'Outside information changes remembered creative choices. '.repeat(4000)]){
+    const mongo=mongoFixture();
+    const event={schema:'openplanner.event.v1',id:'retention-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text,extra:{node_id:'retention-owner',openplanner_labels:{labels:['keep']}}};
+    const result=await ingestEvents({mongo,embeddingRuntime},[event]);await result.backgroundIndexing;
+    const derived=[...mongo.events.rows.values()].filter(row=>row.source==='openplanner-derive');
+    assert.ok(derived.some(row=>row.extra.node_kind==='sentence'));
+    if(text.length>180000)assert.ok(derived.some(row=>row.extra.node_kind==='doc_chunk'));
+    for(const row of derived){assert.deepEqual(row.extra.openplanner_labels?.labels,['keep']);assert.equal(row.expiresAt,undefined);}
+  }
+});
+test('explicit graph-node chunk and sentence embeddings bind their authoritative raw source',async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};
+  const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'chunk-source',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Outside information changes remembered creative choices. '.repeat(4000),extra:{node_id:'chunk-source'}};
+  const result=await ingestEvents({mongo,embeddingRuntime},[event]);await result.backgroundIndexing;
+  const rows=[...mongo.graphNodeEmbeddings.rows.values()];assert.ok(rows.length>1);
+  for(const row of rows){assert.equal(row.source_event_id,event.id);assert.equal(row.source_text_hash_sha256,createHash('sha256').update(event.text,'utf8').digest('hex'));}
 });

@@ -196,3 +196,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-487-native-red-20261010
   note: New native Codex5479413326 actually completed exact487 at14:48:10, superseding14:42quota availability; seven actualroots remainopen untilverifiedfix. Prior root359 snapshot49settled/quotais historically superseded, notrewritten. Preserve exact native rawreview/comments. Graphnode rawhash/sessionimmutability/projectionreplacement/chunkunique/modevalidation/derivedretention/per-tierRRF all causalRED beforeproduction. No CodeRabbit request on now superseded candidate planned; newhead requiresfresh reviews. No source scope expansion, runtime, board, publication, paid or spore change.
+
+- ts: 2026-10-10T15:10:53.852Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-487-derived-red-20261010
+  note: Five initial production repairs are uncommitted prepared work; this follow-up RED records their hashes truthfully rather than claiming a pristine baseline. Earlier SDK58/57/1 and59/57/2 attempts retained. Empty replacement fixture sets extra:{} to match its intent; no assertion removed or weakened. All historic receipts/reflections preserved; no runtime, board, paid or spore.
