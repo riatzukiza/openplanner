@@ -8,6 +8,7 @@ import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
+import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
@@ -1229,4 +1230,50 @@ for(const ready of [false,true])test(`cosine ${ready?'native-unavailable':'pendi
   const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
   assert.deepEqual(result.ids,[['old-perfect','old-next']]);assert.deepEqual(result.metadatas[0].map(x=>x.parent_id),['old-perfect-parent','old-next-parent']);
   assert.equal(result.distances[0][0],0);
+});
+
+// Native CodeRabbit5480988982 exactdfa: normalization, terminal polling and exact checkout.
+for(const batch of [false,true])test(`source redaction normalizes saved HTML once per ${batch?'batch item':'single document'}`,async(t)=>{
+  const html='<article>'+Array.from({length:1800},(_,i)=>'<p>Outside encounter '+i+' changes creative perspective with distinct observations.</p>').join('')+'</article>';
+  const mongo=mongoFixture();let conversions=0;const original=TurndownService.prototype.turndown;
+  t.mock.method(TurndownService.prototype,'turndown',function(...args){conversions++;return original.apply(this,args);});
+  const embeddingFunction={generate:async texts=>texts.map(()=>[1,0])};
+  const params={mongo,tier:'hot',embeddingFunction};
+  if(batch)await batchIndexTextsInMongoVectors({...params,items:[item('html-source',html,{source_path:'fixture-source.html'})]});
+  else await indexTextInMongoVectors({...params,parentId:'html-source',text:html,extra:{source_path:'fixture-source.html'},metadata:{embedding_model:'fixture'}});
+  const rows=[...mongo.hotVectors.rows.values()];assert.ok(rows.length>2);
+  assert.ok(rows.every(row=>row.source_text_redacted&&row.source_coordinate_space==='normalized'));
+  // One normalization for embedding chunks and one independent raw-source memo,
+  // preserving refusal to treat caller-provided alternative HTML as saved source.
+  assert.equal(conversions,2);
+});
+for(const status of ['FAILED','DOES_NOT_EXIST'])test(`Mongo bootstrap stops graph-index polling immediately at ${status}`,async(t)=>{
+  const mongo=mongoFixture();let polls=0,sleeps=0,clock=0;const warnings=[];
+  mongo.graphNodeEmbeddings.listSearchIndexes=()=>({toArray:async()=>{polls++;return [{name:'embedding_vector',status,queryable:false}];}});
+  t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  t.mock.method(Date,'now',()=>{clock+=10_000;return clock;});
+  t.mock.method(globalThis,'setTimeout',resolve=>{sleeps++;queueMicrotask(resolve);return {unref(){},ref(){}};});
+  t.mock.method(console,'warn',(...values)=>warnings.push(values.join(' ')));
+  await openMongoDB(openingConfig);
+  assert.equal(polls,2);assert.equal(sleeps,0);assert.ok(warnings.some(value=>value.includes('unavailable: '+status)));
+});
+for(const event of ['pull_request','workflow_dispatch'])test(`scoped workflow binds and refuses mismatched actual Git checkout for ${event}`,async()=>{
+  const execFile=promisify(execFileCallback);
+  const file=new URL('../../../.github/workflows/scoped-graph-recall.yml',import.meta.url);
+  const parsed=await execFile('python3',['-c','import yaml,json,sys;w=yaml.safe_load(open(sys.argv[1]));print(json.dumps(w["jobs"]["verify"]["steps"]))',file.pathname]);
+  const steps=JSON.parse(parsed.stdout);const checkout=steps.find(step=>String(step.uses??'').startsWith('actions/checkout@'));
+  const expected='${{ github.event.pull_request.head.sha || github.sha }}';assert.equal(checkout.with.ref,expected);
+  const guard=steps.find(step=>step.name==='Verify selected checkout');assert.ok(guard);assert.equal(guard.env.EXPECTED_HEAD,expected);
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-checkout-law-'));
+  try{
+    await execFile('git',['init','--quiet',dir]);await execFile('git',['-C',dir,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','--allow-empty','-m','selected head']);
+    const selected=(await execFile('git',['-C',dir,'rev-parse','HEAD'])).stdout.trim();
+    await execFile('git',['-C',dir,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','--allow-empty','-m','different checkout']);
+    const different=(await execFile('git',['-C',dir,'rev-parse','HEAD'])).stdout.trim();
+    const actualExpected=event==='pull_request'?selected:different;
+    await execFile('git',['-C',dir,'checkout','--quiet',actualExpected]);
+    const env={PATH:process.env.PATH,EXPECTED_HEAD:actualExpected};
+    await execFile('bash',['-e','-c',guard.run],{cwd:dir,env});
+    await assert.rejects(execFile('bash',['-e','-c',guard.run],{cwd:dir,env:{...env,EXPECTED_HEAD:event==='pull_request'?different:selected}}),error=>error.code===1);
+  }finally{await rm(dir,{recursive:true,force:true});}
 });
