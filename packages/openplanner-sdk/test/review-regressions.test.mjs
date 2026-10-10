@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch, reconcileManagedTtl } from '../dist/mongodb.js';
+import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
@@ -17,6 +17,7 @@ import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/em
 import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
 import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText } from '../dist/mongo-vectors.js';
 import { createOpenPlannerSdk } from '../dist/sdk.js';
+import { createEmbeddingRuntime } from '../dist/embedding-runtime.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
@@ -922,4 +923,83 @@ test('fractional environment batch limits never normalize to zero',async()=>{
 for(const field of ['maxBatchItems','maxConcurrentBatches'])test(`fractional ${field} cannot stall the provider drain`,async()=>{
   const script=`import assert from 'node:assert/strict';const {EmbedProviderFunction}=await import(process.argv[1]);globalThis.fetch=async(_,options)=>new Response(JSON.stringify({embeddings:JSON.parse(options.body).input.map(()=>[1,2])}),{status:200});const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{[process.argv[2]]:0.5,batchWindowMs:1});assert.deepEqual(await provider.generate(['outside information']),[[1,2]]);`;
   await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/embeddings.js',import.meta.url).href,field],{timeout:2000});
+});
+
+
+// Native Codex review 5480207159: shutdown ownership and public data boundaries.
+test('SDK shutdown drains admitted background indexing before cache flush and Mongo close',async()=>{
+  const mongo=mongoFixture();let release,entered,closed=false;
+  const gate=new Promise(resolve=>release=resolve);const started=new Promise(resolve=>entered=resolve);
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});
+  const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  const close=mock.method(MongoClient.prototype,'close',async()=>{closed=true;});
+  const bulk=mongo.hotVectors.bulkWrite;mongo.hotVectors.bulkWrite=async ops=>{assert.equal(closed,false);return bulk.call(mongo.hotVectors,ops);};
+  let sdk,result;
+  try{await withFetch(async(_,options)=>{entered();await gate;return response(JSON.parse(options.body).input.map(()=>[1,2]));},async()=>{
+    sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:undefined,embedProviderBatchWindowMs:1,embeddingModels:{defaultModel:'fixture',bySource:{},byKind:{},byProject:{}},mongodb:openingConfig},log:{warn(){}}});
+    sdk.mongo.client.startSession=mongo.client.startSession;
+    result=await sdk.ingestEvents([ordinaryEvent('shutdown-owner','Outside information must finish indexing.')]);await started;
+    const closing=sdk.close();await new Promise(resolve=>setImmediate(resolve));const premature=closed;
+    release();await closing;await result.backgroundIndexing;
+    assert.equal(premature,false);assert.equal(closed,true);assert.ok(mongo.hotVectors.rows.size>0);
+  });}finally{release?.();await result?.backgroundIndexing;await sdk?.close();connect.mock.restore();db.mock.restore();close.mock.restore();}
+});
+test('every event kind rejects supplied non-string text before admitting any batch row',async()=>{
+  for(const kind of ['message','graph.edge','session'])for(const text of [42,false,{},null,[]]){
+    const mongo=mongoFixture();const row=ordinaryEvent('invalid-text','valid');
+    await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,2])})},[row,{...row,id:'malformed',kind,text}]),/text.*string/i);
+    assert.equal(mongo.events.rows.size,0);assert.equal(mongo.graphEdges.calls.deletes.length,0);
+  }
+});
+for(const search of ['fts','vector'])test(`${search} search refuses non-finite or fractional limits before any storage/provider work`,async()=>{
+  for(const value of [NaN,Infinity,-Infinity,'not a number',{},1.5,'',true]){
+    const mongo=mongoFixture();let touched=0;mongo.events.find=()=>{touched++;throw new Error('must validate first');};mongo.vectorPartitions.find=()=>{touched++;throw new Error('must validate first');};
+    const ctx={mongo,embeddingRuntime:{}};
+    await assert.rejects(search==='fts'?ftsSearchWithQuality(ctx,{q:'outside',limit:value}):vectorSearchWithQuality(ctx,{q:'outside',k:value}),/finite.*integer/i);
+    assert.equal(touched,0);
+  }
+});
+for(const kind of ['event','compacted'])for(const ttl of [0,60])test(`${kind} retention ignores caller expiry without conflicting update paths (${ttl})`,async()=>{
+  const c=collection('expiry');const row={id:'retained',text:'outside',expiresAt:new Date(0),extra:{openplanner_labels:{labels:['keep']}}};
+  await (kind==='event'?upsertEvent(c,row,ttl):upsertCompactedMemory(c,row,ttl));
+  const update=c.calls.writes[0].update;assert.equal(Object.hasOwn(update.$set,'expiresAt'),false);assert.equal(update.$unset.expiresAt,'');
+  await (kind==='event'?upsertEvent(c,{...row,id:'ordinary',extra:{}},ttl):upsertCompactedMemory(c,{...row,id:'ordinary',extra:{}},ttl));
+  const ordinary=c.calls.writes[1].update;
+  if(ttl===0){assert.equal(Object.hasOwn(ordinary.$set,'expiresAt'),false);assert.equal(ordinary.$unset.expiresAt,'');}
+  else{assert.equal(ordinary.$set.expiresAt-ordinary.$set.updatedAt,ttl*1000);assert.equal(ordinary.$unset,undefined);}
+});
+test('embedding provider base URLs accept ordinary trailing slash configuration',async()=>{
+  for(const suffix of ['','/','///'])await withFetch(async(url)=>{assert.equal(url,'http://fixture.invalid/v1/embeddings');return response([[1,2]]);},async()=>{
+    assert.deepEqual(await new EmbedProviderFunction('fixture','http://fixture.invalid'+suffix,{batchWindowMs:1}).generate(['outside']),[[1,2]]);
+  });
+});
+for(const [ttl,labels] of [[60,[]],[0,[]],[60,['keep']]])test(`session creation applies event retention and ignores caller expiry (${ttl}/${labels.length})`,async()=>{
+  const mongo=mongoFixture();mongo.retention.eventsTtlSeconds=ttl;
+  const row=await createProtocols({mongo}).sessionManagement.createSession({session:'owned-session',expiresAt:new Date(0),extra:{openplanner_labels:{labels}},metadata:{kept:true}});
+  assert.equal(row.kind,'session');assert.deepEqual(row.metadata,{kept:true});
+  if(ttl>0&&!labels.length)assert.equal(row.expiresAt-row.createdAt,ttl*1000);else assert.equal(Object.hasOwn(row,'expiresAt'),false);
+  assert.deepEqual([...mongo.events.rows.values()][0],row);
+});
+test('declared model dimension changes refresh unchanged graph text and bypass the old persistent cache',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-model-contract-'));const path=join(dir,'cache.json');
+  const mongo=ownedProjectionFixture();const config={...loadConfig(),embedProviderCachePath:path,embedProviderBatchWindowMs:1,embeddingModels:{defaultModel:'fixture',bySource:{},byKind:{},byProject:{},dimensionsByModel:{fixture:2}}};
+  const event={schema:'openplanner.event.v1',id:'dimension-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Stable outside information.',extra:{node_id:'dimension-owner'}};
+  let dimensions=2,calls=0,firstRuntime,secondRuntime;
+  try{await withFetch(async(_,options)=>{calls++;return response(JSON.parse(options.body).input.map(()=>Array(dimensions).fill(1)));},async()=>{
+    firstRuntime=createEmbeddingRuntime(config);const first=await ingestEvents({mongo,embeddingRuntime:firstRuntime},[event]);await first.backgroundIndexing;await firstRuntime.flushCaches();
+    const previous=calls;dimensions=3;secondRuntime=createEmbeddingRuntime({...config,embeddingModels:{...config.embeddingModels,dimensionsByModel:{fixture:3}}});
+    const next=await ingestEvents({mongo,embeddingRuntime:secondRuntime},[event]);await next.backgroundIndexing;
+    assert.ok(calls>previous);const rows=[...mongo.graphNodeEmbeddings.rows.values()];assert.ok(rows.length>0);assert.ok(rows.every(row=>row.embedding_dimensions===3&&row.embedding.length===3));
+    const stable=calls;const replay=await ingestEvents({mongo,embeddingRuntime:secondRuntime},[event]);await replay.backgroundIndexing;assert.equal(calls,stable);
+  });}finally{await firstRuntime?.flushCaches();await secondRuntime?.flushCaches();await rm(dir,{recursive:true,force:true});}
+});
+test('declared embedding dimensions reject a provider vector that violates the model contract',async()=>{
+  await withFetch(async()=>response([[1,2]]),async()=>{
+    const runtime=createEmbeddingRuntime({...loadConfig(),embedProviderCachePath:undefined,embedProviderBatchWindowMs:1,embeddingModels:{defaultModel:'fixture',bySource:{},byKind:{},byProject:{},dimensionsByModel:{fixture:3}}});
+    await assert.rejects(runtime.hot.getBackgroundEmbeddingFunctionForModel('fixture').generate(['outside']),/dimension/i);
+  });
+});
+test('dimension configuration preserves positive integer model contracts and refuses malformed declarations',async()=>{
+  await withEnv({EMBED_PROVIDER_MODEL_DIMENSIONS:'{"fixture":3,"other":"4"}'},async()=>assert.deepEqual(loadConfig().embeddingModels.dimensionsByModel,{fixture:3,other:4}));
+  for(const raw of ['{"fixture":0}','{"fixture":1.5}','{"fixture":"bad"}'])await withEnv({EMBED_PROVIDER_MODEL_DIMENSIONS:raw},async()=>assert.throws(()=>loadConfig(),/dimension/i));
 });

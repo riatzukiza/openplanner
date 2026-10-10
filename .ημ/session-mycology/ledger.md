@@ -388,3 +388,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-sdk-close-complete-green-20261010
   note: SDK close flushes recent cache entries and deletions before Mongo shutdown; failed flush warns without private details and still closes Mongo. The readable correction append preserves original ledger lines 288, 306, and 333. Original 56-file manifest and all 182 earlier receipts and reflection bytes remain immutable. Full 149 changed inputs and full 183 receipts still require current hosted and whole-scope native review. No live runtime, board, paid usage, or spore action.
+
+- ts: 2026-10-10T18:10:06.814Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-dfc1-public-boundary-causal-red-20261010
+  note: Fresh completed negative Codex review restores its availability after the earlier quota reply. All seven findings reproduce before production repair; prior assertions remain passing. Dimension refresh is bound to an explicit configured model dimension contract, not guessed alias drift. Original 56-file manifest and all 183 receipt/reflection bytes remain intact. The prior dfc1 hosted and isolated consumer passes are historical after this new finding-bearing review. No approval, live runtime, board, paid usage, or spore action.
