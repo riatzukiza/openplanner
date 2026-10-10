@@ -214,3 +214,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-487-native-green-20261010
   note: Exact raw source binding includes explicit graph nodes/chunks/sentences; immutable session identity; owned projection replacement and conflicting batch refusal; exact obsolete owned index upgrade; unknown mode refusal; retention-aware derived events and labels; one RRF vote per parent per tier. Unknown legacy ownership refuses before mutation; no distributed transaction/fencing/live Mongo or arbitrary index migration claim. Preserve initial compiler failure and authored empty-payload fixture correction. Original56manifest and every historical receipt/reflection prefix retained. Fresh hosted CI/review/consumer integration still owed; no runtime, board, publication, paid or spore.
+
+- ts: 2026-10-10T15:25:12.327Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-coderabbit-10c4f30-native-red-20261010
+  note: The native incremental CodeRabbit review selected 36 changed inputs and reported three confirmed ingest defects plus readability. Complete full current-head scope remains owed. Causal tests expose non-string graph text partial admission, obsolete owned derived events and embeddings after empty or changed text, and stale source/project binding without vector regeneration. Historical reflection wording will be corrected by an append per human instruction, not rewritten. All prior bytes retained; no runtime, board, publication, paid usage or spore change.

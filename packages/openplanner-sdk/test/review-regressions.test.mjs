@@ -452,3 +452,57 @@ test('explicit graph-node chunk and sentence embeddings bind their authoritative
   const rows=[...mongo.graphNodeEmbeddings.rows.values()];assert.ok(rows.length>1);
   for(const row of rows){assert.equal(row.source_event_id,event.id);assert.equal(row.source_text_hash_sha256,createHash('sha256').update(event.text,'utf8').digest('hex'));}
 });
+
+function ownedProjectionFixture() {
+  const mongo=mongoFixture();
+  const matches=(row,filter)=>Object.entries(filter).every(([key,value])=>{
+    const actual=key.split('.').reduce((object,part)=>object?.[part],row);
+    if(value&&typeof value==='object'){
+      if('$in' in value)return value.$in.includes(actual);
+      if('$nin' in value)return !value.$nin.includes(actual);
+    }
+    return actual===value;
+  });
+  for(const c of [mongo.events,mongo.graphNodeEmbeddings]){
+    c.deleteMany=async filter=>{c.calls.deletes.push(filter);for(const [key,row] of c.rows)if(matches(row,filter))c.rows.delete(key);};
+    c.updateMany=async(filter,update)=>{c.calls.writes.push({filter,update});for(const row of c.rows.values())if(matches(row,filter))Object.assign(row,update.$set);};
+  }
+  return mongo;
+}
+test('malformed graph-node text refuses the complete batch before admission',async()=>{
+  for(const text of [42,false,{},null]){
+    const mongo=mongoFixture();const valid={schema:'openplanner.event.v1',id:'first',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+    await assert.rejects(ingestEvents({mongo,embeddingRuntime:{}},[valid,{...valid,id:'invalid',kind:'graph.node',text,extra:{node_id:'invalid'}}]),/graph.node.*text.*string/i);
+    assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.deletes.length,0);
+  }
+});
+test('empty replacement removes owned derived content and embeddings without TTL',async()=>{
+  const mongo=ownedProjectionFixture();mongo.retention.eventsTtlSeconds=0;
+  const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'content-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'Outside content retained by its source.'};
+  const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;
+  assert.ok(mongo.events.rows.has('graph.node:derive:content-owner'));assert.ok([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.source_event_id===event.id));
+  mongo.events.rows.set('foreign-derived',{id:'foreign-derived',source:'openplanner-derive',extra:{source_event_id:'different-owner'}});
+  mongo.graphNodeEmbeddings.rows.set('foreign-index',{node_id:'foreign-index',source_event_id:'different-owner'});
+  const replacement=await ingestEvents({mongo,embeddingRuntime},[{...event,text:''}]);await replacement.backgroundIndexing;
+  assert.equal(mongo.events.rows.has('graph.node:derive:content-owner'),false);assert.equal([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.source_event_id===event.id),false);
+  assert.ok(mongo.events.rows.has('content-owner'));assert.ok(mongo.events.rows.has('foreign-derived'));assert.ok(mongo.graphNodeEmbeddings.rows.has('foreign-index'));
+});
+test('changed graph-node text reconciles obsolete owned chunks and sentences',async()=>{
+  const mongo=ownedProjectionFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'changed-owner',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Outside information changes remembered creative choices. '.repeat(4000),extra:{node_id:'changed-owner'}};
+  const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;
+  const oldDerived=[...mongo.events.rows.values()].filter(row=>row.source==='openplanner-derive');assert.ok(oldDerived.some(row=>row.extra.node_kind==='doc_chunk'));assert.ok(oldDerived.some(row=>row.extra.node_kind==='sentence'));
+  const oldIds=oldDerived.map(row=>row.id);const oldNodes=[...mongo.graphNodeEmbeddings.rows.values()].map(row=>row.node_id);
+  const next=await ingestEvents({mongo,embeddingRuntime},[{...event,text:'A distinct later encounter reshapes this memory.'}]);await next.backgroundIndexing;
+  for(const id of oldIds)assert.equal(mongo.events.rows.has(id),false);
+  for(const node of oldNodes)assert.equal([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.node_id===node),false);
+  const derived=[...mongo.events.rows.values()].filter(row=>row.source==='openplanner-derive');assert.ok(derived.length>0);assert.ok(derived.every(row=>row.extra.source_event_id===event.id));
+});
+test('equal graph-node text refreshes source and project without regenerating vectors',async()=>{
+  const mongo=ownedProjectionFixture();let calls=0;const provider={generate:async texts=>{calls++;return texts.map(()=>[1,2]);}};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'source-a',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'shared text',source_ref:{project:'first'},extra:{node_id:'shared-node'}};
+  const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;const previousCalls=calls;
+  const second=await ingestEvents({mongo,embeddingRuntime},[{...event,id:'source-b',source_ref:{project:'second'}}]);await second.backgroundIndexing;
+  const row=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id==='shared-node');assert.equal(row.source_event_id,'source-b');assert.equal(row.project,'second');assert.deepEqual(row.embedding,[1,2]);assert.equal(calls,previousCalls);
+});
