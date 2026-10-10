@@ -58,6 +58,9 @@ export function validateEvent(ev: EventEnvelopeV1) {
   if (typeof ev.ts !== "string" || !ev.ts.trim() || !Number.isFinite(Date.parse(ev.ts))) throw new Error("event.ts must be a valid timestamp (ISO)");
   if (!ev.source) throw new Error("event.source required");
   if (!ev.kind) throw new Error("event.kind required");
+  if (ev.kind === "graph.node" && ev.text !== undefined && typeof ev.text !== "string") {
+    throw new Error("graph.node event text must be a string when supplied");
+  }
 }
 
 function hasIndexableEventText(ev: EventEnvelopeV1): boolean {
@@ -170,9 +173,8 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     chunk_count: number;
   }>();
 
-  const derivedGraphNodeOps: any[] = [];
+  const derivedGraphNodeOps = new Map<string, any>();
   const graphLabelNodeOps: any[] = [];
-  const derivedEventIds = new Set<string>();
   const queuedGraphLabelIds = new Set<string>();
   const now = new Date();
 
@@ -185,12 +187,10 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     label: string;
     preview: string;
     retentionLabels: string[];
+    sourceEventId: string;
     extra?: Record<string, unknown>;
   }): void => {
-    if (derivedEventIds.has(params.id)) return;
-    derivedEventIds.add(params.id);
-
-    derivedGraphNodeOps.push({
+    derivedGraphNodeOps.set(params.id, {
       updateOne: {
         filter: { _id: params.id },
         update: {
@@ -216,6 +216,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               content_hash: computeTextHash(params.preview),
               lake: params.project ?? undefined,
               ...(params.extra ?? {}),
+              source_event_id: params.sourceEventId,
               openplanner_labels: {
                 ...((params.extra?.openplanner_labels as Record<string, unknown> | undefined) ?? {}),
                 labels: params.retentionLabels,
@@ -398,6 +399,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               label: chunkLabel,
               preview: chunkPreview,
               retentionLabels: labels,
+              sourceEventId: ev.id,
               extra: {
                 parent_node_id: nodeId,
                 chunk_index: chunk.chunkIndex,
@@ -461,6 +463,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
                 label: sent.sentence.length > 120 ? sent.sentence.slice(0, 117) + "..." : sent.sentence,
                 preview: sent.sentence,
                 retentionLabels: labels,
+                sourceEventId: ev.id,
                 extra: {
                   derived_from_node_id: nodeId,
                 },
@@ -514,6 +517,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
         label,
         preview,
         retentionLabels: labels,
+        sourceEventId: ev.id,
         extra: {
           lake: project ?? undefined,
           entity_key: ev.id,
@@ -580,9 +584,28 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     }
   }
 
-  if (derivedGraphNodeOps.length > 0) {
-    for (const operation of derivedGraphNodeOps) {
+  if (derivedGraphNodeOps.size > 0) {
+    for (const operation of derivedGraphNodeOps.values()) {
       await upsertEvent(mongo.events, operation.updateOne.update.$set, mongo.retention?.eventsTtlSeconds);
+    }
+  }
+
+  // Reconcile only explicitly owned derived rows. Legacy rows without causal
+  // ownership are retained for an independently qualified migration.
+  for (const sourceEventId of new Set(ids)) {
+    const derivedIds = [...derivedGraphNodeOps.values()]
+      .map((operation) => operation.updateOne.update.$set)
+      .filter((row) => row.extra.source_event_id === sourceEventId)
+      .map((row) => row.id);
+    const inputs = [...graphNodeEmbeddingInputs.values()].filter((row) => row.source_event_id === sourceEventId);
+    await mongo.events.deleteMany({ source: "openplanner-derive", "extra.source_event_id": sourceEventId, id: { $nin: derivedIds } });
+    await mongo.graphNodeEmbeddings.deleteMany({ source_event_id: sourceEventId, node_id: { $nin: inputs.map((row) => row.node_id) } });
+    for (const input of inputs) {
+      await mongo.graphNodeEmbeddings.deleteMany({
+        source_event_id: sourceEventId,
+        node_id: input.node_id,
+        source_text_hash_sha256: { $ne: input.source_text_hash_sha256 },
+      });
     }
   }
 
@@ -629,7 +652,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             const nodeIds = rows.map((row) => row.node_id);
             const existing = await mongo.graphNodeEmbeddings
               .find({ node_id: { $in: nodeIds }, embedding_model: model })
-              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1 })
+              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1 })
               .toArray();
             const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
 
@@ -637,6 +660,20 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               const previous = existingById.get(row.node_id);
               return !previous || previous.text !== row.text || previous.source_text_hash_sha256 !== row.source_text_hash_sha256;
             });
+
+            for (const row of rows) {
+              const previous = existingById.get(row.node_id);
+              if (previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                  && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
+                      || previous.chunk_count !== row.chunk_count)) {
+                await mongo.graphNodeEmbeddings.updateMany({
+                  node_id: row.node_id, embedding_model: model, text: row.text,
+                  source_text_hash_sha256: row.source_text_hash_sha256,
+                  source_event_id: previous.source_event_id, project: previous.project ?? null,
+                }, { $set: { source_event_id: row.source_event_id, project: row.project ?? null,
+                  chunk_count: row.chunk_count, updated_at: new Date(), updatedAt: new Date() } });
+              }
+            }
 
             if (toEmbed.length === 0) continue;
 

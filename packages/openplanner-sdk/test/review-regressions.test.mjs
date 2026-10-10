@@ -460,6 +460,7 @@ function ownedProjectionFixture() {
     if(value&&typeof value==='object'){
       if('$in' in value)return value.$in.includes(actual);
       if('$nin' in value)return !value.$nin.includes(actual);
+      if('$ne' in value)return actual!==value.$ne;
     }
     return actual===value;
   });

@@ -223,3 +223,12 @@
   spore: none
   receipt-refs: cephalon-bounded-coderabbit-10c4f30-native-red-20261010
   note: The native incremental CodeRabbit review selected 36 changed inputs and reported three confirmed ingest defects plus readability. Complete full current-head scope remains owed. Causal tests expose non-string graph text partial admission, obsolete owned derived events and embeddings after empty or changed text, and stale source/project binding without vector regeneration. Historical reflection wording will be corrected by an append per human instruction, not rewritten. All prior bytes retained; no runtime, board, publication, paid usage or spore change.
+
+- ts: 2026-10-10T15:29:10.969Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-coderabbit-10c4f30-native-green-20261010
+  note: Supplied graph-node text validates before admission; source-owned obsolete derived events and embeddings reconcile on replacement without TTL; unchanged vectors receive conditional source/project metadata refresh without regeneration. Unknown historical ownership stays retained for migration. Correction to historical reflection line 198: native Codex review 5479413326 superseded the earlier quota observation, its findings were open at that recorded time, and the original raw review/comments remain preserved. Prior observations are not rewritten. The report now separates joined prose tokens; this readable correction is appended under the user instruction. Standard $ne support was added to held collection matching, with causal assertions unchanged. Complete new-head review/hosted CI remain owed, with actual CodeRabbit hourly cooldown; no runtime, board, publication, paid usage or spore.
