@@ -451,3 +451,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-a27-native-boundaries-final-green-20261010
   note: Mongo alias presence correction completes the same native claim identity finding while preserving default generation only for absent IDs. All original tests retained. Original56manifest and189 journals/reflections prefixes byte-identical. Hosted/currentconsumer/native review binding must be refreshed after push; no synthetic approval/historical transfer, no runtime/board/paid/spore.
+
+- ts: 2026-10-10T19:29:48.254Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-ff5-nine-native-boundaries-red-20261010
+  note: Actual causal RED at unchanged production: nine native defects reproduce in SDK18new failures and graph9assertion failures/0errors. Original156 SDK cases and57graphcases retained. Infinity test titles stringify as null; actual committed inputs are Infinity, no null-input claim. Original56manifest and all historical prefixes preserved. No new scope,review/approval credit,runtime,board,paid orspore action.

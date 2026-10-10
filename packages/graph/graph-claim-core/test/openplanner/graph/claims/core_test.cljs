@@ -252,3 +252,33 @@
         edge (aget (aget result "edges") 0)
         claim-id (when edge (aget edge "claim_id"))]
     (is (and (string? claim-id) (re-matches #"edge_claim:[a-f0-9]{24}" claim-id)))))
+
+
+(deftest conflicting-explicit-claim-aliases-remain-ambiguous
+  (let [base #js {:claimId "camel" :claim_id "snake" :source_node_id "a"
+                  :target_node_id "b" :relation_kind "related" :status "active"}]
+    (is (false? (aget (boundary/explain-edge-claim-js base) "valid?")))
+    (is (nil? (boundary/project-edge-claim-js base #js {:now 1000})))
+    (is (zero? (aget (mongo/project-mongo-edge-claims-js #js [base] #js {:now 1000}) "stats" "edges"))))
+  (let [base #js {:claimId "same" :claim_id "same" :source_node_id "a"
+                  :target_node_id "b" :relation_kind "related" :status "active"}]
+    (is (= "same" (aget (boundary/project-edge-claim-js base #js {:now 1000}) "claim_id")))))
+
+(deftest lifecycle-evidence-retains-only-nonblank-string-identities
+  (doseq [action ["support" "refute"]]
+    (let [result (lifecycle/transition-plan-js action
+                  #js {:event_ids #js [42 #js {:id "malformed"} nil true #js ["array"]
+                                      "" "  " " valid " "valid" "other"]})]
+      (is (= ["valid" "other"] (js->clj (aget result "eventIds")))))))
+
+(deftest default-policy-and-projection-share-expiration-boundary
+  (let [old-now (.-now js/Date)]
+    (try
+      (set! (.-now js/Date) (fn [] 1000))
+      (doseq [status ["active" "supported"]
+              [expires kind] [[999 "reject"] [1000 "reject"] [1001 "accept"] [nil "accept"]]]
+        (let [claim #js {:claim_id "timed" :source_node_id "a" :target_node_id "b"
+                         :relation_kind "related" :status status :validUntil expires}]
+          (is (= kind (aget (boundary/evaluate-edge-claim-js claim) "kind")))
+          (is (= (= "accept" kind) (some? (boundary/project-edge-claim-js claim #js {:now 1000}))))))
+      (finally (set! (.-now js/Date) old-now)))))

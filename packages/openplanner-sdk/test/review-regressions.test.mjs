@@ -1076,3 +1076,57 @@ for(const name of ['ftsSearch','ilikeSearch'])test(`${name} snippets truncate at
   const c={find(filter,options){observed=options.projection.text;const [operator,args]=Object.entries(observed)[0];const value=operator==='$substrCP'?Array.from(text).slice(args[1],args[1]+args[2]).join(''):Buffer.from(text).subarray(args[1],args[1]+args[2]).toString('utf8');return {sort(){return this;},limit(){return this;},toArray:async()=>[{id:'unicode',text:value}]};}};
   const rows=await storage[name](c,'a');assert.deepEqual(observed,{$substrCP:['$text',0,240]});assert.equal(rows[0].snippet,'a'.repeat(239)+'海');assert.ok(!rows[0].snippet.includes('\uFFFD'));
 });
+
+
+// Native Codex review5480466640: identity, numeric, time and recall bindings.
+test('generated chunk identities cannot alias another parent', async () => {
+  const text='First parent outside information. '.repeat(1800);
+  const prepared=prepareIndexDocument({parentId:'a',text});assert.ok(prepared.chunkCount>1);
+  const other=prepareIndexDocument({parentId:prepared.chunks[0].id,text:'Second parent outside information.'});
+  const ids=[...prepared.chunks,...other.chunks].map(row=>row.id);
+  assert.equal(new Set(ids).size,ids.length);
+});
+test('batch indexing preserves distinct parents and their own vectors when an ID looks like a generated chunk', async () => {
+  const text='First parent outside information. '.repeat(1800);
+  const collision=prepareIndexDocument({parentId:'a',text}).chunks[0].id;
+  const mongo=mongoFixture();const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('a',text),item(collision,'Second parent outside information.')],embeddingFunction:{generate:async texts=>texts.map(t=>t.includes('Second parent')?[2,0]:[1,0])}});
+  assert.equal(result.failed.length,0);
+  const rows=[...mongo.hotVectors.rows.values()];assert.ok(rows.some(row=>row.parent_id==='a'));assert.ok(rows.some(row=>row.parent_id===collision));
+  for(const row of rows)assert.deepEqual(row.embedding,row.parent_id===collision?[2,0]:[1,0]);
+  assert.equal(rows.length,prepareIndexDocument({parentId:'a',text}).chunkCount+1);
+});
+for(const input of [{limit:1.5},{skip:0.5},{limit:Infinity},{skip:Infinity}])test('raw browse rejects noninteger pagination before Mongo effects '+JSON.stringify(input),async()=>{
+  let effects=0;const cursor={sort(){return this;},skip(value){if(!Number.isSafeInteger(value))throw new Error('fixture driver requires an integer');return this;},limit(value){if(!Number.isSafeInteger(value))throw new Error('fixture driver requires an integer');return this;},toArray:async()=>[]};
+  const mongo={db:{collection:()=>({countDocuments:async()=>{effects++;return 0;},find(){effects++;return cursor;}})}};
+  await assert.rejects(queryCollectionResponse({mongo},{collection:'events',...input}),/pagination|finite integer/i);assert.equal(effects,0);
+});
+test('mixed native and fallback vector partitions use one cosine score and distance scale',async()=>{
+  const mongo=queryFixture();const native=mongo.db.collection('healthy_vectors');const nativeRow={...vectorRow('orthogonal','native-parent',0),score:0.5};
+  native.aggregate=()=>({toArray:async()=>[nativeRow]});
+  mongo.vectorPartitions.rows.set('fallback',{_id:'fallback',tier:'hot',model:'fallback-model',dimensions:2,collectionName:'fallback_vectors',searchIndexName:'fallback_index',searchIndexStatus:'ready'});
+  const fallback=mongo.db.collection('fallback_vectors');fallback.rows.set('similar',vectorRow('similar','fallback-parent',0.4));fallback.aggregate=()=>{throw new Error('fixture native index unavailable');};
+  const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+  assert.deepEqual(result.ids,[['similar','orthogonal']]);assert.ok(Math.abs(result.distances[0][0]-0.6)<1e-12);assert.equal(result.distances[0][1],1);
+});
+for(const ts of ['0','2020','01/02/2026','2021-02-30','2021-02-30T00:00:00Z','2026-01-01T24:00:00Z'])test('ingest refuses non-ISO or rollover timestamp before any effects '+ts,async()=>{
+  const mongo=mongoFixture();let calls=0;const event={...ordinaryEvent('bad-time','Outside information'),ts};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async()=>{calls++;return [[1,0]];}})},[event]),/timestamp.*ISO/i);
+  assert.equal(calls,0);assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);
+});
+for(const text of [undefined,'','  '])test('preview-only graph metadata cannot create an authority-hashed embedding '+String(text),async()=>{
+  const mongo=mongoFixture();const event={...ordinaryEvent('preview-only',text),kind:'graph.node',text,extra:{node_id:'preview-only',preview:'Unadmitted preview-only information'}};
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[event]);await result.backgroundIndexing;
+  assert.equal(mongo.graphNodeEmbeddings.rows.size,0);
+});
+test('explicit graph embedding normalization uses admitted event text rather than alternative HTML metadata',async()=>{
+  const mongo=mongoFixture();const text='Admitted outside information.';const event={...ordinaryEvent('html-authority',text),kind:'graph.node',extra:{node_id:'html-authority',html:'<html><body>Hidden unadmitted alternative content.</body></html>'}};
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[event]);await result.backgroundIndexing;
+  const row=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id===event.id);assert.ok(row);assert.ok(row.text.includes(text));assert.ok(!row.text.includes('Hidden unadmitted'));assert.equal(row.source_text_hash_sha256,createHash('sha256').update(text).digest('hex'));
+});
+test('long explicit graph nodes materialize an admitted parent vector from bounded chunk embeddings',async()=>{
+  const mongo=mongoFixture();const text='Outside memory with several meaningful words. '.repeat(6000);const event={...ordinaryEvent('long-authority',text),kind:'graph.node',extra:{node_id:'long-authority'}};const inputs=[];
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{inputs.push(...texts);return texts.map(()=>[1,0]);}})},[event]);await result.backgroundIndexing;
+  const row=[...mongo.graphNodeEmbeddings.rows.values()].find(row=>row.node_id===event.id&&row.source_event_id===event.id);
+  assert.ok(row,'parent vector admitted by the scoped recall reader must exist');assert.deepEqual(row.embedding,[1,0]);assert.ok(row.chunk_count>1);assert.equal(row.source_text_hash_sha256,createHash('sha256').update(text).digest('hex'));
+  assert.ok(inputs.length>1);assert.ok(inputs.every(value=>value.length<180_100),'provider receives bounded chunks, never the entire long source');
+});
