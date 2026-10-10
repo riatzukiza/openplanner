@@ -577,3 +577,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-eight-a021-native-boundaries-final-green-20261010
   note: Eight native defects plus legacy/null-model identity compatibility fixed. Original280 assertions retained; strict provider index fixtures; actualgraphwire plusTSnull assertion. Repeated transcript bytes referenced from exact ordinaryGitblob, no journal rewrite/nativeapproval. Source203 prefixes preserved. Await resulting exacthead hosted/consumer/reviews; no runtime/board/deploy/paid/spore.
+
+- ts: 2026-10-10T23:39:20.254Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-6d90f6b-streaming-partition-red-20261010
+  note: Current CodeRabbit5481190788 P1 confirmed. Faithful async cursor methods added; assertions retained. Streaming laws require late-best complete scan, accessible unique-parent/tie ranking,256-candidate batches, whole local rescan after optional later failure, enforced failure and cursor closure. Exact source204 journal/reflection prefixes retained; no runtime/board/deploy/paid/spore.

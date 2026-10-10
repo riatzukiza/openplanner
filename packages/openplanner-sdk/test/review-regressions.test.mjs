@@ -26,6 +26,61 @@ import { getSessionResponse } from '../dist/sessions-core.js';
 import { mergeTieredVectorHits } from '../dist/vector-search.js';
 import { loadConfig } from '../dist/config.js';
 
+// CodeRabbit5481190788/4239586317: complete recall with bounded cursor/batch storage.
+function streamingQueryFixture(count, rowAt) {
+  const mongo=parentQueryFixture('cosine',[]);const collection=mongo.db.collection('healthy_vectors');
+  const observed={scans:0,yielded:0,closed:0,batchSizes:[]};
+  collection.find=filter=>{
+    collection.calls.searches.push(filter);observed.scans++;
+    return {
+      batchSize(value){observed.batchSizes.push(value);assert.equal(value,256);return this;},
+      async toArray(){throw new Error('full partition materialization is forbidden');},
+      async *[Symbol.asyncIterator](){try{for(let i=0;i<count;i++){observed.yielded++;yield rowAt(i);}}finally{observed.closed++;}},
+    };
+  };
+  return {mongo,observed};
+}
+const streamingQuery=(vectors,mongo,k=1)=>vectors.queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+
+test('streaming cosine scans every row and retains a late best match without toArray',async()=>{
+  const {mongo,observed}=streamingQueryFixture(1201,i=>vectorRow('row-'+i,'parent-'+i,i===1200?1:.2));
+  const result=await streamingQuery({queryMongoVectorsByText},mongo);
+  assert.deepEqual(result.ids,[['row-1200']]);assert.equal(observed.yielded,1201);assert.equal(observed.closed,1);assert.deepEqual(observed.batchSizes,[256]);
+});
+test('streaming cosine admits lower usable chunks of duplicate parents and stable score ties',async()=>{
+  const rows=[{...vectorRow('missing','same',1),text:'',source_text_redacted:true,source_ref:{source_path:'/not-admitted/missing'},text_hash_sha256:'0'.repeat(64)},vectorRow('z-tie','other',.8),vectorRow('a-tie','same',.8),vectorRow('late-best','same',.9),vectorRow('third','third',.7)];
+  const {mongo,observed}=streamingQueryFixture(rows.length,i=>rows[i]);
+  const result=await streamingQuery({queryMongoVectorsByText},mongo,2);
+  assert.deepEqual(result.ids,[['late-best','z-tie']]);assert.equal(observed.yielded,rows.length);assert.equal(observed.closed,1);
+  const tied=streamingQueryFixture(2,i=>[vectorRow('z-tie','other',.8),vectorRow('a-tie','same',.8)][i]);
+  assert.deepEqual((await streamingQuery({queryMongoVectorsByText},tied.mongo)).ids,[['a-tie']]);
+});
+test('streaming Vexx bounds all batches including a short tail and ranks the complete partition',async()=>{
+  const {mongo,observed}=streamingQueryFixture(601,i=>vectorRow('row-'+i,'parent-'+i,.2));const sizes=[];
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_MIN_CANDIDATES:'256',VEXX_ENFORCE:'false'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?streaming-vexx-complete',import.meta.url).href);
+    await withFetch(async(_url,init)=>{const request=JSON.parse(init.body);sizes.push(request.candidates.length);assert.ok(request.candidates.length<=256);assert.equal(observed.yielded,sizes.reduce((a,b)=>a+b,0));
+      return {ok:true,json:async()=>({matches:request.candidates.map(row=>({id:row.id,score:row.id==='row-600'?.95:.1}))})};
+    },async()=>{const result=await streamingQuery(vectors,mongo);assert.deepEqual(result.ids,[['row-600']]);assert.ok(Math.abs(result.distances[0][0]-.05)<1e-12);});
+  });assert.deepEqual(sizes,[256,256,89]);assert.equal(observed.scans,1);assert.equal(observed.closed,1);
+});
+test('streaming optional Vexx later failure discards prior scores and rescans with local cosine',async()=>{
+  const {mongo,observed}=streamingQueryFixture(601,i=>vectorRow('row-'+i,'parent-'+i,i===600?.9:.2));let calls=0;
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'false'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?streaming-vexx-fallback',import.meta.url).href);
+    await withFetch(async(_url,init)=>{calls++;const request=JSON.parse(init.body);assert.ok(request.candidates.length<=256);return {ok:true,json:async()=>({matches:calls===1?request.candidates.map(row=>({id:row.id,score:1})):[]})};},async()=>{
+      const result=await streamingQuery(vectors,mongo);assert.deepEqual(result.ids,[['row-600']]);assert.ok(Math.abs(result.distances[0][0]-.1)<1e-12);
+    });
+  });assert.equal(calls,2);assert.equal(observed.scans,2);assert.equal(observed.closed,2);assert.equal(observed.yielded,512+601);
+});
+test('streaming enforced Vexx later failure refuses and closes the cursor without a local rescan',async()=>{
+  const {mongo,observed}=streamingQueryFixture(601,i=>vectorRow('row-'+i,'parent-'+i,.2));let calls=0;
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'true'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?streaming-vexx-enforced',import.meta.url).href);
+    await withFetch(async(_url,init)=>{calls++;const request=JSON.parse(init.body);return {ok:true,json:async()=>({matches:calls===1?request.candidates.map(row=>({id:row.id,score:.5})):[]})};},async()=>assert.rejects(streamingQuery(vectors,mongo),/unavailable/i));
+  });assert.equal(calls,2);assert.equal(observed.scans,1);assert.equal(observed.closed,1);assert.equal(observed.yielded,512);
+});
+
 function collection(name, initial = []) {
   const rows = new Map(initial.map(r => [r._id ?? r.id, r]));
   const calls = { indexes: [], writes: [], drops: [], searches: [], deletes: [], setups: 0 };
@@ -33,6 +88,8 @@ function collection(name, initial = []) {
     sort() { values.sort((a,b) => new Date(b.ts) - new Date(a.ts)); return this; },
     project() { return this; }, limit(n) { values = values.slice(0,n); return this; },
     async toArray() { return values; },
+    batchSize() { return this; },
+    async *[Symbol.asyncIterator]() { yield* values; },
   });
   return {
     collectionName: name, rows, calls, failSetup: false, failText: false,
@@ -1065,7 +1122,7 @@ for(const raw of ['__proto__=fixture','{"__proto__":"fixture"}'])test(`explicit 
 function parentQueryFixture(mode, rows) {
   const mongo=queryFixture();const c=mongo.db.collection('healthy_vectors');c.rows.clear();for(const row of rows)c.rows.set(row._id,row);
   const matching=filter=>rows.filter(r=>(filter.quality_label!=='good'||r.quality_label==='good')&&(!(filter.quality_label?.$ne==='bad')||r.quality_label!=='bad')&&(!(filter.parent_id?.$nin?.includes(r.parent_id)))&&(!(filter.parent_id?.$eq)||r.parent_id===filter.parent_id.$eq));
-  c.find=filter=>{c.calls.searches.push(filter);let selected=matching(filter);return {sort(){return this;},limit(n){selected=selected.slice(0,n);return this;},toArray:async()=>selected};};
+  c.find=filter=>{c.calls.searches.push(filter);let selected=matching(filter);return {sort(){return this;},limit(n){selected=selected.slice(0,n);return this;},batchSize(){return this;},async *[Symbol.asyncIterator](){yield* selected;},toArray:async()=>selected};};
   c.aggregate=pipeline=>({toArray:async()=>{if(mode==='cosine')throw new Error('native unavailable');const query=pipeline[0].$vectorSearch;c.calls.searches.push(query.filter??{});return matching(query.filter??{}).slice(0,query.limit);}});
   return mongo;
 }
