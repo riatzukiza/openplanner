@@ -722,6 +722,45 @@ test('SDK protocol setup rejection closes the newly connected client',async()=>{
     await assert.rejects(module.createOpenPlannerSdk({config:{embedProviderCachePath:undefined}}),/REST protocol/);assert.equal(closed,1);`;
   await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/sdk.js',import.meta.url).href],{cwd:new URL('..',import.meta.url),env:{...process.env,PROTOCOL_IMPL:'rest',EMBED_PROVIDER_CACHE_PATH:'/fixture-cache-unused'},timeout:5000});
 });
+test('SDK close persists recent embeddings and deletions before closing Mongo',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-sdk-cache-close-'));const path=join(dir,'cache.json');
+  const removed=makeEmbeddingCacheKey({model:'fixture',text:'obsolete outside information'});
+  const added=makeEmbeddingCacheKey({model:'fixture',text:'new outside information'});
+  await writeFile(path,JSON.stringify([[removed,[3,4]]]));
+  const mongo=mongoFixture();let cache,closes=0;
+  const put=PersistentEmbeddingCache.prototype.putMany;
+  const capture=mock.method(PersistentEmbeddingCache.prototype,'putMany',async function(entries){cache=this;return put.call(this,entries);});
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});
+  const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  const close=mock.method(MongoClient.prototype,'close',async()=>{
+    assert.deepEqual(JSON.parse(await readFile(path,'utf8')),[[added,[1,2]]]);closes++;
+  });
+  try{
+    const sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:path,embedProviderBatchWindowMs:1,mongodb:openingConfig}});
+    await withFetch(async()=>response([[1,2]]),async()=>{
+      assert.deepEqual(await sdk.embeddingRuntime.hot.getEmbeddingFunctionForModel('fixture').generate(['new outside information']),[[1,2]]);
+    });
+    assert.ok(cache);cache.delete(removed);
+    await sdk.close();assert.equal(closes,1);
+    const restored=new PersistentEmbeddingCache(path);
+    assert.equal(restored.has(removed),false);assert.deepEqual((await restored.getMany([added])).get(added),[1,2]);
+  }finally{
+    if(cache)await cache.flush();capture.mock.restore();connect.mock.restore();db.mock.restore();close.mock.restore();await rm(dir,{recursive:true,force:true});
+  }
+});
+test('SDK close still closes Mongo after a cache flush failure and reports only a fixed warning',async()=>{
+  const mongo=mongoFixture();let closes=0,flushes=0;const warnings=[];
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});
+  const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  const close=mock.method(MongoClient.prototype,'close',async()=>{closes++;});
+  const flush=mock.method(PersistentEmbeddingCache.prototype,'flush',async()=>{flushes++;throw new Error('PRIVATE cache path and credential');});
+  const warning=mock.method(console,'warn',(...args)=>warnings.push(args));
+  try{
+    const sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:undefined,mongodb:openingConfig}});
+    await sdk.close();assert.equal(flushes,1);assert.equal(closes,1);
+    assert.deepEqual(warnings,[['Embedding cache persistence failed']]);
+  }finally{connect.mock.restore();db.mock.restore();close.mock.restore();flush.mock.restore();warning.mock.restore();}
+});
 test('duplicate vector parent IDs refuse the complete batch before provider or writes',async()=>{
   const mongo=mongoFixture();let embedded=0;
   await assert.rejects(batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('same','first text'),item('same','different text')],embeddingFunction:{generate:async texts=>{embedded++;return texts.map(()=>[1,2]);}}}),/duplicate.*parent/i);

@@ -340,3 +340,42 @@
   spore: none
   receipt-refs: cephalon-bounded-a8-native-complete-green-20261010
   note: Causal tests retained before repair. Replacement removes only obsolete parent vectors after failure; partition execution failures preserve healthy hits and truthful unavailable counts; floor-zero limits default positive; identifiers retain string types/present aliases; cache promotion is best-effort with unchanged expiry. Immutable56manifest and180receipt/reflection prefix preserved;149wholechangedinputs/full181receipts owe current hosted/review gates. No runtime, board, paid or spore.
+
+### Readability correction for historical notes at lines 288, 306, and 333
+
+This append supplies readable wording for native finding 4238585859 in review
+5480148884. The original lines and their receipt references remain byte-identical.
+These statements retain their historical observation time and epistemic tier.
+
+- Line 288, receipt `cephalon-bounded-bdc-native-red-20261010`: Seventeen
+  actual native COMMENTED findings; no approval. The full CodeRabbit review
+  completed all 146 inputs and reported 9 findings; Codex reported 8 findings.
+  All 54/17 root IDs and raw REST bytes were preserved in one raw bundle to
+  retain the included 150-file scope. The original 56-file manifest and the full
+  174-receipt and reflection prefix remain immutable. New tests executed before
+  production repair. No runtime, clock, maker, board, social, paid usage, or spore
+  action occurred.
+- Line 306, receipt `cephalon-bounded-bdc-native-green-20261010`: All 17 native
+  findings were repaired and all 19 local gates passed. The original 56-file
+  manifest and historical ledger and reflection prefixes were preserved. New
+  mock cleanup fixture corrections and the changed-key compatibility failure
+  were retained in the combined proof; no tests were removed. The earlier hosted
+  and Knoxx passes bind bdc, rather than that repair. The complete 149 changed
+  inputs and full journals awaited fresh hosted and full exact-head reviews.
+  No approval, runtime, board, social, paid usage, or spore claim was made.
+- Line 333, receipt `cephalon-bounded-a8-native-causal-red-20261010`: The original
+  56-file immutable manifest and journal prefixes were preserved. The a8 hosted
+  CI and isolated consumer passes became historical after the new finding-bearing
+  review; no passing approval or round was claimed. Force cancellation of the
+  stale 376 MiMo run was accepted, then independently observed terminally
+  cancelled; the a8 run started. No live runtime, board, paid usage, or spore
+  action occurred.
+
+- ts: 2026-10-10T17:45:53.280Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-sdk-close-causal-red-20261010
+  note: The new tests fail because SDK close omits the persistent cache flush. Readable corrections for historical ledger lines 288, 306, and 333 preserve every original byte and reference. Current CodeRabbit incremental 26-file review is not whole-input approval. Original 56-file manifest and all 181 historical receipts and reflection bytes remain immutable. No live runtime, board, paid usage, or spore action.
