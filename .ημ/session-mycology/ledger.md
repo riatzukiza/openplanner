@@ -469,3 +469,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-ff5-nine-native-boundaries-green-20261010
   note: All nine native findings verified and repaired inside existing four package roots. Old obsolete-content test strengthened with old-hash/current-parent checks, not skipped. All191 historical receipts/reflection prefixes and original56 manifest preserved. Eight unchanged-input actual gate checkpoints reused;eleven gates refreshed. No approval/round transfer, hosted currentcandidate claim, runtime/board/paid/spore or unqualified merge.
+
+- ts: 2026-10-10T19:58:34.524Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-084-six-native-boundaries-red-20261010
+  note: All six findings verified with original production unchanged. Initial SDK fixture syntax failure preserved but not causal proof; no assertion removed or skipped. Keep prepared full084CodeRabbit UNSENT because a concrete next repair is now required. All192 historical receipt/reflection prefixes and original56 manifest retained; no runtime/board/paid/spore.

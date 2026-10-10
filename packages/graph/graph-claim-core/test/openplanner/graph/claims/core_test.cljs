@@ -292,3 +292,31 @@
     (is (= :accept (:decision/kind (policy/evaluate-claim claim [] {:now-ms 999}))))
     (is (= :expired-claim (:decision/reason (policy/evaluate-claim claim [] {:now-ms 1000}))))
     (is (= :reject (:decision/kind (policy/evaluate-claim claim [] {:now-ms 1001}))))))
+
+(deftest every-supplied-graph-key-alias-must-agree
+  (doseq [[camel snake] [["sourceNodeId" "source_node_id"]
+                         ["targetNodeId" "target_node_id"]
+                         ["relationKind" "relation_kind"]]]
+    (let [base #js {:claim_id "edge_claim:key-alias" :source_node_id "a"
+                    :target_node_id "b" :relation_kind "supports" :status "active"}
+          invalid (js/Object.assign #js {} base)
+          valid (js/Object.assign #js {} base)]
+      (aset invalid camel "different")
+      (aset valid camel (aget base snake))
+      (is (false? (aget (boundary/explain-edge-claim-js invalid) "valid?")))
+      (is (nil? (boundary/project-edge-claim-js invalid)))
+      (is (= 0 (aget (aget (mongo/project-mongo-edge-claims-js #js [invalid]) "stats") "edges")))
+      (is (true? (aget (boundary/explain-edge-claim-js valid) "valid?"))))))
+
+(deftest all-undirected-projection-paths-use-canonical-endpoints
+  (let [reverse #js {:source_node_id "z" :target_node_id "a" :relation_kind "supports"
+                     :direction "undirected" :status "active"}
+        forward #js {:source_node_id "a" :target_node_id "z" :relation_kind "supports"
+                     :direction "undirected" :status "active"}
+        left (boundary/project-edge-claim-js reverse)
+        right (boundary/project-edge-claim-js forward)
+        stored (aget (aget (mongo/project-mongo-edge-claims-js #js [reverse]) "edges") 0)]
+    (is (= "a" (aget left "source")))
+    (is (= "z" (aget left "target")))
+    (is (= (js->clj right) (js->clj left)))
+    (is (= (js->clj left) (js->clj stored)))))

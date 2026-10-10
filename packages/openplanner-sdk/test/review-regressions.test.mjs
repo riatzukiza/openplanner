@@ -1161,3 +1161,28 @@ test('calendar-valid ISO leap day and timezone offsets remain admissible',async(
     assert.ok(mongo.events.calls.writes.length>0);
   }
 });
+
+// Native Codex5480582857: causal RED at084b377, before the six production repairs.
+for(const label of [0,{},false,null,'  '])test('malformed retention labels refuse the complete ingest batch '+JSON.stringify(label),async()=>{
+  const mongo=mongoFixture();let providers=0;const invalid={...ordinaryEvent('bad-label','Outside information.'),extra:{openplanner_labels:{labels:[label]}}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[ordinaryEvent('prior','Earlier valid encounter.'),invalid]),/label.*nonblank string/i);
+  assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(providers,0);
+});
+for(const [kind,field] of [['graph.edge','source_node_id'],['graph.edge','target_node_id'],['graph.edge','edge_kind'],['graph.edge','edge_type'],['graph.node','node_id']])for(const value of [42,{},false])test('graph identifier refuses coercion before admission '+kind+'/'+field+'/'+JSON.stringify(value),async()=>{
+  const mongo=mongoFixture();let providers=0;const extra=kind==='graph.edge'?{source_node_id:'a',target_node_id:'b',edge_kind:'supports'}:{node_id:'node'};
+  const invalid={...ordinaryEvent('bad-graph','Outside information.'),kind,extra:{...extra,[field]:value}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[ordinaryEvent('prior','Earlier encounter.'),invalid]),/graph.*identifier.*nonblank string/i);
+  assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(providers,0);
+});
+test('session creation retry preserves one marker and the original stored state',async()=>{
+  const mongo=mongoFixture();const sessions=createProtocols({mongo}).sessionManagement;
+  const first=await sessions.createSession({session:'stable-session',metadata:{first:true},extra:{openplanner_labels:{labels:['keep']}}});
+  const repeated=await sessions.createSession({session:'stable-session',metadata:{first:false},extra:{openplanner_labels:{labels:[]}}});
+  assert.equal(mongo.events.rows.size,1);assert.deepEqual(repeated,first);assert.equal(Object.hasOwn(repeated,'expiresAt'),false);
+});
+for(const name of ['ftsSearchWithQuality','vectorSearchWithQuality'])test(name+' refuses whitespace before storage and provider work',async()=>{
+  let effects=0;const c={find(){effects++;throw new Error('unexpected storage access');}};
+  const provider={generate:async()=>{effects++;return [[1,0]];}};
+  const context={mongo:{events:c,compacted:c,vectorPartitions:c},embeddingRuntime:{hot:{getEmbeddingFunctionForModel(){effects++;return provider;}}}};
+  await assert.rejects((name==='ftsSearchWithQuality'?ftsSearchWithQuality:vectorSearchWithQuality)(context,{q:' \t\n ',quality:'any'}),/q is required/i);assert.equal(effects,0);
+});
