@@ -1,5 +1,5 @@
 import path from "node:path";
-import { parseModelMap, type EmbeddingModelConfig } from "./embedding-models.js";
+import { parseModelMap, parseModelDimensions, type EmbeddingModelConfig } from "./embedding-models.js";
 
 export type SemanticCompactionConfig = {
   enabled: boolean;
@@ -80,7 +80,8 @@ export function loadConfig(): OpenPlannerConfig {
     defaultModel: defaultEmbedModel,
     bySource: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_SOURCE),
     byKind: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_KIND),
-    byProject: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_PROJECT)
+    byProject: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_PROJECT),
+    dimensionsByModel: parseModelDimensions(process.env.EMBED_PROVIDER_MODEL_DIMENSIONS),
   };
   const semanticCompaction: SemanticCompactionConfig = {
     enabled: parseBool(process.env.SEMANTIC_COMPACTION_ENABLED, true),

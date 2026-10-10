@@ -7,7 +7,7 @@
  * env var PROTOCOL_IMPL: "mongo" (default) | "rest"
  */
 
-import { upsertEvent, type MongoConnection } from "./mongodb.js";
+import { upsertEvent, eventRetentionExpiry, type MongoConnection } from "./mongodb.js";
 
 /**
  * The minimal context protocol implementations need. The REST API passes its
@@ -69,7 +69,11 @@ class MongoSessionManagement implements SessionManagement {
   constructor(private ctx: ProtocolContext) {}
 
   async createSession(opts: any): Promise<any> {
-    const doc = { ...opts, kind: "session", createdAt: new Date(), updatedAt: new Date() };
+    const { expiresAt: _callerExpiry, ...content } = opts;
+    const now = new Date();
+    const expiresAt = eventRetentionExpiry(content.extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
+    const doc = { ...content, kind: "session", createdAt: now, updatedAt: now,
+      ...(expiresAt ? { expiresAt } : {}) };
     await this.ctx.mongo.events.insertOne(doc);
     return doc;
   }

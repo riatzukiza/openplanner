@@ -11,9 +11,12 @@ import { dirname } from "node:path";
 export function makeEmbeddingCacheKey(params: {
   model: string;
   text: string;
+  dimensions?: number;
 }): string {
   const digest = createHash("sha256").update(params.text, "utf8").digest("hex");
-  return `${params.model}::${digest}`;
+  const modelContract = params.dimensions === undefined ? params.model
+    : `${params.model}::dimensions:${params.dimensions}`;
+  return `${modelContract}::${digest}`;
 }
 
 export class PersistentEmbeddingCache {

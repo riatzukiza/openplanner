@@ -21,6 +21,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export type QualityMode = "good" | "not_bad" | "any" | "good_then_not_bad";
 
+function boundedSearchLimit(value: unknown): number {
+  if ((typeof value !== "number" && typeof value !== "string")
+      || (typeof value === "string" && !value.trim())
+      || !Number.isInteger(Number(value))) {
+    throw new Error("Search limit must be a finite integer");
+  }
+  return Math.max(1, Math.min(200, Number(value)));
+}
+
 export function qualityMode(value: unknown): QualityMode {
   const normalized = String(value ?? "good_then_not_bad").trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "good" || normalized === "not_bad" || normalized === "any" || normalized === "good_then_not_bad") {
@@ -67,7 +76,7 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
   const limit = body.limit ?? 20;
   if (!q || typeof q !== "string") throw new Error("q is required");
 
-  const lim = Math.max(1, Math.min(200, Number(limit)));
+  const lim = boundedSearchLimit(limit);
   const tier = body.tier ?? "both";
   const mode = qualityMode(body.quality ?? (body as any).output_quality);
 
@@ -128,6 +137,7 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
   const k = body.k ?? 20;
 
   if (!q || typeof q !== "string") throw new Error("q is required");
+  const limit = boundedSearchLimit(k);
 
   const whereFromBody = isRecord(body.where) ? { ...body.where } : {};
   if (body.source) whereFromBody.source = body.source;
@@ -146,7 +156,6 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
   const tier = body.tier ?? "both";
   const includeHot = tier !== "compact";
   const includeCompact = tier !== "hot";
-  const limit = Math.max(1, Math.min(200, Number(k)));
   const mode = qualityMode(body.quality ?? (body as any).output_quality);
 
   const embeddingRuntime = ctx.embeddingRuntime;

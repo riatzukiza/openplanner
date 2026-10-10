@@ -59,13 +59,22 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
   try { protocols = createProtocols({ mongo }); }
   catch (error) { await closeMongoDB(mongo); throw error; }
   const log = options.log;
+  const pendingIngests = new Set<Promise<void>>();
+  let closing: Promise<void> | undefined;
 
   return {
     config,
     mongo,
     embeddingRuntime,
     protocols,
-    ingestEvents: (events) => ingestEvents({ mongo, embeddingRuntime, log }, events),
+    ingestEvents: (events) => {
+      if (closing) return Promise.reject(new Error("OpenPlanner SDK is closing"));
+      const admitted = ingestEvents({ mongo, embeddingRuntime, log }, events);
+      const completed = admitted.then(result => result.backgroundIndexing);
+      pendingIngests.add(completed);
+      void completed.then(() => pendingIngests.delete(completed), () => pendingIngests.delete(completed));
+      return admitted;
+    },
     searchFts: (body) => ftsSearchWithQuality({ mongo, embeddingRuntime }, body),
     searchVector: (body) => vectorSearchWithQuality({ mongo, embeddingRuntime }, body),
     listSessions: (opts) => protocols.sessionManagement.listSessions(opts),
@@ -74,10 +83,14 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
       const collections = await mongo.db.listCollections().toArray();
       return collections.map((c: { name: string }) => c.name).sort();
     },
-    close: async () => {
-      try { await embeddingRuntime.flushCaches(); }
-      catch { console.warn("Embedding cache persistence failed"); }
-      await closeMongoDB(mongo);
+    close: () => {
+      if (!closing) closing = (async () => {
+        await Promise.allSettled([...pendingIngests]);
+        try { await embeddingRuntime.flushCaches(); }
+        catch { console.warn("Embedding cache persistence failed"); }
+        await closeMongoDB(mongo);
+      })();
+      return closing;
     },
   };
 }

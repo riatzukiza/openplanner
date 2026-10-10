@@ -9,7 +9,30 @@ export type EmbeddingModelConfig = {
   bySource: Readonly<Record<string, string>>;
   byKind: Readonly<Record<string, string>>;
   byProject: Readonly<Record<string, string>>;
+  /** Explicit model contract; update it when an alias changes dimensions. */
+  dimensionsByModel?: Readonly<Record<string, number>>;
 };
+
+export function parseModelDimensions(raw: string | undefined): Record<string, number> {
+  if (!raw?.trim()) return {};
+  let entries: Record<string, unknown>;
+  try {
+    const input = raw.trim();
+    const parsed: unknown = input.startsWith("{") ? JSON.parse(input) : parsePairList(input);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    entries = parsed as Record<string, unknown>;
+  } catch { throw new Error("Invalid embedding model dimension configuration"); }
+  const dimensions: Record<string, number> = {};
+  for (const [model, value] of Object.entries(entries)) {
+    if (!model.trim() || (typeof value !== "string" && typeof value !== "number")
+        || (typeof value === "string" && !value.trim())
+        || !Number.isInteger(Number(value)) || Number(value) <= 0) {
+      throw new Error("Embedding model dimensions must be positive integers");
+    }
+    Object.defineProperty(dimensions, model.trim(), { value: Number(value), enumerable: true, writable: true, configurable: true });
+  }
+  return dimensions;
+}
 
 function normKey(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;

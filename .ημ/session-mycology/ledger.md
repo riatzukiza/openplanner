@@ -397,3 +397,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-dfc1-public-boundary-causal-red-20261010
   note: Fresh completed negative Codex review restores its availability after the earlier quota reply. All seven findings reproduce before production repair; prior assertions remain passing. Dimension refresh is bound to an explicit configured model dimension contract, not guessed alias drift. Original 56-file manifest and all 183 receipt/reflection bytes remain intact. The prior dfc1 hosted and isolated consumer passes are historical after this new finding-bearing review. No approval, live runtime, board, paid usage, or spore action.
+
+- ts: 2026-10-10T18:19:52.098Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-dfc1-public-boundary-complete-green-20261010
+  note: SDK close drains admitted background indexing before cache/Mongo closure. Text and limits reject malformed inputs before effects; event/session retention shares one decision and strips caller expiry; provider URLs normalize trailing slashes. Explicit configured dimension contracts refresh graph rows and persistent cache; no opaque alias inference. First GREEN 132/133 failed on obsolete dimensions and remains retained; successful replacement now cleans only owned old-dimensional rows. Original 56-file manifest and all 184 receipt/reflection bytes remain exact prefixes. New Codex completion restores availability; current native full scope/checks still required. No live runtime, board, paid usage or spore action.

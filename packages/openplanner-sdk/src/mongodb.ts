@@ -38,6 +38,11 @@ function labelsFromExtra(extra: unknown): string[] {
   return [...new Set(labels.map((label) => String(label ?? "").trim()).filter(Boolean))];
 }
 
+/** The event writer and session adapter share the same retention decision. */
+export function eventRetentionExpiry(extra: unknown, ttlSeconds: number, now: Date): Date | undefined {
+  return labelsFromExtra(extra).length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
+}
+
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(stableJson).join(",")}]`;
@@ -936,13 +941,14 @@ export async function upsertEvent(
   const now = new Date();
   const schemaVersion = event.schema_version ?? OPENPLANNER_SCHEMA_TARGETS.event;
   const state = event.migration_state ?? eventMigrationState(now);
+  const { expiresAt: _callerExpiry, ...content } = event;
   const labels = labelsFromExtra(event.extra);
-  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
+  const expiresAt = eventRetentionExpiry(event.extra, ttlSeconds, now);
   await collection.updateOne(
     { _id: event.id },
     {
       $set: {
-        ...event,
+        ...content,
         schema_version: schemaVersion,
         migration_state: state,
         ...(expiresAt ? { expiresAt } : {}),
@@ -966,13 +972,14 @@ export async function upsertCompactedMemory(
   ttlSeconds = parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS"),
 ): Promise<void> {
   const now = new Date();
+  const { expiresAt: _callerExpiry, ...content } = memory;
   const labels = labelsFromExtra(memory.extra);
-  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
+  const expiresAt = eventRetentionExpiry(memory.extra, ttlSeconds, now);
   await collection.updateOne(
     { _id: memory.id },
     {
       $set: {
-        ...memory,
+        ...content,
         ...(expiresAt ? { expiresAt } : {}),
         updatedAt: now,
       },

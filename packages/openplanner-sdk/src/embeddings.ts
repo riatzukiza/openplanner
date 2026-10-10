@@ -54,6 +54,7 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
   private url: string;
   private apiKey?: string;
   private cache?: PersistentEmbeddingCache;
+  private expectedDimensions?: number;
   private batchWindowMs: number;
   private maxBatchItems: number;
   private maxConcurrentBatches: number;
@@ -70,15 +71,20 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
     opts?: {
       apiKey?: string;
       cache?: PersistentEmbeddingCache;
+      expectedDimensions?: number;
       batchWindowMs?: number;
       maxBatchItems?: number;
       maxConcurrentBatches?: number;
     }
   ) {
     this.model = model;
-    this.url = url;
+    this.url = url.replace(/\/+$/, "");
     this.apiKey = typeof opts?.apiKey === "string" && opts.apiKey.length > 0 ? opts.apiKey : undefined;
     this.cache = opts?.cache;
+    this.expectedDimensions = opts?.expectedDimensions;
+    if (this.expectedDimensions !== undefined && (!Number.isInteger(this.expectedDimensions) || this.expectedDimensions <= 0)) {
+      throw new Error("Embedding model dimensions must be positive integers");
+    }
     this.batchWindowMs = typeof opts?.batchWindowMs === "number" && Number.isFinite(opts.batchWindowMs) && Math.floor(opts.batchWindowMs) >= 1
       ? Math.floor(opts.batchWindowMs)
       : 50;
@@ -96,8 +102,15 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
     const keys = texts.map((text) => makeEmbeddingCacheKey({
       model: this.model,
       text,
+      dimensions: this.expectedDimensions,
     }));
     const cached = this.cache ? await this.cache.getMany(keys) : new Map<string, number[]>();
+    if (this.expectedDimensions !== undefined) for (const [key, vector] of cached) {
+      if (vector.length !== this.expectedDimensions) {
+        cached.delete(key);
+        this.cache?.delete(key);
+      }
+    }
     const inFlight = new Map<string, Promise<number[]>>();
 
     for (let index = 0; index < keys.length; index += 1) {
@@ -146,6 +159,9 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
       }
       if (out.length !== texts.length) {
         throw new EmbedProviderError(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
+      }
+      if (this.expectedDimensions !== undefined && out.some(vector => vector.length !== this.expectedDimensions)) {
+        throw new EmbedProviderError("Embed provider vector violates declared model dimensions");
       }
       return out;
     } catch (err) {
@@ -340,6 +356,7 @@ export class ParallelEmbeddingPool {
       batchWindowMs?: number;
       maxBatchItems?: number;
       workerCount?: number;
+      expectedDimensions?: number;
     } = {}
   ) {
     const workerCount = opts.workerCount ?? 4;

@@ -60,8 +60,8 @@ export function validateEvent(ev: EventEnvelopeV1) {
     }
   }
   if (typeof ev.ts !== "string" || !ev.ts.trim() || !Number.isFinite(Date.parse(ev.ts))) throw new Error("event.ts must be a valid timestamp (ISO)");
-  if (ev.kind === "graph.node" && ev.text !== undefined && typeof ev.text !== "string") {
-    throw new Error("graph.node event text must be a string when supplied");
+  if (ev.text !== undefined && typeof ev.text !== "string") {
+    throw new Error(`${ev.kind} event text must be a string when supplied`);
   }
 }
 
@@ -709,21 +709,29 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
           for (const [model, rows] of groupedByModel) {
             try {
               const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunctionForModel(model);
+              const expectedDimensions = embeddingRuntime.hot.getEmbeddingDimensionsForModel?.(model);
               const nodeIds = rows.map((row) => row.node_id);
               const existing = await mongo.graphNodeEmbeddings
-                .find({ node_id: { $in: nodeIds }, embedding_model: model })
-                .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1, expiresAt: 1 })
+                .find({ node_id: { $in: nodeIds }, embedding_model: model,
+                  ...(expectedDimensions !== undefined ? { embedding_dimensions: expectedDimensions } : {}) })
+                .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1,
+                  chunk_count: 1, expiresAt: 1, embedding: 1, embedding_dimensions: 1 })
                 .toArray();
               const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
 
-              const toEmbed = rows.filter((row) => {
+              const reusable = (row: GraphNodeEmbeddingInput): boolean => {
                 const previous = existingById.get(row.node_id);
-                return !previous || previous.text !== row.text || previous.source_text_hash_sha256 !== row.source_text_hash_sha256;
-              });
+                return Boolean(previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                  && (expectedDimensions === undefined || (previous.embedding_dimensions === expectedDimensions
+                    && Array.isArray(previous.embedding) && previous.embedding.length === expectedDimensions
+                    && previous.embedding.every((value: unknown) => typeof value === "number" && Number.isFinite(value)))));
+              };
+
+              const toEmbed = rows.filter(row => !reusable(row));
 
               for (const row of rows) {
                 const previous = existingById.get(row.node_id);
-                if (previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                if (previous && reusable(row)
                     && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
                         || previous.chunk_count !== row.chunk_count
                         || (previous.expiresAt?.getTime() ?? null) !== (row.expiresAt?.getTime() ?? null))) {
@@ -747,6 +755,9 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
               const storedRows = toEmbed.flatMap((row, idx) => {
                 const embedding = embeddings[idx];
                 if (!Array.isArray(embedding) || embedding.length === 0) return [];
+                if (expectedDimensions !== undefined && embedding.length !== expectedDimensions) {
+                  throw new Error("Graph embedding violates declared model dimensions");
+                }
                 return [{
                   node_id: row.node_id,
                   source_event_id: row.source_event_id,
@@ -764,6 +775,12 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
 
               if (storedRows.length > 0) {
                 await upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings, storedRows);
+                if (expectedDimensions !== undefined) for (const row of storedRows) {
+                  await mongo.graphNodeEmbeddings.deleteMany({
+                    node_id: row.node_id, source_event_id: row.source_event_id,
+                    embedding_model: model, embedding_dimensions: { $ne: expectedDimensions },
+                  });
+                }
               }
             } catch (err) {
               log.warn({ err, model, count: rows.length }, "Failed graph embedding model group; continuing independent groups");
