@@ -713,7 +713,7 @@ test('SDK runtime construction failures occur before opening Mongo',async()=>{
 });
 test('SDK protocol setup rejection closes the newly connected client',async()=>{
   const script=`import assert from 'node:assert/strict';const {MongoClient}=await import('mongodb');
-    const module=await import(process.argv[1]);const collections=new Map();const collection=()=>({createIndex:async()=>'',indexes:async()=>[],dropIndex:async()=>{},updateMany:async()=>{},updateOne:async()=>{},findOne:async()=>null,listSearchIndexes:()=>({toArray:async()=>[]})});
+    const module=await import(process.argv[1]);const collections=new Map();const collection=()=>({createIndex:async()=>'',indexes:async()=>[],dropIndex:async()=>{},updateMany:async()=>{},updateOne:async()=>{},findOne:async()=>null,find:()=>({sort(){return this;},toArray:async()=>[]}),listSearchIndexes:()=>({toArray:async()=>[{status:'READY',queryable:true}]})});
     let closed=0;MongoClient.prototype.connect=async function(){return this;};MongoClient.prototype.db=()=>({collection:n=>{if(!collections.has(n))collections.set(n,collection());return collections.get(n);}});MongoClient.prototype.close=async()=>{closed++;};
     await assert.rejects(module.createOpenPlannerSdk({config:{embedProviderCachePath:undefined}}),/REST protocol/);assert.equal(closed,1);`;
   await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/sdk.js',import.meta.url).href],{cwd:new URL('..',import.meta.url),env:{...process.env,PROTOCOL_IMPL:'rest',EMBED_PROVIDER_CACHE_PATH:'/fixture-cache-unused'},timeout:5000});

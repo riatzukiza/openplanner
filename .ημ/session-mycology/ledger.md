@@ -286,3 +286,12 @@
   spore: none
   receipt-refs: cephalon-bounded-bdc-native-red-20261010
   note: Seventeen actual native COMMENTED findings;no approval. FullCR completedall146/actual9findings;Codex8findings. All54/17rootIDs/rawRESTbytes preserved in one rawbundle to retain included150filescope. Original56manifest and full174receipt/reflectionprefix remain immutable. No runtime/clock/maker/board/social/paid/spore;newtests executedbeforeproduction.
+
+- ts: 2026-10-10T16:32:39.938Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-bdc-protocol-causal-red-correction-20261010
+  note: Correction to receipt175: first fixture failedrequiredcacheenv; second failedmissingvectorPartitions.find before protocolsetup. Neither proves clientclose leak. Third correctedfixture supplies the existingcursor shape, reaches actual protocolfailure and causally failsclosecount0. Preserve all failedattemptbytes in priorRED and private logs; final GREEN will include exactthirdoutput. No assertion removed. Actualrawnativebundle has17findingroots;54 is testcount, not findingcount. No approval/runtime/board/spore.
