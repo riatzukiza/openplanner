@@ -39,6 +39,8 @@
                    "relationKind" "relation_kind" "relation-kind" "kind"]]
       (when-let [entry (present-entry doc [(keyword field) field])]
         (aset row field (:value entry))))
+    (when-let [expiration (present-entry doc [:validUntil "validUntil"])]
+      (aset row "validUntil" (:value expiration)))
     (when camel (aset row "claimId" (:value camel)))
     (when snake (aset row "claim_id" (:value snake)))
     (when storage (aset row "claim_id" (:value storage)))

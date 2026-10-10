@@ -159,6 +159,12 @@ const noopLogger: IngestLogger = { warn: () => {} };
 // writes to terminate; this is not a distributed writer or fencing protocol.
 const ingestTails = new WeakMap<MongoConnection, Map<string, Promise<void>>>();
 
+function autoDerivedEventId(event: EventEnvelopeV1): string | null {
+  return event.kind !== "graph.node" && event.kind !== "graph.edge" && hasIndexableEventText(event)
+    ? `graph.node:derive:${event.id}` : null;
+}
+
+
 export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
   const unique = new Map<string, EventEnvelopeV1>();
   const payloads = new Map<string, string>();
@@ -174,14 +180,15 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   }
   const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
   ingestTails.set(ctx.mongo, tails);
-  const predecessors = [...unique.keys()].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
+  const reservedIds = new Set([...unique.keys(), ...[...unique.values()].map(autoDerivedEventId).filter((id): id is string => id !== null)]);
+  const predecessors = [...reservedIds].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
   let complete!: () => void;
   const terminal = new Promise<void>(resolve => { complete = resolve; });
   // Reserve the complete batch without yielding, avoiding overlapping-batch
   // lock ordering. Unrelated parents remain independent.
-  for (const id of unique.keys()) tails.set(id, terminal);
+  for (const id of reservedIds) tails.set(id, terminal);
   const release = () => {
-    for (const id of unique.keys()) if (tails.get(id) === terminal) tails.delete(id);
+    for (const id of reservedIds) if (tails.get(id) === terminal) tails.delete(id);
     complete();
   };
   try {
@@ -211,10 +218,26 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     }
     batchPayloads.set(ev.id, payload);
   }
+  // Generated event identities cannot replace caller-owned source rows. Check
+  // every batch and persisted owner before the first event/projection write.
+  const sourceIds = new Set(events.map(event => event.id));
+  for (const event of events) {
+    const derivedId = autoDerivedEventId(event);
+    if (!derivedId) continue;
+    if (sourceIds.has(derivedId)) throw new Error(`derived event identity collision: ${derivedId}`);
+    const previous = await mongo.events.findOne({ _id: derivedId });
+    if (previous && (previous.source !== "openplanner-derive" || (previous.extra as Record<string, unknown> | undefined)?.source_event_id !== event.id)) {
+      throw new Error(`derived event identity ownership collision: ${derivedId}`);
+    }
+  }
+
   // Old endpoint-keyed edges can lack causal ownership. Refuse replacement
   // rather than mutate the event and retain stale or delete another owner.
   for (const ev of events) {
     const previous = await mongo.events.findOne({ _id: ev.id });
+    if (previous?.source === "openplanner-derive" && typeof (previous.extra as Record<string, unknown> | undefined)?.source_event_id === "string") {
+      throw new Error(`derived event identity ownership collision: ${ev.id}`);
+    }
     if (previous?.kind === "graph.edge") {
       const old = (previous.extra as Record<string, unknown> | undefined) ?? {};
       const source = norm(old.source_node_id)?.trim();
@@ -595,7 +618,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     if (ev.kind !== "graph.node" && ev.kind !== "graph.edge" && hasIndexableEventText(ev)) {
       const nodeId = ev.id;
       const preview = norm(ev.text)?.trim() ?? "";
-      const derivedEventId = `graph.node:derive:${ev.id}`;
+      const derivedEventId = autoDerivedEventId(ev)!;
       const label = String(
         extra.label ?? (sr as any).message ?? (preview.length > 80 ? `${preview.slice(0, 77)}...` : preview) ?? nodeId,
       ).trim() || nodeId;

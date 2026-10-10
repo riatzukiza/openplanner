@@ -320,18 +320,23 @@ async function queryPartitionWithVexxTopK(params: {
 
   if (!response.ok) return null;
 
-  const payload = await response.json() as { matches?: Array<{ id?: string; score?: number }> };
-  if (!Array.isArray(payload.matches)) return null;
-
+  const payload = await response.json() as { matches?: unknown } | null;
+  if (!payload || !Array.isArray(payload.matches) || payload.matches.length !== validCandidates.length) return null;
   const docsById = new Map(validCandidates.map((doc) => [doc._id, doc]));
-  return payload.matches
-    .map((match) => {
-      const id = typeof match.id === "string" ? match.id : "";
-      const score = typeof match.score === "number" ? match.score : Number.NEGATIVE_INFINITY;
-      const doc = docsById.get(id);
-      return doc ? { doc, score } : null;
-    })
-    .filter((entry): entry is { doc: MongoVectorDocument; score: number } => entry !== null && Number.isFinite(entry.score));
+  if (docsById.size !== validCandidates.length) return null;
+  const seen = new Set<string>();
+  const matches: Array<{ doc: MongoVectorDocument; score: number }> = [];
+  for (const value of payload.matches) {
+    if (!value || typeof value !== "object") return null;
+    const match = value as { id?: unknown; score?: unknown };
+    if (typeof match.id !== "string" || typeof match.score !== "number" || !Number.isFinite(match.score)
+      || seen.has(match.id)) return null;
+    const doc = docsById.get(match.id);
+    if (!doc) return null;
+    seen.add(match.id);
+    matches.push({ doc, score: match.score });
+  }
+  return matches;
 }
 
 function toMetadata(doc: MongoVectorDocument): Record<string, unknown> {
@@ -1035,6 +1040,24 @@ function uniqueParentRows(rows: Array<{ doc: MongoVectorDocument; score: number 
     .slice(0, Math.max(1, k));
 }
 
+// A failed redacted-source read is not a successful vector match. Hydrate in
+// rank order before parent admission/limit, allowing a lower accessible chunk.
+async function hydratedParentRows(rows: Array<{ doc: MongoVectorDocument; score: number }>, k: number): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
+  const seen = new Set<string>();
+  const admitted: Array<{ doc: MongoVectorDocument; score: number }> = [];
+  for (const entry of [...rows].sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))) {
+    const parent = entry.doc.parent_id ?? entry.doc._id;
+    if (seen.has(parent)) continue;
+    let text: string;
+    try { text = await hydrateVectorDocumentText(entry.doc); } catch { continue; }
+    if (!text) continue;
+    seen.add(parent);
+    admitted.push({ doc: { ...entry.doc, text }, score: entry.score });
+    if (admitted.length >= Math.max(1, k)) break;
+  }
+  return admitted;
+}
+
 async function queryPartitionWithNativeVectorSearch(params: {
   collection: Collection<MongoVectorDocument>;
   partition: MongoVectorPartitionDocument;
@@ -1108,15 +1131,21 @@ async function queryPartitionWithNativeVectorSearch(params: {
     if (VEXX_ENFORCE) throw error;
     return null;
   });
-  if (rescored) return uniqueParentRows(rescored, params.k);
-  if (VEXX_ENFORCE) {
+  if (!rescored && VEXX_ENFORCE) {
     throw vexxRequiredError(`native_vector_search:${params.partition.collectionName}`);
   }
   // Native Atlas metadata is normalized; recompute from its projected vectors
   // so native, Vexx and cosine fallback partitions share raw cosine distance.
-  return uniqueParentRows(rows
+  const scored = rescored ?? rows
     .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
-    .filter((entry) => Number.isFinite(entry.score)), params.k);
+    .filter((entry) => Number.isFinite(entry.score));
+  const admitted = await hydratedParentRows(scored, params.k);
+  // Exhaustion at the native window may hide usable rows. The caller's full
+  // cosine scan supplies additional candidates rather than empty top hits.
+  if (admitted.length < params.k && rows.length >= Math.max(params.k * 20, 100)) {
+    throw new Error("native vector candidate window exhausted after hydration");
+  }
+  return admitted;
 }
 
 async function queryPartitionWithCosineScan(params: {
@@ -1137,11 +1166,10 @@ async function queryPartitionWithCosineScan(params: {
     if (VEXX_ENFORCE) throw error;
     return null;
   });
-  if (vexxRows) return uniqueParentRows(vexxRows, params.k);
-  if (VEXX_ENFORCE) {
+  if (!vexxRows && VEXX_ENFORCE) {
     throw vexxRequiredError(`cosine_scan:${params.collection.collectionName}`);
   }
-  return uniqueParentRows(candidates
+  return hydratedParentRows(vexxRows ?? candidates
     .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
     .filter((entry) => Number.isFinite(entry.score)), params.k);
 }
