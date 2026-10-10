@@ -169,3 +169,12 @@
   spore: none
   receipt-refs: cephalon-bounded-second-native-review-green-20261010
   note: Preserve explicit semantic identity over storage identity and validate the whole input batch before starting effects. A successful clean-dist package command proves current source is tested. Local source gates remain separate from native approval and live character proof.
+
+- ts: 2026-10-10T14:33:49.161Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-f5-native-red-20261010
+  note: Native Codex current finding review restores available cohort and supersedes old quota. Confirmed retention disable, default tenant/policy overwrite, tenant identity, invalid timestamps, label and nested scope collisions, cache persistence, absolute source paths, unknown lifecycle, stale index binding, URL redaction, detached indexing and passage formatting. Initial authored timer mock used unavailable original method; preserved initial proof, corrected mock before source changes and reproduced actual completion failure. Historical receipts and original56blob provenance retained. No runtime, clock, deployment, social, board, paid or spore change.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
@@ -11,6 +11,7 @@ import { MongoClient } from 'mongodb';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ilikeSearch } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
+import { safeSourceFilePath } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality } from '../dist/search-core.js';
@@ -35,15 +36,16 @@ function collection(name, initial = []) {
     async updateOne(filter, update) {
       if (this.failSetup) { this.failSetup = false; throw new Error('temporary partition failure'); }
       calls.writes.push({filter, update});
-      const key = filter._id ?? filter.tenant_id;
+      const key = filter._id ?? filter.tenant_id ?? filter.label_id;
       const old = rows.get(key);
       const next = {...(!old ? update.$setOnInsert : {}), ...old, ...filter, ...update.$set};
       for (const field of Object.keys(update.$unset ?? {})) delete next[field];
       rows.set(key, next); return {modifiedCount:1};
     },
+    async findOneAndUpdate(filter, update) { await this.updateOne(filter,update); return this.findOne(filter); },
     async insertOne(row) { rows.set(`auto-${rows.size}`, {...row}); },
     async insertMany(items) { for (const row of items) await this.insertOne(row); },
-    async findOne(filter) { return rows.get(filter._id ?? filter.tenant_id) ?? null; },
+    async findOne(filter) { return rows.get(filter._id ?? filter.tenant_id ?? filter.label_id) ?? null; },
     find(filter) {
       calls.searches.push(filter);
       if (filter.$text && this.failText) throw new Error('text index unavailable');
@@ -52,6 +54,7 @@ function collection(name, initial = []) {
         if (q === 'good' && r.extra?.openplanner_labels?.quality !== 'good') return false;
         if (q?.$ne === 'bad' && r.extra?.openplanner_labels?.quality === 'bad') return false;
         if (filter.id?.$nin?.includes(r.id)) return false;
+        if (filter.tier && r.tier !== filter.tier) return false;
         return true;
       }));
     },
@@ -67,6 +70,7 @@ function mongoFixture() {
   const client = {startSession() { return {withTransaction: async f => f(), endSession: async () => {}}; }};
   return {db, client, collections, events:db.collection('events'), compacted:db.collection('compacted'),
     hotVectors:db.collection('hot_vectors'), compactVectors:db.collection('compact_vectors'), vectorPartitions:db.collection('vector_partitions'),
+    graphNodeEmbeddings:db.collection('embeddings'),graphEdges:db.collection('graph_edges'),graphLabelNodes:db.collection('graph_label_nodes'),
     retention:{eventsTtlSeconds:60,compactedTtlSeconds:120}};
 }
 const item = (id, text = 'ordinary document', extra) => ({id,text,extra,metadata:{embedding_model:'fixture',ts:'2026-01-01T00:00:00Z'}});
@@ -272,4 +276,71 @@ test('removing the last vector label uses the same configured retention and time
     const update=collection.calls.writes[0].update;
     assert.equal(update[1].$set.expiresAt.$cond[2]-update[0].$set.updatedAt,seconds*1000);
   }
+});
+
+test('disabled retention removes managed flat and existing partition TTLs without dropping unrelated indexes',async()=>{
+  const mongo=mongoFixture();const managed=[['events','events_ttl'],['compacted','compacted_ttl'],['hot_vectors','hot_vectors_ttl'],['compact_vectors','compact_vectors_ttl'],['hot_existing','hot_vectors_ttl'],['compact_existing','compact_vectors_ttl']];
+  for(const [name,index] of managed) mongo.db.collection(name).indexes=async()=>[{name:index,expireAfterSeconds:0},{name:'unrelated_ttl',expireAfterSeconds:1}];
+  mongo.vectorPartitions.rows.set('hot',{tier:'hot',collectionName:'hot_existing'});
+  mongo.vectorPartitions.rows.set('compact',{tier:'compact',collectionName:'compact_existing'});
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{
+    await openMongoDB({uri:'mongodb://fixture.invalid',dbName:'fixture',eventsCollection:'events',compactedCollection:'compacted',vectorHotCollection:'hot_vectors',vectorCompactCollection:'compact_vectors',graphLayoutCollection:'layout',graphNodeEmbeddingCollection:'embeddings',eventsTtlSeconds:0,compactedTtlSeconds:0});
+    for(const [name,index] of managed){const c=mongo.db.collection(name);assert.deepEqual(c.calls.drops,[index],name);assert.ok(c.calls.writes.some(w=>w.update.$unset?.expiresAt===''),name);}
+  }finally{connect.mock.restore();db.mock.restore();}
+});
+test('opening the SDK preserves customized default tenant and policy settings',async()=>{
+  const mongo=mongoFixture();const tenant={tenant_id:'knoxx-session',name:'Personal creator',status:'inactive',domains:['kept.invalid']};const policy={tenant_id:'knoxx-session',retention_days:3,pii_rules:{reject:true},rate_limits:{tokens_per_day:1}};
+  mongo.db.collection('tenants').rows.set('knoxx-session',tenant);mongo.db.collection('tenant_policies').rows.set('knoxx-session',policy);
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await openMongoDB({uri:'mongodb://fixture.invalid',dbName:'fixture',eventsCollection:'events',compactedCollection:'compacted',vectorHotCollection:'hot_vectors',vectorCompactCollection:'compact_vectors',graphLayoutCollection:'layout',graphNodeEmbeddingCollection:'embeddings'});await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual(mongo.db.collection('tenants').rows.get('knoxx-session'),tenant);assert.deepEqual(mongo.db.collection('tenant_policies').rows.get('knoxx-session'),policy);
+  }finally{connect.mock.restore();db.mock.restore();}
+});
+test('tenant updates cannot change storage identity, tenant ID or creation time',async()=>{
+  const mongo=mongoFixture();const tenants=mongo.db.collection('tenants');tenants.rows.set('tenant-a',{_id:'stored-id',tenant_id:'tenant-a',created_at:'original'});
+  const result=await createProtocols({mongo}).tenantManagement.updateTenant('tenant-a',{_id:'foreign-id',tenant_id:'tenant-b',created_at:'replaced',name:'new name'});
+  assert.equal(result._id,'stored-id');assert.equal(result.tenant_id,'tenant-a');assert.equal(result.created_at,'original');assert.equal(result.name,'new name');
+});
+test('invalid later timestamp prevents all ingest effects including graph projections',async()=>{
+  const mongo=mongoFixture();let embedded=0;const event={schema:'openplanner.event.v1',id:'valid',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory',extra:{openplanner_labels:{labels:['keep']}}};
+  const embeddingRuntime={hot:{getBackgroundEmbeddingFunction(){embedded++;return {generate:async texts=>texts.map(()=>[1,2])};},getModel(){return 'fixture';}}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime},[event,{...event,id:'invalid',ts:'not-a-date'}]),/ts|timestamp|Invalid time/i);
+  assert.equal([...mongo.collections.values()].reduce((n,c)=>n+c.calls.writes.length,0),0);assert.equal(embedded,0);
+});
+test('label nodes distinguish punctuation, Unicode and long common prefixes and keep replay IDs',async()=>{
+  const mongo=mongoFixture();const labels=['C++','C#','!!!','???','海','空','a'.repeat(100)+'one','a'.repeat(100)+'two'];const event={schema:'openplanner.event.v1',id:'labeled',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{openplanner_labels:{labels}}};
+  await ingestEvents({mongo,embeddingRuntime:{}},[event]);const rows=[...mongo.db.collection('graph_label_nodes').rows.values()];assert.equal(rows.length,labels.length);assert.deepEqual(rows.map(r=>r.label),labels);const ids=rows.map(r=>r.label_id);assert.equal(new Set(ids).size,labels.length);
+  await ingestEvents({mongo,embeddingRuntime:{}},[event]);assert.deepEqual([...mongo.db.collection('graph_label_nodes').rows.values()].map(r=>r.label_id),ids);
+});
+test('embedding cache flush is durable and invalidations survive a new process',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-persistent-'));const path=join(dir,'nested','embeddings.json');
+  try{const cache=new PersistentEmbeddingCache(path);await cache.putMany([{key:'kept',vector:[1,2]},{key:'removed',vector:[3,4]}]);await cache.flush();assert.ok((await readFile(path,'utf8')).length>0);
+    const script=`import assert from 'node:assert/strict';const {PersistentEmbeddingCache}=await import(process.argv[2]);const cache=new PersistentEmbeddingCache(process.argv[1]);assert.deepEqual((await cache.getMany(['kept'])).get('kept'),[1,2]);cache.delete('removed');await cache.flush();`;
+    await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,path,new URL('../dist/embedding-cache.js',import.meta.url).href],{timeout:10_000});
+    const restored=new PersistentEmbeddingCache(path);assert.equal(restored.has('removed'),false);assert.equal(restored.has('kept'),true);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('absolute in-root hydration paths remain absolute while escape paths are rejected',async()=>{
+  await withEnv({OPENPLANNER_SOURCE_ROOT:'/owned/source'},async()=>{
+    assert.equal(safeSourceFilePath({extra:{source_path:'/owned/source/a.md'}}),'/owned/source/a.md');assert.equal(safeSourceFilePath({extra:{source_path:'a.md'}}),'/owned/source/a.md');assert.equal(safeSourceFilePath({extra:{source_path:'/foreign/a.md'}}),undefined);assert.equal(safeSourceFilePath({extra:{source_path:'../escape.md'}}),undefined);
+  });
+});
+for(const extra of [{url:'https://outside.invalid/a'},{hostname:'outside.invalid'}])test('URL-only sources keep vector text inline',async()=>{
+  const mongo=mongoFixture();const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('url-only','outside content',extra)],embeddingFunction:{generate:async texts=>texts.map(()=>[1,2])}});
+  assert.equal(result.indexed,1);const doc=[...mongo.hotVectors.rows.values()][0];assert.equal(doc.text,'outside content');assert.notEqual(doc.source_text_redacted,true);
+});
+for(const batch of [false,true])test(`${batch?'batch':'single'} vector indexing formats provider passages but keeps stored chunk text`,async()=>{
+  const mongo=mongoFixture();const texts=[];await withEnv({EMBED_PASSAGE_TEMPLATE:'passage: {text}'},async()=>{
+    const params={mongo,tier:'hot',embeddingFunction:{generate:async inputs=>{texts.push(...inputs);return inputs.map(()=>[1,2]);}}};
+    if(batch)await batchIndexTextsInMongoVectors({...params,items:[item('formatted','outside content')]});else{const {indexTextInMongoVectors}=await import('../dist/mongo-vectors.js');await indexTextInMongoVectors({...params,parentId:'formatted',text:'outside content',metadata:{embedding_model:'fixture'}});}
+  });assert.deepEqual(texts,['passage: outside content']);assert.equal([...mongo.hotVectors.rows.values()][0].text,'outside content');
+});
+test('background indexing cannot settle after a timeout while its underlying task can still write',async()=>{
+  const mongo=mongoFixture();let release;let entered;const started=new Promise(resolve=>{entered=resolve;});const held=new Promise(resolve=>{release=resolve;});let settled=false;let warned=0;
+  const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return {generate:async()=>{entered();await held;return [[1,2]];}};},getBackgroundEmbeddingFunctionForModel(){return {generate:async texts=>texts.map(()=>[1,2])};}}};
+  const originalTimer=globalThis.setTimeout;
+  const timer=mock.method(globalThis,'setTimeout',(fn,ms,...args)=>originalTimer(fn,ms===30_000?5:ms,...args));
+  try{const result=await ingestEvents({mongo,embeddingRuntime,log:{warn(){warned++;}}},[{schema:'openplanner.event.v1',id:'slow',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory'}]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));const premature=settled;release();await result.backgroundIndexing;assert.equal(premature,false);assert.ok(warned>0);assert.ok(mongo.hotVectors.calls.writes.length>0);
+  }finally{release?.();timer.mock.restore();}
 });

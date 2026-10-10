@@ -11,9 +11,9 @@
              {:id "neighbor" :text "GRAPH ONLY: bells under the harbor"}]})
 
 (def indices
-  [{:_id "index:seed" :node_id "seed" :source_event_id "seed" :project "creator-local"
+  [{:source_text_hash_sha256 "55cc7a7b15a1bfd946f2d9322c99a3474997884641378e21cbb1db6276fa11c2" :_id "index:seed" :node_id "seed" :source_event_id "seed" :project "creator-local"
     :embedding_model "held-model" :embedding_dimensions 2 :embedding [1.0 0.0] :chunk_index 0}
-   {:_id "index:neighbor" :node_id "neighbor" :source_event_id "neighbor" :project "creator-local"
+   {:source_text_hash_sha256 "24f2f62df26cba43e9b24ae5d3b2a211fd1b72c28af9d8c6321eb1757f8c224c" :_id "index:neighbor" :node_id "neighbor" :source_event_id "neighbor" :project "creator-local"
     :embedding_model "held-model" :embedding_dimensions 2 :embedding [0.0 1.0] :chunk_index 0}])
 
 (def edges
@@ -255,3 +255,13 @@
         (is (= "failed" (get-in result [:selection :status])))
         (is (= "transport-error" (get-in result [:selection :failure :code])))
         (is (= [] (get-in result [:selection :hits])))))))
+
+(deftest ^:async stale-or-unbound-embedding-content-is-pending-before-query-ranking
+  (doseq [change [(fn [row] (assoc row :source_text_hash_sha256 (apply str (repeat 64 "0"))))
+                  (fn [row] (dissoc row :source_text_hash_sha256))]]
+    (let [s (state)
+          _ (swap! (:indices* s) update 0 change)
+          result (await (recall! (reader s) fixture/request))]
+      (is (= "indexing-pending" (get-in result [:selection :status])))
+      (is (empty? @(:embeddings* s)))
+      (is (= [:indices] (mapv :collection @(:reads* s)))))))

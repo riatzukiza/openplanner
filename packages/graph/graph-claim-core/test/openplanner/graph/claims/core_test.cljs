@@ -177,3 +177,14 @@
         result (mongo/project-mongo-edge-claims-js #js [row] #js {:now "2026-01-01T00:00:00.000Z"})]
     (is (= 1 (aget result "stats" "edges")))
     (is (= "explicit-claim-id" (aget result "edges" 0 "claim_id")))))
+
+(deftest nested-scope-identity-is-recursive-and-order-independent
+  (let [base {:source_node_id "node:a" :target_node_id "node:b" :relation_kind "related_to"}
+        id (fn [scope] (boundary/build-edge-claim-id (clj->js (assoc base :scope scope))))]
+    (is (not= (id {:constraints {:tenant "a"}}) (id {:constraints {:tenant "b"}})))
+    (is (= (id {:constraints {:b 2 :a 1} :values [{:y 2 :x 1}]})
+           (id {:values [{:x 1 :y 2}] :constraints {:a 1 :b 2}})))))
+
+(deftest unknown-lifecycle-actions-never-promote-a-claim
+  (doseq [action ["supprt" "" nil "delete"]]
+    (is (thrown? js/Error (lifecycle/transition-plan action #js {})))))
