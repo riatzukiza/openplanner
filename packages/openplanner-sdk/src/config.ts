@@ -48,7 +48,7 @@ function mustGet(name: string, fallback?: string): string {
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+  return Number.isFinite(parsed) && Math.floor(parsed) >= 1 ? Math.floor(parsed) : fallback;
 }
 
 function parsePositiveNumber(raw: string | undefined, fallback: number): number {

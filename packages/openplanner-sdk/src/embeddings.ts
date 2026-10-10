@@ -79,13 +79,13 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
     this.url = url;
     this.apiKey = typeof opts?.apiKey === "string" && opts.apiKey.length > 0 ? opts.apiKey : undefined;
     this.cache = opts?.cache;
-    this.batchWindowMs = typeof opts?.batchWindowMs === "number" && Number.isFinite(opts.batchWindowMs) && opts.batchWindowMs > 0
+    this.batchWindowMs = typeof opts?.batchWindowMs === "number" && Number.isFinite(opts.batchWindowMs) && Math.floor(opts.batchWindowMs) >= 1
       ? Math.floor(opts.batchWindowMs)
       : 50;
-    this.maxBatchItems = typeof opts?.maxBatchItems === "number" && Number.isFinite(opts.maxBatchItems) && opts.maxBatchItems > 0
+    this.maxBatchItems = typeof opts?.maxBatchItems === "number" && Number.isFinite(opts.maxBatchItems) && Math.floor(opts.maxBatchItems) >= 1
       ? Math.floor(opts.maxBatchItems)
       : 256;
-    this.maxConcurrentBatches = typeof opts?.maxConcurrentBatches === "number" && Number.isFinite(opts.maxConcurrentBatches) && opts.maxConcurrentBatches > 0
+    this.maxConcurrentBatches = typeof opts?.maxConcurrentBatches === "number" && Number.isFinite(opts.maxConcurrentBatches) && Math.floor(opts.maxConcurrentBatches) >= 1
       ? Math.floor(opts.maxConcurrentBatches)
       : 4;
   }

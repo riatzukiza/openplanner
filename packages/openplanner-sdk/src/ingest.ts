@@ -628,6 +628,10 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
             embeddingFunction,
           }), 30_000, `event vector index ${ev.id}`);
         } catch (err) {
+          // The accepted base row already contains the replacement. Old search
+          // rows must not outlive a failed provider/storage attempt, including
+          // retention-exempt copies in historical model partitions.
+          await replaceMongoVectorEntries(mongo, "hot", ev.id, []);
           log.warn({ err, eventId: ev.id }, "Failed to index event into MongoDB vectors; preserving base event without embeddings");
         }
       });

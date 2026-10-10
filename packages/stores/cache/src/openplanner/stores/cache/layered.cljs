@@ -26,8 +26,10 @@
                                  (if (:unknown-expiry? entry)
                                    (core/promise nil)
                                    (js/Promise.all
-                                    (clj->js (map #(cache-put! % k (:value entry)
-                                                              {:expires-at-ms (:expires-at-ms entry)})
+                                    (clj->js (map #(-> (core/pthen nil
+                                                                  (fn [_] (cache-put! % k (:value entry)
+                                                                                      {:expires-at-ms (:expires-at-ms entry)})))
+                                                      (.catch (fn [_] nil)))
                                                   (filter #(satisfies? CacheEntryStore %) seen)))))
                                  (fn [_] entry))
                                 (try-layer (conj seen layer) (rest remaining))))))))]

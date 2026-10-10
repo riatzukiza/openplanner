@@ -24,8 +24,14 @@
 
 (defn- nonblank
   [value]
-  (let [s (some-> value str str/trim)]
-    (when-not (str/blank? s) s)))
+  (when (string? value)
+    (let [s (str/trim value)]
+      (when-not (str/blank? s) s))))
+
+(defn- first-present
+  "Aliases do not discard explicit false or zero before type admission."
+  [input fields]
+  (first (filter some? (map #(jget input %) fields))))
 
 (defn- token-keyword
   [value]
@@ -95,16 +101,10 @@
   (let [direction (normalize-edge-claim-direction (jget input "direction"))
         scope (or (normalize-edge-claim-scope (jget input "scope"))
                   (inferred-scope input))
-        source-node-id (nonblank (or (jget input "sourceNodeId")
-                                     (jget input "source_node_id")
-                                     (jget input "source")))
-        target-node-id (nonblank (or (jget input "targetNodeId")
-                                     (jget input "target_node_id")
-                                     (jget input "target")))
-        relation-kind (or (nonblank (or (jget input "relationKind")
-                                        (jget input "relation_kind")
-                                        (jget input "kind")))
-                          "related_to")]
+        source-node-id (nonblank (first-present input ["sourceNodeId" "source_node_id" "source"]))
+        target-node-id (nonblank (first-present input ["targetNodeId" "target_node_id" "target"]))
+        relation-value (first-present input ["relationKind" "relation_kind" "kind"])
+        relation-kind (if (nil? relation-value) "related_to" (nonblank relation-value))]
     {:source-node-id source-node-id
      :target-node-id target-node-id
      :relation-kind relation-kind

@@ -331,3 +331,12 @@
   spore: none
   receipt-refs: cephalon-bounded-a8-native-causal-red-20261010
   note: Original56 immutablemanifest and journal prefixes preserved. Actual currenta8 hostedCI and isolated consumer pass are historical after this new finding-bearing review; no passing approval/round is claimed. Stale376 MiMo force-cancel accepted then independently terminalcancelled, currenta8 started. No live runtime, board, paid, or spore.
+
+- ts: 2026-10-10T17:31:11.028Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a8-native-complete-green-20261010
+  note: Causal tests retained before repair. Replacement removes only obsolete parent vectors after failure; partition execution failures preserve healthy hits and truthful unavailable counts; floor-zero limits default positive; identifiers retain string types/present aliases; cache promotion is best-effort with unchanged expiry. Immutable56manifest and180receipt/reflection prefix preserved;149wholechangedinputs/full181receipts owe current hosted/review gates. No runtime, board, paid or spore.

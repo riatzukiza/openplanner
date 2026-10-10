@@ -22,8 +22,10 @@ type RawQueryResult = {
 };
 
 export class VectorQueryUnavailableError extends Error {
-  constructor(readonly unavailablePartitions: string[]) {
-    super("vector query embedding unavailable for all partitions");
+  constructor(readonly unavailablePartitions: string[], phase: "embedding" | "execution" | "mixed" = "embedding") {
+    super(phase === "embedding" ? "vector query embedding unavailable for all partitions"
+      : phase === "execution" ? "vector query execution unavailable for all partitions"
+        : "vector query unavailable for all partitions");
     this.name = "Error";
   }
 }
@@ -1126,14 +1128,17 @@ export async function queryMongoVectorsByText(params: {
   const queryEmbeddingsByPartitionKey = new Map<string, number[]>();
   const unavailablePartitions: string[] = [];
   let availablePartitions = 0;
+  const unavailablePhases = new Set<"embedding" | "execution">();
 
   for (const storedPartition of partitions) {
-    const partition = await refreshPartitionReadiness(params.mongo, storedPartition);
-    const collection = params.mongo.db.collection<MongoVectorDocument>(partition.collectionName);
-    const cacheKey = `${partition.model}:${partition.dimensions}`;
-    let queryEmbedding = queryEmbeddingsByPartitionKey.get(cacheKey);
-    if (!queryEmbedding) {
-      try {
+    let phase: "embedding" | "execution" = "execution";
+    try {
+      const partition = await refreshPartitionReadiness(params.mongo, storedPartition);
+      const collection = params.mongo.db.collection<MongoVectorDocument>(partition.collectionName);
+      const cacheKey = `${partition.model}:${partition.dimensions}`;
+      let queryEmbedding = queryEmbeddingsByPartitionKey.get(cacheKey);
+      if (!queryEmbedding) {
+        phase = "embedding";
         const embeddingFunction = params.getEmbeddingFunctionForModel(partition.model);
         const [generatedEmbedding] = await embeddingFunction.generate([queryText]);
         if (!Array.isArray(generatedEmbedding) || generatedEmbedding.length !== partition.dimensions
@@ -1142,48 +1147,39 @@ export async function queryMongoVectorsByText(params: {
         }
         queryEmbedding = generatedEmbedding;
         queryEmbeddingsByPartitionKey.set(cacheKey, queryEmbedding);
-      } catch {
-        // Historical model failures must not discard healthy partition results.
-        // Report storage identities only; provider diagnostics may contain secrets.
-        unavailablePartitions.push(partition.collectionName);
-        continue;
       }
-    }
-    if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) continue;
-    availablePartitions++;
+      phase = "execution";
 
-    let partitionRows: Array<{ doc: MongoVectorDocument; score: number }>;
-    if (partition.searchIndexStatus === "ready") {
-      try {
-        partitionRows = await queryPartitionWithNativeVectorSearch({
-          collection,
-          partition,
-          queryEmbedding,
-          k: params.k,
-          where: params.where,
-        });
-      } catch {
+      let partitionRows: Array<{ doc: MongoVectorDocument; score: number }>;
+      if (partition.searchIndexStatus === "ready") {
+        try {
+          partitionRows = await queryPartitionWithNativeVectorSearch({
+            collection, partition, queryEmbedding, k: params.k, where: params.where,
+          });
+        } catch {
+          partitionRows = await queryPartitionWithCosineScan({
+            collection, queryEmbedding, k: params.k, where: params.where,
+          });
+        }
+      } else {
         partitionRows = await queryPartitionWithCosineScan({
-          collection,
-          queryEmbedding,
-          k: params.k,
-          where: params.where,
+          collection, queryEmbedding, k: params.k, where: params.where,
         });
       }
-    } else {
-      partitionRows = await queryPartitionWithCosineScan({
-        collection,
-        queryEmbedding,
-        k: params.k,
-        where: params.where,
-      });
-    }
 
-    rows.push(...partitionRows);
+      rows.push(...partitionRows);
+      availablePartitions++;
+    } catch {
+      // A corrupt or unreadable partition cannot discard healthy hits. Expose
+      // storage identities and a fixed phase only, never private diagnostics.
+      unavailablePartitions.push(storedPartition.collectionName);
+      unavailablePhases.add(phase);
+    }
   }
 
   if (availablePartitions === 0 && unavailablePartitions.length > 0) {
-    throw new VectorQueryUnavailableError(unavailablePartitions);
+    throw new VectorQueryUnavailableError(unavailablePartitions,
+      unavailablePhases.size > 1 ? "mixed" : unavailablePhases.has("execution") ? "execution" : "embedding");
   }
 
   const sorted = rows
