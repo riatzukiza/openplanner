@@ -15,7 +15,7 @@ import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydr
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality } from '../dist/search-core.js';
-import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel } from '../dist/mongo-vectors.js';
+import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText } from '../dist/mongo-vectors.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
@@ -234,10 +234,12 @@ test('thrown embedding batch errors report each affected parent',async()=>{
   const mongo=mongoFixture();const r=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('a'),item('b')],embeddingFunction:{generate:async()=>{throw new Error('transport failure');}}});
   assert.equal(r.indexed,0);assert.deepEqual(r.failed.map(f=>f.id),['a','b']);assert.ok(r.failed.every(f=>f.error.includes('transport failure')));
 });
-for(const text of ['  leading\r\n\ttext\n\n\nend  ','<html><body><p>Hello memory</p></body></html>'])test('normalized chunks stay inline when raw coordinates do not match',async()=>{
-  const mongo=mongoFixture(); const prepared=prepareIndexDocument({parentId:'normalized',text});
-  await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('normalized',text,{source_path:'source.txt'})],embeddingFunction:{generate:async ts=>ts.map(()=>[1,2])}});
-  const doc=[...mongo.hotVectors.rows.values()][0]; assert.equal(doc.text,prepared.chunks[0].text);assert.notEqual(doc.source_text_redacted,true);
+for(const text of ['  leading\r\n\ttext\n\n\nend  ','<html><body><p>Hello memory</p></body></html>'])test('normalized source chunks remain references and hydrate exactly',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-normalized-ref-'));const mongo=mongoFixture();const prepared=prepareIndexDocument({parentId:'normalized',text});
+  try{await writeFile(join(dir,'source.txt'),text);await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+    await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('normalized',text,{source_path:'source.txt'})],embeddingFunction:{generate:async ts=>ts.map(()=>[1,2])}});
+    const doc=[...mongo.hotVectors.rows.values()][0];assert.equal(doc.text,'');assert.equal(doc.source_text_redacted,true);assert.equal(doc.source_coordinate_space,'normalized');assert.equal(doc.text_hash_sha256,createHash('sha256').update(text).digest('hex'));assert.equal(await hydrateVectorDocumentText(doc),prepared.chunks[0].text);
+  });}finally{await rm(dir,{recursive:true,force:true});}
 });
 test('legacy normalized coordinates hydrate the matching chunk rather than a shifted raw slice',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'openplanner-hydration-'));const text='  source\r\n\tcontent  ';const prepared=prepareIndexDocument({parentId:'legacy',text});const chunk=prepared.chunks[0];
@@ -580,4 +582,77 @@ test('failed Mongo initialization closes its owned client and preserves the orig
   const mongo=mongoFixture();const original=new Error('index initialization failed');mongo.events.createIndex=async()=>{throw original;};let closes=0;
   const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);const close=mock.method(MongoClient.prototype,'close',async()=>{closes++;});
   try{await assert.rejects(openMongoDB(openingConfig),error=>error===original);assert.equal(closes,1);}finally{connect.mock.restore();db.mock.restore();close.mock.restore();}
+});
+
+// Native Codex review 5479630941 on e3: retained source hashes and public SDK behavior.
+function vectorDeletionFixture(){
+  const mongo=ownedProjectionFixture();const original=mongo.db.collection;
+  mongo.db.collection=function(name){const c=original.call(this,name);c.deleteMany=async filter=>{c.calls.deletes.push(filter);for(const [id,row] of c.rows)if(row.parent_id===filter.parent_id)c.rows.delete(id);};return c;};
+  mongo.db.collection('hot_vectors');return mongo;
+}
+const ordinaryEvent=(id,text)=>({schema:'openplanner.event.v1',id,ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text,extra:{openplanner_labels:{labels:['keep']}}});
+const eventRuntime=provider=>({hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}});
+test('non-indexable source replacements remove all owned hot-vector copies without TTL',async()=>{
+  for(const kind of ['message','graph.node','graph.edge']){
+    const mongo=vectorDeletionFixture();mongo.retention.eventsTtlSeconds=0;const embeddingRuntime=eventRuntime({generate:async texts=>texts.map(()=>[1,2])});
+    const initial=await ingestEvents({mongo,embeddingRuntime},[ordinaryEvent('hot-owner','Old outside information.')]);await initial.backgroundIndexing;assert.ok(mongo.hotVectors.rows.size>0);
+    const changed=await ingestEvents({mongo,embeddingRuntime},[{...ordinaryEvent('hot-owner',''),kind,extra:{node_id:'hot-owner'}}]);await changed.backgroundIndexing;
+    assert.equal(mongo.hotVectors.rows.size,0);for(const c of mongo.collections.values())if(c.collectionName.includes('__'))assert.equal(c.rows.size,0);
+  }
+});
+test('successive parent ingests cannot let an older detached embedding overwrite the current text',async()=>{
+  const mongo=vectorDeletionFixture();let release;const gate=new Promise(resolve=>release=resolve);
+  const embeddingRuntime=eventRuntime({generate:async texts=>{if(texts.some(text=>text.includes('first version')))await gate;return texts.map(()=>[1,2]);}});
+  const first=await ingestEvents({mongo,embeddingRuntime},[ordinaryEvent('serial-parent','The first version stays pending.')]);
+  const secondPromise=ingestEvents({mongo,embeddingRuntime},[ordinaryEvent('serial-parent','The second version is current.')]);setTimeout(release,20);
+  const second=await secondPromise;await second.backgroundIndexing;await first.backgroundIndexing;
+  const rows=[...mongo.hotVectors.rows.values()];assert.ok(rows.length>0);assert.ok(rows.every(row=>row.text.includes('second version')));
+});
+test('same path reindexing uses the computed source hash to avoid stale hydration cache entries',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-revision-hydration-'));const mongo=mongoFixture();const path=join(dir,'source.txt');
+  try{await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+    for(const text of ['Earlier outside information.','Updated outside information.']){
+      await writeFile(path,text);await indexTextInMongoVectors({mongo,tier:'hot',parentId:'same-source',text,extra:{source_path:path},metadata:{embedding_model:'fixture'},embeddingFunction:{generate:async ts=>ts.map(()=>[1,2])}});
+      const doc=[...mongo.hotVectors.rows.values()].at(-1);assert.equal(await hydrateVectorDocumentText(doc),text);
+    }
+  });}finally{await rm(dir,{recursive:true,force:true});}
+});
+test('identical event payloads fan out once while conflicting IDs still refuse',async()=>{
+  const mongo=mongoFixture();const event={...ordinaryEvent('duplicate',''),kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+  const result=await ingestEvents({mongo,embeddingRuntime:{}},[event,event]);await result.backgroundIndexing;
+  assert.equal(result.count,1);assert.deepEqual(result.ids,['duplicate']);assert.equal(result.acceptedEvents.length,1);assert.equal(result.projectedGraphEdges,1);
+});
+function queryFixture(){
+  const mongo=mongoFixture();const row={_id:'healthy-chunk',parent_id:'healthy',embedding:[1,0],embedding_model:'healthy-model',embedding_dimensions:2,text:'outside information',labels:['keep'],ts:new Date()};
+  mongo.vectorPartitions.rows.set('healthy',{_id:'healthy',tier:'hot',model:'healthy-model',dimensions:2,collectionName:'healthy_vectors',searchIndexName:'fixture_index',searchIndexStatus:'ready'});
+  const c=mongo.db.collection('healthy_vectors');c.rows.set(row._id,row);
+  c.aggregate=pipeline=>({toArray:async()=>{const projection=pipeline[1].$project;return [{...Object.fromEntries(Object.keys(projection).filter(k=>k in row).map(k=>[k,row[k]])),score:1}];}});
+  return mongo;
+}
+test('native Atlas vector projection preserves retention labels in returned metadata',async()=>{
+  const mongo=queryFixture();const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});assert.deepEqual(result.metadatas[0][0].labels,['keep']);
+});
+test('round-trip policy update excludes immutable Mongo storage identity',async()=>{
+  const mongo=mongoFixture();const policies=mongo.db.collection('tenant_policies');policies.rows.set('tenant-a',{_id:'stored-id',tenant_id:'tenant-a',created_at:new Date('2025-01-01'),retention_days:4});const p=createProtocols({mongo}).tenantManagement;
+  const original=await p.getPolicy('tenant-a');await p.setPolicy('tenant-a',{...original,retention_days:5});const write=policies.calls.writes.at(-1);assert.equal(Object.hasOwn(write.update.$set,'_id'),false);assert.equal(write.update.$set.retention_days,5);
+});
+test('an unavailable historical model preserves healthy results and reports incomplete partition coverage',async()=>{
+  const mongo=queryFixture();mongo.vectorPartitions.rows.set('obsolete',{_id:'obsolete',tier:'hot',model:'obsolete-model',dimensions:2,collectionName:'obsolete_vectors',searchIndexStatus:'ready'});
+  const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:model=>({generate:async()=>{if(model==='obsolete-model')throw new Error('PRIVATE provider unavailable');return [[1,0]];}})});
+  assert.deepEqual(result.ids,[['healthy-chunk']]);assert.deepEqual(result.unavailable_partitions,['obsolete_vectors']);assert.equal(result.partial,true);assert.ok(!JSON.stringify(result).includes('PRIVATE'));
+});
+test('visibility detail mode cannot exceed the bounded session row limit',async()=>{
+  const mongo=mongoFixture();let observed;mongo.events.find=()=>({sort(){return this;},limit(n){observed=n;return this;},project(){return this;},toArray:async()=>[]});await getSessionResponse({mongo},'session-a',{mode:'visibility',limit:999999999});assert.equal(observed,1000);
+});
+
+test('when every query model is unavailable, search reports a named failure',async()=>{
+  const mongo=queryFixture();
+  await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>{throw new Error('PRIVATE credentials must not be exposed');}}),/^Error: vector query embedding unavailable for all partitions$/);
+});
+test('failed base projection starts no detached provider work',async()=>{
+  const mongo=vectorDeletionFixture();let calls=0;
+  mongo.graphEdges.deleteMany=async()=>{throw new Error('owned projection failed');};
+  const provider={generate:async texts=>{calls++;return texts.map(()=>[1,2]);}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[ordinaryEvent('base-failure','Outside information.')]),/owned projection failed/);
+  assert.equal(calls,0);
 });

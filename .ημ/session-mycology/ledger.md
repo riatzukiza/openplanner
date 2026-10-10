@@ -250,3 +250,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-10c-native-green-20261010
   note: Edge uniqueness and sentence identity retain independent owners; reserved derived fields remain authoritative. Search setup retries without breaking non-Atlas fallback. Batch options reject before effects; flush queue drains. Hydration canonical paths refuse escape symlinks and an explicit process-owned idempotent close persists and reopens real LMDB entries. Mongo failures close owned clients. Recall selects the query dimension and cache promotion retains absolute expiry. Existing e3 empty replacement already handles the duplicate finding. Earlier test fixture and prepared green corrections remain preserved; final capability supplement supersedes affected cache commands only. Exact original56 manifest and historical journals remain; current hosted CI and full approving native reviews are still owed. No runtime, board, paid usage, publication or spore.
+
+- ts: 2026-10-10T15:59:48.348Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-e3-native-red-20261010
+  note: Confirmed nine late e3 review roots: stale hot replacement vectors, detached version race, cache identity, identical batch deduplication, Atlas labels, policy Mongo identity, unavailable historical provider, normalized reference hydration, visibility bound. Supplemental negatives require safe all-provider failure and no detached work before base projection succeeds. Normalized inline-only expectations are replaced by stricter saved-reference plus exact hydration assertions as required by the native contract. Original RED capture and exact journal prefixes remain; no runtime, board, paid usage or spore.
