@@ -31,13 +31,9 @@
   [value]
   (some-> value str str/trim str/lower-case (str/replace #"-" "_") keyword))
 
-(defn- status->wire
-  [status]
-  (some-> status name (str/replace #"_" "-")))
-
 (defn- wire-status-name
   [status]
-  (some-> status name (str/replace #"_" "_")))
+  (some-> status name))
 
 (defn- edge-claim-status-keyword
   [value]

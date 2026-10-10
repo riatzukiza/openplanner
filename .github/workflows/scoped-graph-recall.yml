@@ -24,8 +24,8 @@ jobs:
           java-version: "21"
       - uses: DeLaGuardo/setup-clojure@13
         with:
-          cli: latest
-          clj-kondo: latest
+          cli: "1.12.2.1565"
+          clj-kondo: "2025.07.28"
       - uses: pnpm/action-setup@v4
         with:
           version: "10.11.0"
@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: "22.20.0"
       - name: Install the four bounded dependency packages
-        run: pnpm --filter @open-hax/openplanner-sdk... --filter @open-hax/openplanner-graph-claim-core... install --frozen-lockfile
+        run: pnpm --dir packages --filter @open-hax/openplanner-sdk... --filter @open-hax/openplanner-graph-claim-core... install --frozen-lockfile
       - name: Build and test the imported cache
         working-directory: packages/stores/cache
         run: |
@@ -57,9 +57,9 @@ jobs:
       - name: Build the imported SDK and import its released exports
         run: |
           set -euo pipefail
-          pnpm --filter @open-hax/openplanner-sdk build
-          pnpm --filter @open-hax/openplanner-sdk test
-          pnpm --filter @open-hax/openplanner-sdk exec node --input-type=module -e 'import("./dist/index.js").then(m => { if (typeof m.createOpenPlannerSdk !== "function") throw new Error("missing SDK entry point"); })'
+          pnpm --dir packages --filter @open-hax/openplanner-sdk build
+          pnpm --dir packages --filter @open-hax/openplanner-sdk test
+          pnpm --dir packages --filter @open-hax/openplanner-sdk exec node --input-type=module -e 'import("./dist/index.js").then(m => { if (typeof m.createOpenPlannerSdk !== "function") throw new Error("missing SDK entry point"); })'
       - name: Portable recall laws
         working-directory: packages/graph/graph-claim-core
         run: clojure -M:recall-test

@@ -46,7 +46,7 @@
        (or (nil? scope) (map? scope))))
 
 (defn edge-claim-errors
-  [{:keys [claim-id source-node-id target-node-id relation-kind direction scope-json status confidence scope] :as claim}]
+  [{:keys [claim-id source-node-id target-node-id relation-kind direction scope-json status confidence scope]}]
   (cond-> []
     (not (claims/nonblank-string? claim-id))
     (conj {:path [:claim-id] :error :required-nonblank-string :value claim-id})

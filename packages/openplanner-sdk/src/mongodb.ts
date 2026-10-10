@@ -24,8 +24,8 @@ function parsePositiveIntEnv(name: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function ttlExpiryFromNow(ttlSeconds: number): Date | undefined {
-  return ttlSeconds > 0 ? new Date(Date.now() + ttlSeconds * 1000) : undefined;
+function ttlExpiryFromNow(ttlSeconds: number, now: Date): Date | undefined {
+  return ttlSeconds > 0 ? new Date(now.getTime() + ttlSeconds * 1000) : undefined;
 }
 
 function labelsFromExtra(extra: unknown): string[] {
@@ -565,6 +565,8 @@ export interface MongoConnection {
   semanticGraphRuns: Collection<SemanticGraphRunDocument>;
   migrationJobs: Collection<MigrationJobDocument>;
   gardens: Collection<GardenDocument>;
+  /** Resolved retention shared by indexes and writers; optional for legacy adapter handles. */
+  retention?: Readonly<{ eventsTtlSeconds: number; compactedTtlSeconds: number }>;
   ftsEnabled: boolean; // MongoDB has text search, always true
 }
 
@@ -727,7 +729,17 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
 
   // Semantic graph runs
   await semanticGraphRuns.createIndex({ run_id: 1 }, { unique: true });
-  await semanticGraphRuns.createIndex({ graph_version: 1 }, { unique: true });
+  const versionFilter = { graph_version: { $type: "string" } };
+  const versionIndex = (await semanticGraphRuns.indexes()).find(index =>
+    stableJson(index.key) === stableJson({ graph_version: 1 }));
+  if (versionIndex && (versionIndex.unique !== true || stableJson(versionIndex.partialFilterExpression) !== stableJson(versionFilter))) {
+    await semanticGraphRuns.dropIndex(versionIndex.name!);
+  }
+  await semanticGraphRuns.createIndex({ graph_version: 1 }, {
+    unique: true,
+    name: versionIndex?.name ?? "graph_version_1",
+    partialFilterExpression: versionFilter,
+  });
   await semanticGraphRuns.createIndex({ status: 1, finished_at: -1 as IndexDirection });
 
   // Lazy migration jobs for validation-triggered and graph-crawl-triggered work
@@ -861,6 +873,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     semanticGraphRuns,
     migrationJobs,
     gardens,
+    retention: { eventsTtlSeconds: eventsTtl, compactedTtlSeconds: compactedTtl },
     ftsEnabled: true, // MongoDB always has text search
   };
 }
@@ -912,14 +925,14 @@ export async function closeMongoDB(conn: MongoConnection): Promise<void> {
  */
 export async function upsertEvent(
   collection: Collection<EventDocument>,
-  event: Omit<EventDocument, "_id" | "createdAt" | "updatedAt">
+  event: Omit<EventDocument, "_id" | "createdAt" | "updatedAt">,
+  ttlSeconds = parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS"),
 ): Promise<void> {
   const now = new Date();
   const schemaVersion = event.schema_version ?? OPENPLANNER_SCHEMA_TARGETS.event;
   const state = event.migration_state ?? eventMigrationState(now);
-  const ttlSeconds = parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS");
   const labels = labelsFromExtra(event.extra);
-  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds);
+  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
   await collection.updateOne(
     { _id: event.id },
     {
@@ -944,12 +957,12 @@ export async function upsertEvent(
  */
 export async function upsertCompactedMemory(
   collection: Collection<CompactedMemoryDocument>,
-  memory: Omit<CompactedMemoryDocument, "_id" | "createdAt" | "updatedAt">
+  memory: Omit<CompactedMemoryDocument, "_id" | "createdAt" | "updatedAt">,
+  ttlSeconds = parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS"),
 ): Promise<void> {
   const now = new Date();
-  const ttlSeconds = parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS");
   const labels = labelsFromExtra(memory.extra);
-  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds);
+  const expiresAt = labels.length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
   await collection.updateOne(
     { _id: memory.id },
     {
@@ -1232,7 +1245,7 @@ export async function upsertGraphEdges(
  * Full-text search on events.
  */
 export async function ftsSearch(
-  collection: Collection<EventDocument>,
+  collection: Collection<EventDocument> | Collection<CompactedMemoryDocument>,
   query: string,
   options: {
     limit?: number;
@@ -1291,7 +1304,7 @@ export async function ftsSearch(
  * ILIKE-style search (case-insensitive substring match).
  */
 export async function ilikeSearch(
-  collection: Collection<EventDocument>,
+  collection: Collection<EventDocument> | Collection<CompactedMemoryDocument>,
   query: string,
   options: {
     limit?: number;
@@ -1306,7 +1319,7 @@ export async function ilikeSearch(
 ): Promise<unknown[]> {
   const limit = options.limit ?? 20;
   const filter: Record<string, unknown> = {
-    text: { $regex: query, $options: "i" },
+    text: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
   };
 
   if (options.source) filter.source = options.source;

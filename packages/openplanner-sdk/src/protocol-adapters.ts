@@ -7,7 +7,7 @@
  * env var PROTOCOL_IMPL: "mongo" (default) | "rest"
  */
 
-import type { MongoConnection } from "./mongodb.js";
+import { upsertEvent, type MongoConnection } from "./mongodb.js";
 
 /**
  * The minimal context protocol implementations need. The REST API passes its
@@ -51,14 +51,12 @@ class MongoEventAdmission implements EventAdmission {
   constructor(private ctx: ProtocolContext) {}
 
   async appendEvent(event: any): Promise<any> {
-    await this.ctx.mongo.events.insertOne(event);
+    await upsertEvent(this.ctx.mongo.events, event, this.ctx.mongo.retention?.eventsTtlSeconds);
     return event;
   }
 
   async appendEvents(events: any[]): Promise<any[]> {
-    if (events.length > 0) {
-      await this.ctx.mongo.events.insertMany(events);
-    }
+    for (const event of events) await this.appendEvent(event);
     return events;
   }
 
@@ -200,8 +198,8 @@ class MongoTenantManagement implements TenantManagement {
   async setPolicy(tenantId: string, policy: any): Promise<any> {
     const now = new Date();
     const doc = {
-      tenant_id: tenantId,
       ...policy,
+      tenant_id: tenantId,
       created_at: now,
       updated_at: now,
     };

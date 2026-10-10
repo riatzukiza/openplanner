@@ -142,3 +142,12 @@
   spore: none
   receipt-refs: cephalon-bounded-native-review-red-20261010
   note: Native review found real inherited defects despite a passing build. Preserve the RED tests before repair; no provenance history rewrite.
+
+- ts: 2026-10-10
+  task: Repair bounded import native findings
+  p-efficiency: 0.74
+  p-friction: 0.34
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-native-review-green-20261010
+  note: Preserve failed execution evidence and fixed timestamp semantics; package-scoped closure keeps the selected dependency boundary concrete. Local passes remain separate from fresh native approval and live B3.

@@ -14,7 +14,7 @@ import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embeddi
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality } from '../dist/search-core.js';
-import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText } from '../dist/mongo-vectors.js';
+import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel } from '../dist/mongo-vectors.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 
 function collection(name, initial = []) {
@@ -54,6 +54,7 @@ function collection(name, initial = []) {
       }));
     },
     async deleteMany(filter) { calls.deletes.push(filter); },
+    async updateMany(filter, update) { calls.writes.push({filter,update}); },
     async bulkWrite(ops) { for (const op of ops) await this.updateOne(op.updateOne.filter, op.updateOne.update); },
     listSearchIndexes() { calls.setups++; return cursor([{status:'READY',queryable:true}]); },
   };
@@ -205,4 +206,20 @@ test('hydration-cache initialization can retry after an actual LMDB path failure
     assert.ok(await getHydrationCache()); process.exit(0);`;
   try {await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,dir,new URL('../dist/source-hydration.js',import.meta.url).href],{timeout:10_000});}
   finally {await rm(dir,{recursive:true,force:true});}
+});
+
+test('one-character overflow fails terminally instead of recursively retrying unchanged input',async()=>{
+  let attempts=0;
+  await withFetch(async()=>{attempts++;return new Response(attempts>5?'fixture recursion guard':'context window exceeded',{status:attempts>5?503:400});},async()=>{
+    const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{batchWindowMs:1});
+    await assert.rejects(provider.generate(['x']),/context window/);assert.equal(attempts,2);
+  });
+});
+
+test('removing the last vector label uses the same configured retention and timestamp',async()=>{
+  const mongo=mongoFixture();await withEnv({MONGODB_EVENTS_TTL_SECONDS:'0',MONGODB_COMPACTED_TTL_SECONDS:'0'},()=>removeMongoVectorParentLabel(mongo,'parent','keep'));
+  for(const [collection,seconds] of [[mongo.hotVectors,60],[mongo.compactVectors,120]]){
+    const update=collection.calls.writes[0].update;
+    assert.equal(update[1].$set.expiresAt.$cond[2]-update[0].$set.updatedAt,seconds*1000);
+  }
 });

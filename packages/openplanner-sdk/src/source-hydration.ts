@@ -46,7 +46,10 @@ async function createHydrationCache(): Promise<CacheHandle> {
 }
 
 export async function getHydrationCache(): Promise<CacheHandle> {
-  hydrationCachePromise ??= createHydrationCache();
+  hydrationCachePromise ??= createHydrationCache().catch(error => {
+    hydrationCachePromise = null;
+    throw error;
+  });
   return hydrationCachePromise;
 }
 

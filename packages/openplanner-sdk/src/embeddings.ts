@@ -97,6 +97,7 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60_000),
       });
 
       if (!res.ok) {
@@ -110,6 +111,9 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         : Array.isArray(data.data)
           ? data.data.map((d) => d.embedding ?? []).filter((e) => e.length > 0)
           : [];
+      if (out.some(vector => !Array.isArray(vector) || vector.length === 0 || vector.some(value => typeof value !== "number" || !Number.isFinite(value)))) {
+        throw new Error("Embed provider returned an invalid or empty vector");
+      }
       if (out.length !== texts.length) {
         throw new Error(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
       }
@@ -241,12 +245,7 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
       const results: number[][] = [];
 
       for (const entry of entries) {
-        try {
-          const embedding = await this.resolveSingleEntry(entry);
-          results.push(embedding);
-        } catch {
-          results.push([]);
-        }
+        results.push(await this.resolveSingleEntry(entry));
       }
 
       return results;
@@ -264,7 +263,7 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         const [embedding] = await this.fetchBatch([text]);
         return embedding;
       } catch (error) {
-        if (!isContextOverflowError(error)) throw error;
+        if (!isContextOverflowError(error) || text.length <= 1) throw error;
         // Fall through to binary split
       }
     }

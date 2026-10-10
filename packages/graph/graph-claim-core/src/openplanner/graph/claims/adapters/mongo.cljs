@@ -62,4 +62,4 @@
   edges themselves."
   ([docs] (project-mongo-edge-claims-js docs #js {}))
   ([docs opts]
-   (boundary/project-edge-claims-js docs opts)))
+   (project-mongo-edge-claims (js->clj docs :keywordize-keys true) opts)))

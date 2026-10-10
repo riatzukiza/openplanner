@@ -17,6 +17,7 @@ node target/test.cjs
 node scripts/verify-recall-test-exit.mjs
 pnpm exec shadow-cljs --force-spawn release lib
 node scripts/verify-scoped-recall.mjs
+node scripts/verify-sdk-query-format.mjs
 ```
 
 The Node suite retains every existing edge-claim test. The final demonstration

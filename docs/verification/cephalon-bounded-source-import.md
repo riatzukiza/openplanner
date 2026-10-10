@@ -91,3 +91,50 @@ loop. No runtime, native clock, active maker, gateway, PM2, cloud, model, grant,
 board or social publication is changed by this source delivery.
 
 Process documentation: GPL-3.0-or-later.
+
+## Native-review repair revision
+
+Native Codex review5477602740 and CodeRabbit review5477615606 on452932e
+identified inherited SDK/cache/hydration/claim defects; MiMo review5477631842
+confirmed the embedding collision and unsupported Redis export. These are
+finding-bearing COMMENTED reviews. Their availability, coverage and findings
+supply no current approving verdict. The retained RED commit7119033 preserves
+failing tests before production repair. The existing observation sections above
+describe the initial import revision; the current revision supersedes their
+lock/layout, lint and hosted-pending observations.
+
+The bounded pnpm workspace and lock now live under `packages/`, with an empty
+private workspace-root manifest. From the repository root, install with:
+
+```bash
+pnpm --dir packages --filter @open-hax/openplanner-sdk... --filter @open-hax/openplanner-graph-claim-core... install --frozen-lockfile
+```
+
+This new package lock excludes the legacy root server's runtime closure. The
+root application and its existing npm lock have not been upgraded or security
+qualified here. The imported MongoDB7.2.0 and its already-selected SOCKS2.8.9
+capability are explicitly retained. Only the bounded closure's reviewed
+WebSocket/IP-address security updates change their selected transitive
+versions; the lock proof records actual closure inspection and OSV responses.
+An OSV response without advisories is an observation at its recorded time,
+not proof of whole-application security. All package source import hashes and
+original native review evidence remain inspectable.
+
+Repairs preserve stable event admission IDs and label-aware configured retention;
+keep tenant IDs authoritative; hash complete embedding inputs; reject invalid
+vectors and provider failures without caching false success; bound embedding
+requests and terminally fail unsplittable overflow; respect search tiers and
+literal substring queries; skip whole parents on failed chunk embedding;
+validate source-coordinate redaction and historical hydration candidates;
+reuse/retry per-connection partition setup; preserve nullable graph-version
+index semantics; prevent expired cache revival and use monotonic recency;
+format Date timestamps as ISO; and route the actual Mongo claim export through
+its ID/scope adapter. The workflow runs the SDK regressions and pins locally
+verified Clojure1.12.2.1565 and clj-kondo2025.07.28. Historical receipt/reflection
+prefixes remain unchanged; new evidence is appended.
+
+### Final local repair verification
+
+The final complete gate executed19 commands successfully: SDK28/28; cache7tests29assertions; hydration5/19; JVM recall17/100; compiled graph46/219, all zero failures/errors. The isolated assertion-failure proof actually exits1 and its verifier passes. All six compiler invocations report0warnings; all bounded CLJS namespaces lint0/0. Frozen package-scoped installation, actual released SDK import, graph ESM demonstration, SDK formatter integration, both workflow syntax checks and diff hygiene pass. Actual command outputs are preserved in `bounded-review-complete-green-verification-20261010.json` (27774bytes, SHA25608be7cd5430cc13ba476aadb871dfcda5484e4afa4c973e3b45079431ea1392e).
+
+Earlier whole-gate failures exposed separate timestamp sampling and an unbound last-label helper timestamp. Those failed records remain intact; production corrections and two additional regressions are preserved in `bounded-additional-repair-evidence-20261010.json`. This source repair still needs fresh hosted CI and current-head reviewer verdicts before merge. No runtime or deployed maker proof follows from this gate.

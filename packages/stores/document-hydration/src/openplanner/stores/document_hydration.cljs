@@ -126,7 +126,10 @@
          :aiModel (if (some? (jget extra "ai_model")) (str (jget extra "ai_model")) nil)
          :aiPromptHash (if (some? (jget extra "ai_prompt_hash")) (str (jget extra "ai_prompt_hash")) nil)
          :metadata meta
-         :ts (if (some? ts) (str ts) (.toISOString (js/Date.)))}))
+         :ts (cond
+               (instance? js/Date ts) (.toISOString ts)
+               (some? ts) (str ts)
+               :else (.toISOString (js/Date.)))}))
 
 ;; Cache compatibility facade -------------------------------------------------
 ;;

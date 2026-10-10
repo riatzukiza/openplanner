@@ -79,11 +79,29 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
       quality,
       excludeIds,
     };
-    try {
-      return { ftsEnabled: true, rows: await ftsSearch(ctx.mongo.events, q, options) };
-    } catch {
-      return { ftsEnabled: false, rows: await ilikeSearch(ctx.mongo.events, q, options) };
-    }
+    const collections = tier === "hot" ? [["hot", ctx.mongo.events] as const]
+      : tier === "compact" ? [["compact", ctx.mongo.compacted] as const]
+      : [["hot", ctx.mongo.events] as const, ["compact", ctx.mongo.compacted] as const];
+    const results = await Promise.all(collections.map(async ([rowTier, collection]) => {
+      try {
+        const rows = await ftsSearch(collection, q, options);
+        return { ftsEnabled: true, rows: rows.map((row): Record<string, unknown> => ({ ...row as Record<string, unknown>, tier: rowTier })) };
+      } catch {
+        const rows = await ilikeSearch(collection, q, options);
+        return { ftsEnabled: false, rows: rows.map((row): Record<string, unknown> => ({ ...row as Record<string, unknown>, tier: rowTier })) };
+      }
+    }));
+    const sorted = results.flatMap(result => result.rows).sort((a, b) =>
+      new Date(String(b.ts ?? "")).getTime() - new Date(String(a.ts ?? "")).getTime()
+      || rowId(a).localeCompare(rowId(b)));
+    const seen = new Set<string>();
+    const rows = sorted.filter(row => {
+      const id = rowId(row);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    }).slice(0, remainingLimit);
+    return { ftsEnabled: results.every(result => result.ftsEnabled), rows };
   };
 
   if (mode === "good_then_not_bad") {

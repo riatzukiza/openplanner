@@ -3,13 +3,14 @@ export interface EmbeddingCacheEntry {
   cachedAt: number;
 }
 
+import { createHash } from "node:crypto";
+
 export function makeEmbeddingCacheKey(params: {
   model: string;
   text: string;
 }): string {
-  const model = params.model;
-  const text = params.text.slice(0, 128);
-  return `${model}::${text}`;
+  const digest = createHash("sha256").update(params.text, "utf8").digest("hex");
+  return `${params.model}::${digest}`;
 }
 
 export class PersistentEmbeddingCache {

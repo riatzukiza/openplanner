@@ -8,7 +8,7 @@ export function formatEmbeddingQueryText(rawQuery: string): string {
 
   const template = expandEscapedNewlines(String(process.env.EMBED_QUERY_TEMPLATE ?? "")).trim();
   if (template) {
-    return template.replaceAll("{query}", query);
+    return template.replaceAll("{query}", () => query);
   }
 
   const prefix = expandEscapedNewlines(String(process.env.EMBED_QUERY_PREFIX ?? ""));
@@ -25,7 +25,7 @@ export function formatEmbeddingPassageText(rawText: string): string {
 
   const template = expandEscapedNewlines(String(process.env.EMBED_PASSAGE_TEMPLATE ?? "")).trim();
   if (template) {
-    return template.replaceAll("{text}", text);
+    return template.replaceAll("{text}", () => text);
   }
 
   const prefix = expandEscapedNewlines(String(process.env.EMBED_PASSAGE_PREFIX ?? ""));

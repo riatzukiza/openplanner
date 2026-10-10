@@ -28,11 +28,14 @@
 
   (cache-touch! [_ k opts]
     (let [key (str prefix k)
-          entry (.get db key)]
-      (if-not entry
-        false
-        (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
-              now (core/now-ms)]
+          entry (.get db key)
+          now (core/now-ms)]
+      (cond
+        (nil? entry) false
+        (and (core/jget entry "expiresAt") (< (core/jget entry "expiresAt") now))
+        (do (.remove db key) false)
+        :else
+        (let [ttl-ms (core/ttl-ms opts default-ttl-ms)]
           (.put db key #js {:value (core/jget entry "value")
                             :createdAt (or (core/jget entry "createdAt") now)
                             :touchedAt now

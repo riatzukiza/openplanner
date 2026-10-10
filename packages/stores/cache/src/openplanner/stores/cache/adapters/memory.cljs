@@ -3,7 +3,7 @@
             [openplanner.stores.cache.protocol :refer [CacheStore]]
             [openplanner.stores.cache.schema :as schema]))
 
-(deftype MemoryLruCache [state max-entries default-ttl-ms]
+(deftype MemoryLruCache [state recency max-entries default-ttl-ms]
   CacheStore
   (cache-get [_ k]
     (let [entry (get @state k)
@@ -13,22 +13,22 @@
         (schema/entry-expired? entry now)
         (do (swap! state dissoc k) nil)
         :else
-        (do (swap! state assoc k (schema/touch-entry entry nil))
+        (do (swap! state assoc k (assoc (schema/touch-entry entry nil) :cache/recency (swap! recency inc)))
             (schema/entry-value entry)))))
 
   (cache-put! [_ k v opts]
     (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
-          entry (schema/cache-entry {:key k :value v :ttl-ms ttl-ms})]
+          entry (assoc (schema/cache-entry {:key k :value v :ttl-ms ttl-ms})
+                       :cache/recency (swap! recency inc))]
       (swap! state assoc k entry)
-      (when (> (count @state) max-entries)
-        (let [victims (->> @state
-                           (sort-by (fn [[_ entry]]
-                                      (or (:cache/touched-at-ms entry)
-                                          (:touchedAt entry)
-                                          0)))
-                           (take (- (count @state) max-entries))
-                           (map key))]
-          (swap! state #(apply dissoc % victims))))
+      (while (> (count @state) max-entries)
+        (let [victim (reduce-kv (fn [oldest key entry]
+                                  (if (or (nil? oldest)
+                                          (< (:cache/recency entry) (:cache/recency (get @state oldest))))
+                                    key
+                                    oldest))
+                                nil @state)]
+          (swap! state dissoc victim)))
       true))
 
   (cache-evict! [_ k]
@@ -38,10 +38,14 @@
 
   (cache-touch! [_ k opts]
     (let [entry (get @state k)]
-      (if-not entry
-        false
+      (cond
+        (nil? entry) false
+        (schema/entry-expired? entry (core/now-ms))
+        (do (swap! state dissoc k) false)
+        :else
         (let [ttl-ms (core/ttl-ms opts default-ttl-ms)]
-          (swap! state assoc k (schema/touch-entry entry ttl-ms))
+          (swap! state assoc k (assoc (schema/touch-entry entry ttl-ms)
+                                     :cache/recency (swap! recency inc)))
           true))))
 
   (cache-cleanup! [_]
@@ -63,6 +67,6 @@
   ([] (create-memory-lru-cache nil))
   ([opts]
    (let [opts (core/opts-map opts)]
-     (MemoryLruCache. (atom {})
+     (MemoryLruCache. (atom {}) (atom 0)
                       (long (or (:maxEntries opts) (:max-entries opts) 512))
                       (long (or (:defaultTtlMs opts) (:default-ttl-ms opts) (* 5 60 60 1000)))))))

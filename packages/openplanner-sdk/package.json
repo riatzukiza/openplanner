@@ -28,7 +28,8 @@
     "mongodb": "^7.1.1",
     "sentence-splitter": "^5.0.1",
     "turndown": "^7.2.4",
-    "turndown-plugin-gfm": "^1.0.2"
+    "turndown-plugin-gfm": "^1.0.2",
+    "socks": "2.8.9"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

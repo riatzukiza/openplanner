@@ -89,8 +89,8 @@ function parsePositiveIntEnv(name: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function ttlExpiryFromNow(ttlSeconds: number): Date | undefined {
-  return ttlSeconds > 0 ? new Date(Date.now() + ttlSeconds * 1000) : undefined;
+function ttlExpiryFromNow(ttlSeconds: number, now: Date): Date | undefined {
+  return ttlSeconds > 0 ? new Date(now.getTime() + ttlSeconds * 1000) : undefined;
 }
 
 function nonBlankString(value: unknown): string | undefined {
@@ -145,9 +145,15 @@ export async function hydrateVectorDocumentText(doc: MongoVectorDocument): Promi
   const start = typeof doc.char_start === "number" && doc.char_start >= 0 ? doc.char_start : null;
   const end = typeof doc.char_end === "number" && doc.char_end >= 0 ? doc.char_end : null;
   if (start !== null && end !== null && end >= start) {
-    return sourceText.slice(start, end);
+    const rawChunk = sourceText.slice(start, end);
+    if (!doc.chunk_text_hash_sha256 || sha256Text(rawChunk) === doc.chunk_text_hash_sha256) return rawChunk;
+    // Historical rows recorded offsets after normalization. Validate that candidate
+    // against the saved chunk hash before returning it; never return a shifted slice.
+    const normalized = prepareIndexDocument({ parentId: doc.parent_id ?? doc._id, text: sourceText }).normalizedText;
+    const normalizedChunk = normalized.slice(start, end);
+    return sha256Text(normalizedChunk) === doc.chunk_text_hash_sha256 ? normalizedChunk : "";
   }
-  return sourceText;
+  return doc.chunk_text_hash_sha256 && sha256Text(sourceText) !== doc.chunk_text_hash_sha256 ? "" : sourceText;
 }
 
 function sha256Text(text: string): string {
@@ -162,7 +168,9 @@ function sourceRedactionMetadata(params: {
   charEnd?: number | null;
 }): Record<string, unknown> {
   const sourceRef = sourceRefFromExtra(params.extra);
-  if (!sourceRef) return {};
+  if (!sourceRef || typeof params.charStart !== "number" || typeof params.charEnd !== "number"
+    || params.charStart < 0 || params.charEnd < params.charStart || params.charEnd > params.rawText.length
+    || params.rawText.slice(params.charStart, params.charEnd) !== params.chunkText) return {};
   return {
     source_text_redacted: true,
     source_ref: sourceRef,
@@ -334,10 +342,13 @@ function toMetadata(doc: MongoVectorDocument): Record<string, unknown> {
   };
 }
 
-async function ensureVectorTtlIndex(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier): Promise<void> {
-  const ttlSeconds = tier === "hot"
-    ? parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS")
-    : parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS");
+function vectorTtlSeconds(mongo: MongoConnection, tier: MongoVectorTier): number {
+  return tier === "hot"
+    ? mongo.retention?.eventsTtlSeconds ?? parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS")
+    : mongo.retention?.compactedTtlSeconds ?? parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS");
+}
+
+async function ensureVectorTtlIndex(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier, ttlSeconds: number): Promise<void> {
   if (ttlSeconds <= 0) return;
 
   const name = tier === "hot" ? "hot_vectors_ttl" : "compact_vectors_ttl";
@@ -411,7 +422,7 @@ async function waitForQueryableSearchIndex(
   throw new Error(`timed out waiting for vector search index ${indexName} to become queryable (${lastState})`);
 }
 
-async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier): Promise<void> {
+async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier, ttlSeconds: number): Promise<void> {
   await collection.createIndex({ parent_id: 1, chunk_index: 1 });
   await collection.createIndex({ ts: -1 });
   await collection.createIndex({ source: 1, ts: -1 });
@@ -423,7 +434,7 @@ async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorD
   await collection.createIndex({ labels: 1, ts: -1 });
   await collection.createIndex({ embedding_model: 1, embedding_dimensions: 1, ts: -1 });
   await collection.createIndex({ schema_version: 1, ts: -1 });
-  await ensureVectorTtlIndex(collection, tier);
+  await ensureVectorTtlIndex(collection, tier, ttlSeconds);
 }
 
 async function ensurePartitionVectorSearchIndex(
@@ -479,7 +490,7 @@ async function ensurePartitionVectorSearchIndex(
   }
 }
 
-async function ensureVectorPartition(
+async function materializeVectorPartition(
   mongo: MongoConnection,
   tier: MongoVectorTier,
   model: string,
@@ -516,9 +527,27 @@ async function ensureVectorPartition(
   }
 
   const collection = mongo.db.collection<MongoVectorDocument>(collectionName);
-  await ensurePartitionSupportIndexes(collection, tier);
+  await ensurePartitionSupportIndexes(collection, tier, vectorTtlSeconds(mongo, tier));
   await ensurePartitionVectorSearchIndex(mongo, partition);
   return { partition: { ...partition, collectionName }, collection };
+}
+
+const partitionSetup = new WeakMap<MongoConnection, Map<string, Promise<{ partition: MongoVectorPartitionDocument; collection: Collection<MongoVectorDocument> }>>>();
+
+function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTier, model: string, dimensions: number) {
+  let cache = partitionSetup.get(mongo);
+  if (!cache) { cache = new Map(); partitionSetup.set(mongo, cache); }
+  const key = JSON.stringify([tier, model, dimensions]);
+  let pending = cache.get(key);
+  if (!pending) {
+    const owner = cache;
+    pending = materializeVectorPartition(mongo, tier, model, dimensions).catch(error => {
+      owner.delete(key);
+      throw error;
+    });
+    cache.set(key, pending);
+  }
+  return pending;
 }
 
 function isTransactionUnsupported(error: unknown): boolean {
@@ -593,13 +622,10 @@ export async function listMongoVectorPartitions(
   return mongo.vectorPartitions.find({ tier }).sort({ updatedAt: -1 }).toArray();
 }
 
-function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, now: Date): MongoVectorDocument {
+function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, now: Date, ttlSeconds: number): MongoVectorDocument {
   const ts = asDate(entry.metadata.ts);
   const sourceTextRedacted = entry.metadata.source_text_redacted === true;
   const labels = toStringArray(entry.metadata.labels);
-  const ttlSeconds = tier === "hot"
-    ? parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS")
-    : parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS");
   return {
     _id: entry.id,
     parent_id: entry.parentId,
@@ -637,7 +663,7 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
     char_end: toNumberOrNull(entry.metadata.char_end),
     schema_version: OPENPLANNER_SCHEMA_TARGETS.vectorChunk,
     migration_state: vectorChunkMigrationState(now),
-    expiresAt: labels.length > 0 ? null : ttlExpiryFromNow(ttlSeconds) ?? null,
+    expiresAt: labels.length > 0 ? null : ttlExpiryFromNow(ttlSeconds, now) ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -652,7 +678,7 @@ export async function upsertMongoVectorDocuments(
 
   const now = new Date();
   const flatCollection = getFlatCollection(mongo, tier);
-  const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now));
+  const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
 
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
   for (const doc of documents) {
@@ -794,11 +820,10 @@ export async function removeMongoVectorParentLabel(
 ): Promise<void> {
   const normalized = label.trim();
   if (!normalized) return;
+  const now = new Date();
   const updateForTier = (tier: MongoVectorTier) => {
-    const ttlSeconds = tier === "hot"
-      ? parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS")
-      : parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS");
-    const expiresAt = ttlExpiryFromNow(ttlSeconds) ?? null;
+    const ttlSeconds = vectorTtlSeconds(mongo, tier);
+    const expiresAt = ttlExpiryFromNow(ttlSeconds, now) ?? null;
     return [
       {
         $set: {
@@ -809,7 +834,7 @@ export async function removeMongoVectorParentLabel(
               cond: { $ne: ["$$existingLabel", normalized] },
             },
           },
-          updatedAt: new Date(),
+          updatedAt: now,
         },
       },
       {
@@ -842,7 +867,7 @@ export async function replaceMongoVectorEntries(
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
   const now = new Date();
-  const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now));
+  const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
   for (const doc of documents) {
     const model = doc.embedding_model ?? "unknown-model";
@@ -913,7 +938,7 @@ export async function indexTextInMongoVectors(params: {
             ...params.metadata,
             ...sourceRedactionMetadata({
               extra: params.extra,
-              rawText: prepared.rawText,
+              rawText: params.text,
               chunkText: chunk.text,
               charStart: chunk.charStart,
               charEnd: chunk.charEnd,
@@ -1174,6 +1199,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   const preparedItems: Array<{
     id: string;
     prepared: ReturnType<typeof prepareIndexDocument>;
+    rawText: string;
     extra?: Record<string, unknown>;
     metadata: Record<string, unknown>;
   }> = [];
@@ -1185,7 +1211,7 @@ export async function batchIndexTextsInMongoVectors(params: {
         text: item.text,
         extra: item.extra,
       });
-      preparedItems.push({ id: item.id, prepared, extra: item.extra, metadata: item.metadata });
+      preparedItems.push({ id: item.id, prepared, rawText: item.text, extra: item.extra, metadata: item.metadata });
     } catch (error) {
       failed.push({ id: item.id, error: error instanceof Error ? error.message : String(error) });
     }
@@ -1203,7 +1229,7 @@ export async function batchIndexTextsInMongoVectors(params: {
           ...item.metadata,
           ...sourceRedactionMetadata({
             extra: item.extra,
-            rawText: item.prepared.rawText,
+            rawText: item.rawText,
             chunkText: chunk.text,
             charStart: chunk.charStart,
             charEnd: chunk.charEnd,
@@ -1250,11 +1276,20 @@ export async function batchIndexTextsInMongoVectors(params: {
     config.onProgress?.("embedding", Math.min(offset + embeddingBatchSize, allChunks.length), allChunks.length);
   }
 
+  const failedParents = new Set<string>();
+  for (const chunk of allChunks) {
+    const error = embeddingErrors.get(chunk.chunkId);
+    if (error && !failedParents.has(chunk.parentId)) {
+      failedParents.add(chunk.parentId);
+      failed.push({ id: chunk.parentId, error });
+    }
+  }
+
   // Group by parent for MongoDB upsert
   const entriesByParent = new Map<string, MongoVectorEntry[]>();
   for (const chunk of allChunks) {
     const embedding = embeddings.get(chunk.chunkId);
-    if (!embedding) continue;
+    if (failedParents.has(chunk.parentId) || !embedding) continue;
 
     const existing = entriesByParent.get(chunk.parentId) ?? [];
     existing.push({
