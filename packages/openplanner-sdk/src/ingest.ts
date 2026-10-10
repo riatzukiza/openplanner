@@ -209,13 +209,13 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             text: "",
             attachments: null,
             extra: {
+              ...(params.extra ?? {}),
               node_id: params.nodeId,
               node_kind: params.nodeKind,
               label: params.label,
               preview: params.preview,
               content_hash: computeTextHash(params.preview),
               lake: params.project ?? undefined,
-              ...(params.extra ?? {}),
               source_event_id: params.sourceEventId,
               openplanner_labels: {
                 ...((params.extra?.openplanner_labels as Record<string, unknown> | undefined) ?? {}),
@@ -449,7 +449,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             if (sentenceHashesInDoc.has(hash)) continue;
             sentenceHashesInDoc.add(hash);
 
-            const sentenceNodeId = `${project ?? "devel"}:sentence:${hash}`;
+            const sentenceNodeId = `sentence:${createHash("sha256").update(JSON.stringify([project ?? null, ev.id, hash]), "utf8").digest("hex")}`;
             const sentenceEventId = `graph.node:sentence:${sentenceNodeId}`;
 
             if (!sentenceNodeIdsQueued.has(sentenceNodeId)) {

@@ -422,7 +422,7 @@ async function ensurePartitionSupportIndexes(collection: Collection<MongoVectorD
 async function ensurePartitionVectorSearchIndex(
   mongo: MongoConnection,
   partition: MongoVectorPartitionDocument,
-): Promise<void> {
+): Promise<boolean> {
   const collection = mongo.db.collection<MongoVectorDocument>(partition.collectionName);
   try {
     const existing = await collection.listSearchIndexes(partition.searchIndexName).toArray();
@@ -456,6 +456,7 @@ async function ensurePartitionVectorSearchIndex(
         },
       },
     );
+    return true;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     await mongo.vectorPartitions.updateOne(
@@ -469,6 +470,7 @@ async function ensurePartitionVectorSearchIndex(
       },
       { upsert: true },
     );
+    return false;
   }
 }
 
@@ -510,8 +512,8 @@ async function materializeVectorPartition(
 
   const collection = mongo.db.collection<MongoVectorDocument>(collectionName);
   await ensurePartitionSupportIndexes(collection, tier, vectorTtlSeconds(mongo, tier));
-  await ensurePartitionVectorSearchIndex(mongo, partition);
-  return { partition: { ...partition, collectionName }, collection };
+  const ready = await ensurePartitionVectorSearchIndex(mongo, partition);
+  return { partition: { ...partition, collectionName, searchIndexStatus: ready ? "ready" : "error" }, collection };
 }
 
 const partitionSetup = new WeakMap<MongoConnection, Map<string, Promise<{ partition: MongoVectorPartitionDocument; collection: Collection<MongoVectorDocument> }>>>();
@@ -523,8 +525,13 @@ function ensureVectorPartition(mongo: MongoConnection, tier: MongoVectorTier, mo
   let pending = cache.get(key);
   if (!pending) {
     const owner = cache;
-    pending = materializeVectorPartition(mongo, tier, model, dimensions).catch(error => {
-      owner.delete(key);
+    pending = materializeVectorPartition(mongo, tier, model, dimensions).then(result => {
+      // Non-Atlas writes retain their fallback. A transient or unsupported search
+      // setup is not cached as success and can be retried by the next operation.
+      if (result.partition.searchIndexStatus !== "ready" && owner.get(key) === pending) owner.delete(key);
+      return result;
+    }).catch(error => {
+      if (owner.get(key) === pending) owner.delete(key);
       throw error;
     });
     cache.set(key, pending);
@@ -1173,6 +1180,9 @@ export async function batchIndexTextsInMongoVectors(params: {
   const concurrency = config.concurrency ?? 16;
   const embeddingBatchSize = config.embeddingBatchSize ?? 256;
   const mongoBatchSize = config.mongoBatchSize ?? 100;
+  for (const [name, value] of Object.entries({ concurrency, embeddingBatchSize, mongoBatchSize })) {
+    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+  }
 
   const indexed: string[] = [];
   const failed: Array<{ id: string; error: string }> = [];

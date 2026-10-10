@@ -241,3 +241,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-10c-native-red-20261010
   note: Late exact10c Codex review adds 12 roots. Empty replacement is already repaired in e3; the other confirmed defects have causal regression failures before production changes. Invalid zero batch loop is contained by an owned child-process timeout. The original-kind assertion fixture was corrected from event to message before this RED commit and the actual SDK run repeated with unchanged 9 causal failures. Both actual captures remain. Original 56 selection and exact prior receipt/reflection bytes remain; no runtime, board, paid usage or spore.
+
+- ts: 2026-10-10T15:49:40.410Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-10c-native-green-20261010
+  note: Edge uniqueness and sentence identity retain independent owners; reserved derived fields remain authoritative. Search setup retries without breaking non-Atlas fallback. Batch options reject before effects; flush queue drains. Hydration canonical paths refuse escape symlinks and an explicit process-owned idempotent close persists and reopens real LMDB entries. Mongo failures close owned clients. Recall selects the query dimension and cache promotion retains absolute expiry. Existing e3 empty replacement already handles the duplicate finding. Earlier test fixture and prepared green corrections remain preserved; final capability supplement supersedes affected cache commands only. Exact original56 manifest and historical journals remain; current hosted CI and full approving native reviews are still owed. No runtime, board, paid usage, publication or spore.

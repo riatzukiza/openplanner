@@ -592,269 +592,281 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     maxPoolSize: 50,
   });
 
-  await client.connect();
-  const db = client.db(config.dbName);
-
-  const events = db.collection<EventDocument>(config.eventsCollection);
-  const compacted = db.collection<CompactedMemoryDocument>(config.compactedCollection);
-  const hotVectors = db.collection<MongoVectorDocument>(config.vectorHotCollection);
-  const compactVectors = db.collection<MongoVectorDocument>(config.vectorCompactCollection);
-  const vectorPartitions = db.collection<MongoVectorPartitionDocument>("vector_partitions");
-  const graphLayoutOverrides = db.collection<GraphLayoutOverrideDocument>(config.graphLayoutCollection);
-  const graphNodeEmbeddings = db.collection<GraphNodeEmbeddingDocument>(config.graphNodeEmbeddingCollection);
-  const graphSemanticEdges = db.collection<GraphSemanticEdgeDocument>("graph_semantic_edges");
-  const graphSemanticForceSamples = db.collection<GraphSemanticForceSampleDocument>("graph_semantic_force_samples");
-  const graphSemanticFieldCells = db.collection<GraphSemanticFieldCellDocument>("graph_semantic_field_cells");
-  const graphEdges = db.collection<GraphEdgeDocument>("graph_edges");
-  const graphEdgeClaims = db.collection<GraphEdgeClaimDocument>("graph_edge_claims");
-  const graphDaimoiTrails = db.collection<GraphDaimoiTrailDocument>("graph_daimoi_trails");
-  const graphViewNodes = db.collection<GraphViewNodeDocument>("graph_view_nodes");
-  const graphClusterMemberships = db.collection<GraphClusterMembershipDocument>("graph_cluster_memberships");
-  const graphLabelNodes = db.collection<GraphLabelNodeDocument>("graph_label_nodes");
-  const semanticGraphRuns = db.collection<SemanticGraphRunDocument>("semantic_graph_runs");
-  const migrationJobs = db.collection<MigrationJobDocument>("migration_jobs");
-  const gardens = db.collection<GardenDocument>("gardens");
-
-  // Create indexes for events
-  await events.createIndex({ ts: -1 });
-  await events.createIndex({ source: 1, ts: -1 });
-  await events.createIndex({ kind: 1, ts: -1 });
-  await events.createIndex({ project: 1, ts: -1 });
-  await events.createIndex({ session: 1, ts: -1 });
-  await events.createIndex({ "extra.openplanner_labels.quality": 1, ts: -1 });
-  await events.createIndex({ schema_version: 1, ts: -1 });
-  await events.createIndex({ "text": "text" }); // Full-text search index
-
-  // Create indexes for compacted_memories
-  await compacted.createIndex({ ts: -1 });
-  await compacted.createIndex({ source: 1, ts: -1 });
-  await compacted.createIndex({ kind: 1, ts: -1 });
-  await compacted.createIndex({ project: 1, ts: -1 });
-  await compacted.createIndex({ "text": "text" }); // Full-text search index
-
-  await hotVectors.createIndex({ parent_id: 1, chunk_index: 1 });
-  await hotVectors.createIndex({ ts: -1 });
-  await hotVectors.createIndex({ source: 1, ts: -1 });
-  await hotVectors.createIndex({ kind: 1, ts: -1 });
-  await hotVectors.createIndex({ project: 1, ts: -1 });
-  await hotVectors.createIndex({ session: 1, ts: -1 });
-  await hotVectors.createIndex({ visibility: 1, ts: -1 });
-  await hotVectors.createIndex({ quality_label: 1, ts: -1 });
-  await hotVectors.createIndex({ labels: 1, ts: -1 });
-  await hotVectors.createIndex({ embedding_model: 1, embedding_dimensions: 1, ts: -1 });
-  await hotVectors.createIndex({ schema_version: 1, ts: -1 });
-
-  await compactVectors.createIndex({ parent_id: 1 });
-  await compactVectors.createIndex({ ts: -1 });
-  await compactVectors.createIndex({ source: 1, ts: -1 });
-  await compactVectors.createIndex({ kind: 1, ts: -1 });
-  await compactVectors.createIndex({ project: 1, ts: -1 });
-  await compactVectors.createIndex({ session: 1, ts: -1 });
-  await compactVectors.createIndex({ visibility: 1, ts: -1 });
-  await compactVectors.createIndex({ quality_label: 1, ts: -1 });
-  await compactVectors.createIndex({ labels: 1, ts: -1 });
-  await compactVectors.createIndex({ embedding_model: 1, embedding_dimensions: 1, ts: -1 });
-  await compactVectors.createIndex({ schema_version: 1, ts: -1 });
-
-  await vectorPartitions.createIndex({ collectionName: 1 }, { unique: true });
-  await vectorPartitions.createIndex({ tier: 1, model: 1, dimensions: 1 }, { unique: true });
-
-  await graphLayoutOverrides.createIndex({ node_id: 1 }, { unique: true });
-  await graphLayoutOverrides.createIndex({ project: 1, updated_at: -1 as IndexDirection });
-  await graphLayoutOverrides.createIndex({ updated_at: -1 as IndexDirection });
-  await graphLayoutOverrides.createIndex({ layout_source: 1, updated_at: -1 as IndexDirection });
-
-  await graphNodeEmbeddings.createIndex({ node_id: 1, embedding_model: 1, embedding_dimensions: 1, chunk_index: 1 }, { unique: true, name: "graph_node_chunk_identity" });
-  for (const index of await graphNodeEmbeddings.indexes()) {
-    if (index.name === "node_id_1_embedding_model_1_embedding_dimensions_1" && index.unique
-        && JSON.stringify(index.key) === JSON.stringify({ node_id: 1, embedding_model: 1, embedding_dimensions: 1 })) {
-      await graphNodeEmbeddings.dropIndex(index.name);
-    }
-  }
-  await graphNodeEmbeddings.createIndex({ source_event_id: 1, embedding_model: 1, embedding_dimensions: 1 });
-  await graphNodeEmbeddings.createIndex({ project: 1, updated_at: -1 as IndexDirection });
-  await graphNodeEmbeddings.createIndex({ updated_at: -1 as IndexDirection });
   try {
-    await ensureGraphNodeEmbeddingVectorSearchIndex(graphNodeEmbeddings);
-  } catch (error) {
-    console.warn("[mongodb] graph_node_embeddings vector index unavailable:", error instanceof Error ? error.message : String(error));
-  }
+    await client.connect();
+    const db = client.db(config.dbName);
 
-  // Semantic edges for graph clustering
-  await graphSemanticEdges.createIndex({ source_node_id: 1, target_node_id: 1 }, { unique: true });
-  await graphSemanticEdges.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ similarity: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ graph_version: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ clustering_version: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ status: 1, conductance: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticEdges.createIndex({ last_reinforced_at: 1, status: 1 });
+    const events = db.collection<EventDocument>(config.eventsCollection);
+    const compacted = db.collection<CompactedMemoryDocument>(config.compactedCollection);
+    const hotVectors = db.collection<MongoVectorDocument>(config.vectorHotCollection);
+    const compactVectors = db.collection<MongoVectorDocument>(config.vectorCompactCollection);
+    const vectorPartitions = db.collection<MongoVectorPartitionDocument>("vector_partitions");
+    const graphLayoutOverrides = db.collection<GraphLayoutOverrideDocument>(config.graphLayoutCollection);
+    const graphNodeEmbeddings = db.collection<GraphNodeEmbeddingDocument>(config.graphNodeEmbeddingCollection);
+    const graphSemanticEdges = db.collection<GraphSemanticEdgeDocument>("graph_semantic_edges");
+    const graphSemanticForceSamples = db.collection<GraphSemanticForceSampleDocument>("graph_semantic_force_samples");
+    const graphSemanticFieldCells = db.collection<GraphSemanticFieldCellDocument>("graph_semantic_field_cells");
+    const graphEdges = db.collection<GraphEdgeDocument>("graph_edges");
+    const graphEdgeClaims = db.collection<GraphEdgeClaimDocument>("graph_edge_claims");
+    const graphDaimoiTrails = db.collection<GraphDaimoiTrailDocument>("graph_daimoi_trails");
+    const graphViewNodes = db.collection<GraphViewNodeDocument>("graph_view_nodes");
+    const graphClusterMemberships = db.collection<GraphClusterMembershipDocument>("graph_cluster_memberships");
+    const graphLabelNodes = db.collection<GraphLabelNodeDocument>("graph_label_nodes");
+    const semanticGraphRuns = db.collection<SemanticGraphRunDocument>("semantic_graph_runs");
+    const migrationJobs = db.collection<MigrationJobDocument>("migration_jobs");
+    const gardens = db.collection<GardenDocument>("gardens");
 
-  // Semantic force samples are layout/runtime force-cache data, not relation truth.
-  await graphSemanticForceSamples.createIndex({ source_node_id: 1, target_node_id: 1, field_profile: 1, embedding_model: 1 }, { unique: true });
-  await graphSemanticForceSamples.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticForceSamples.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticForceSamples.createIndex({ field_profile: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticForceSamples.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+    // Create indexes for events
+    await events.createIndex({ ts: -1 });
+    await events.createIndex({ source: 1, ts: -1 });
+    await events.createIndex({ kind: 1, ts: -1 });
+    await events.createIndex({ project: 1, ts: -1 });
+    await events.createIndex({ session: 1, ts: -1 });
+    await events.createIndex({ "extra.openplanner_labels.quality": 1, ts: -1 });
+    await events.createIndex({ schema_version: 1, ts: -1 });
+    await events.createIndex({ "text": "text" }); // Full-text search index
 
-  await graphSemanticFieldCells.createIndex({ cell_id: 1 }, { unique: true });
-  await graphSemanticFieldCells.createIndex({ field_profile: 1, level: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticFieldCells.createIndex({ project: 1, field_profile: 1, updated_at: -1 as IndexDirection });
-  await graphSemanticFieldCells.createIndex({ node_ids: 1, field_profile: 1 });
+    // Create indexes for compacted_memories
+    await compacted.createIndex({ ts: -1 });
+    await compacted.createIndex({ source: 1, ts: -1 });
+    await compacted.createIndex({ kind: 1, ts: -1 });
+    await compacted.createIndex({ project: 1, ts: -1 });
+    await compacted.createIndex({ "text": "text" }); // Full-text search index
 
-  // ALL graph edges (structural + semantic) from graph-weaver
-  await graphEdges.createIndex({ source_node_id: 1, target_node_id: 1, edge_kind: 1 }, { unique: true });
-  await graphEdges.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphEdges.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
-  await graphEdges.createIndex({ target_node_id: 1, edge_kind: 1 });
-  await graphEdges.createIndex({ edge_kind: 1, updated_at: -1 as IndexDirection });
-  await graphEdges.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+    await hotVectors.createIndex({ parent_id: 1, chunk_index: 1 });
+    await hotVectors.createIndex({ ts: -1 });
+    await hotVectors.createIndex({ source: 1, ts: -1 });
+    await hotVectors.createIndex({ kind: 1, ts: -1 });
+    await hotVectors.createIndex({ project: 1, ts: -1 });
+    await hotVectors.createIndex({ session: 1, ts: -1 });
+    await hotVectors.createIndex({ visibility: 1, ts: -1 });
+    await hotVectors.createIndex({ quality_label: 1, ts: -1 });
+    await hotVectors.createIndex({ labels: 1, ts: -1 });
+    await hotVectors.createIndex({ embedding_model: 1, embedding_dimensions: 1, ts: -1 });
+    await hotVectors.createIndex({ schema_version: 1, ts: -1 });
 
-  // Evidence-backed edge claims. These are graph truth candidates; semantic
-  // force samples must not be promoted here without explicit evidence.
-  await graphEdgeClaims.createIndex({ claim_id: 1 }, { unique: true });
-  await graphEdgeClaims.createIndex({ source_node_id: 1, status: 1, updatedAt: -1 as IndexDirection });
-  await graphEdgeClaims.createIndex({ target_node_id: 1, status: 1, updatedAt: -1 as IndexDirection });
-  await graphEdgeClaims.createIndex({ relation_kind: 1, status: 1, updatedAt: -1 as IndexDirection });
-  await graphEdgeClaims.createIndex({ "scope.project": 1, status: 1, updatedAt: -1 as IndexDirection });
-  await graphEdgeClaims.createIndex({ valid_until: 1, status: 1 });
+    await compactVectors.createIndex({ parent_id: 1 });
+    await compactVectors.createIndex({ ts: -1 });
+    await compactVectors.createIndex({ source: 1, ts: -1 });
+    await compactVectors.createIndex({ kind: 1, ts: -1 });
+    await compactVectors.createIndex({ project: 1, ts: -1 });
+    await compactVectors.createIndex({ session: 1, ts: -1 });
+    await compactVectors.createIndex({ visibility: 1, ts: -1 });
+    await compactVectors.createIndex({ quality_label: 1, ts: -1 });
+    await compactVectors.createIndex({ labels: 1, ts: -1 });
+    await compactVectors.createIndex({ embedding_model: 1, embedding_dimensions: 1, ts: -1 });
+    await compactVectors.createIndex({ schema_version: 1, ts: -1 });
 
-  // Query-born daimoi trails. These decay into a trail field and influence later queries.
-  await graphDaimoiTrails.createIndex({ query_hash: 1, emitted_at: -1 as IndexDirection });
-  await graphDaimoiTrails.createIndex({ node_ids: 1, emitted_at: -1 as IndexDirection });
-  await graphDaimoiTrails.createIndex({ current_node_id: 1, emitted_at: -1 as IndexDirection });
-  await graphDaimoiTrails.createIndex({ emitted_at: -1 as IndexDirection });
+    await vectorPartitions.createIndex({ collectionName: 1 }, { unique: true });
+    await vectorPartitions.createIndex({ tier: 1, model: 1, dimensions: 1 }, { unique: true });
 
-  // Compacted ViewGraph nodes for simulation. TruthGraph nodes remain in their
-  // original collections; these rows are lossy runtime projections with
-  // averaged embeddings and source metadata for expansion/audit.
-  await graphViewNodes.createIndex({ view_node_id: 1 }, { unique: true });
-  await graphViewNodes.createIndex({ status: 1, saturation: -1 as IndexDirection, updated_at: -1 as IndexDirection });
-  await graphViewNodes.createIndex({ child_node_ids: 1, status: 1 });
-  await graphViewNodes.createIndex({ child_view_node_ids: 1, status: 1 });
-  await graphViewNodes.createIndex({ parent_view_node_id: 1, status: 1 });
-  await graphViewNodes.createIndex({ project: 1, status: 1, updated_at: -1 as IndexDirection });
+    await graphLayoutOverrides.createIndex({ node_id: 1 }, { unique: true });
+    await graphLayoutOverrides.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+    await graphLayoutOverrides.createIndex({ updated_at: -1 as IndexDirection });
+    await graphLayoutOverrides.createIndex({ layout_source: 1, updated_at: -1 as IndexDirection });
 
-  // Cluster memberships
-  await graphClusterMemberships.createIndex({ node_id: 1 });
-  await graphClusterMemberships.createIndex({ graph_version: 1, cluster_id: 1 });
-  await graphClusterMemberships.createIndex({ clustering_version: 1, cluster_id: 1 });
-
-  // Label nodes — structural graph nodes for categorical labels
-  await graphLabelNodes.createIndex({ label_id: 1 }, { unique: true });
-  await graphLabelNodes.createIndex({ tenant_id: 1, project: 1, updatedAt: -1 as IndexDirection });
-  await graphLabelNodes.createIndex({ label: "text" });
-
-  // Semantic graph runs
-  await semanticGraphRuns.createIndex({ run_id: 1 }, { unique: true });
-  const versionFilter = { graph_version: { $type: "string" } };
-  const versionIndex = (await semanticGraphRuns.indexes()).find(index =>
-    stableJson(index.key) === stableJson({ graph_version: 1 }));
-  if (versionIndex && (versionIndex.unique !== true || stableJson(versionIndex.partialFilterExpression) !== stableJson(versionFilter))) {
-    await semanticGraphRuns.dropIndex(versionIndex.name!);
-  }
-  await semanticGraphRuns.createIndex({ graph_version: 1 }, {
-    unique: true,
-    name: versionIndex?.name ?? "graph_version_1",
-    partialFilterExpression: versionFilter,
-  });
-  await semanticGraphRuns.createIndex({ status: 1, finished_at: -1 as IndexDirection });
-
-  // Lazy migration jobs for validation-triggered and graph-crawl-triggered work
-  await migrationJobs.createIndex({ status: 1, priority: -1 as IndexDirection, updatedAt: 1 });
-  await migrationJobs.createIndex({ entity: 1, object_id: 1, trigger: 1 }, { unique: true });
-
-  // Gardens collection for published websites
-  await gardens.createIndex({ garden_id: 1 }, { unique: true });
-  await gardens.createIndex({ owner_id: 1, createdAt: -1 as IndexDirection });
-  await gardens.createIndex({ status: 1, createdAt: -1 as IndexDirection });
-
-  // Tenant collections — queried on every request, must be indexed
-  const tenants = db.collection("tenants");
-  const tenantPolicies = db.collection("tenant_policies");
-  await tenants.createIndex({ tenant_id: 1 }, { unique: true });
-  await tenants.createIndex({ domains: 1 });
-  await tenantPolicies.createIndex({ tenant_id: 1 }, { unique: true });
-
-  // Ensure default tenant exists (fire-and-forget, non-blocking)
-  void (async () => {
+    await graphNodeEmbeddings.createIndex({ node_id: 1, embedding_model: 1, embedding_dimensions: 1, chunk_index: 1 }, { unique: true, name: "graph_node_chunk_identity" });
+    for (const index of await graphNodeEmbeddings.indexes()) {
+      if (index.name === "node_id_1_embedding_model_1_embedding_dimensions_1" && index.unique
+          && JSON.stringify(index.key) === JSON.stringify({ node_id: 1, embedding_model: 1, embedding_dimensions: 1 })) {
+        await graphNodeEmbeddings.dropIndex(index.name);
+      }
+    }
+    await graphNodeEmbeddings.createIndex({ source_event_id: 1, embedding_model: 1, embedding_dimensions: 1 });
+    await graphNodeEmbeddings.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+    await graphNodeEmbeddings.createIndex({ updated_at: -1 as IndexDirection });
     try {
-      await tenants.updateOne(
-        { tenant_id: "knoxx-session" },
-        {
-          $setOnInsert: {
-            tenant_id: "knoxx-session",
-            slug: "knoxx-session",
-            name: "Knoxx Session",
-            status: "active",
-            isolation_mode: "shared",
-            domains: [],
-            updated_at: new Date(),
-            created_at: new Date(),
-          },
-        },
-        { upsert: true }
-      );
-      await tenantPolicies.updateOne(
-        { tenant_id: "knoxx-session" },
-        {
-          $setOnInsert: {
-            tenant_id: "knoxx-session",
-            retention_days: 90,
-            review_threshold: 0.5,
-            pii_rules: { detect: true, redact: false, reject: false },
-            translation_config: { default_target_langs: ["en"] },
-            rate_limits: { requests_per_minute: 1000, tokens_per_day: 1000000 },
-            updated_at: new Date(),
-            created_at: new Date(),
-          },
-        },
-        { upsert: true }
-      );
-    } catch {
-      // Silently ignore — tenant resolution is non-strict
+      await ensureGraphNodeEmbeddingVectorSearchIndex(graphNodeEmbeddings);
+    } catch (error) {
+      console.warn("[mongodb] graph_node_embeddings vector index unavailable:", error instanceof Error ? error.message : String(error));
     }
-  })();
 
-  const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
-  const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
-  await reconcileManagedTtl(events, "events_ttl", eventsTtl);
-  await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
-  await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
-  await reconcileManagedTtl(compactVectors, "compact_vectors_ttl", compactedTtl);
-  // Disabled retention must also reconcile already materialized model partitions.
-  for (const [tier, ttl, name] of [["hot", eventsTtl, "hot_vectors_ttl"], ["compact", compactedTtl, "compact_vectors_ttl"]] as const) {
-    if (ttl <= 0) {
-      const partitions = await vectorPartitions.find({ tier }).toArray();
-      for (const partition of partitions) await reconcileManagedTtl(db.collection(partition.collectionName), name, ttl);
+    // Semantic edges for graph clustering
+    await graphSemanticEdges.createIndex({ source_node_id: 1, target_node_id: 1 }, { unique: true });
+    await graphSemanticEdges.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ similarity: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ graph_version: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ clustering_version: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ status: 1, conductance: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticEdges.createIndex({ last_reinforced_at: 1, status: 1 });
+
+    // Semantic force samples are layout/runtime force-cache data, not relation truth.
+    await graphSemanticForceSamples.createIndex({ source_node_id: 1, target_node_id: 1, field_profile: 1, embedding_model: 1 }, { unique: true });
+    await graphSemanticForceSamples.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticForceSamples.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticForceSamples.createIndex({ field_profile: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticForceSamples.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+
+    await graphSemanticFieldCells.createIndex({ cell_id: 1 }, { unique: true });
+    await graphSemanticFieldCells.createIndex({ field_profile: 1, level: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticFieldCells.createIndex({ project: 1, field_profile: 1, updated_at: -1 as IndexDirection });
+    await graphSemanticFieldCells.createIndex({ node_ids: 1, field_profile: 1 });
+
+    // ALL graph edges (structural + semantic) from graph-weaver
+    await graphEdges.createIndex({ source_node_id: 1, target_node_id: 1, edge_kind: 1, "data.source_event_id": 1, project: 1 }, { unique: true, name: "graph_edge_projection_identity" });
+    for (const index of await graphEdges.indexes()) {
+      if (index.name === "source_node_id_1_target_node_id_1_edge_kind_1" && index.unique
+          && stableJson(index.key) === stableJson({ source_node_id: 1, target_node_id: 1, edge_kind: 1 })) {
+        await graphEdges.dropIndex(index.name);
+      }
     }
+    await graphEdges.createIndex({ source_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphEdges.createIndex({ target_node_id: 1, updated_at: -1 as IndexDirection });
+    await graphEdges.createIndex({ target_node_id: 1, edge_kind: 1 });
+    await graphEdges.createIndex({ edge_kind: 1, updated_at: -1 as IndexDirection });
+    await graphEdges.createIndex({ project: 1, updated_at: -1 as IndexDirection });
+
+    // Evidence-backed edge claims. These are graph truth candidates; semantic
+    // force samples must not be promoted here without explicit evidence.
+    await graphEdgeClaims.createIndex({ claim_id: 1 }, { unique: true });
+    await graphEdgeClaims.createIndex({ source_node_id: 1, status: 1, updatedAt: -1 as IndexDirection });
+    await graphEdgeClaims.createIndex({ target_node_id: 1, status: 1, updatedAt: -1 as IndexDirection });
+    await graphEdgeClaims.createIndex({ relation_kind: 1, status: 1, updatedAt: -1 as IndexDirection });
+    await graphEdgeClaims.createIndex({ "scope.project": 1, status: 1, updatedAt: -1 as IndexDirection });
+    await graphEdgeClaims.createIndex({ valid_until: 1, status: 1 });
+
+    // Query-born daimoi trails. These decay into a trail field and influence later queries.
+    await graphDaimoiTrails.createIndex({ query_hash: 1, emitted_at: -1 as IndexDirection });
+    await graphDaimoiTrails.createIndex({ node_ids: 1, emitted_at: -1 as IndexDirection });
+    await graphDaimoiTrails.createIndex({ current_node_id: 1, emitted_at: -1 as IndexDirection });
+    await graphDaimoiTrails.createIndex({ emitted_at: -1 as IndexDirection });
+
+    // Compacted ViewGraph nodes for simulation. TruthGraph nodes remain in their
+    // original collections; these rows are lossy runtime projections with
+    // averaged embeddings and source metadata for expansion/audit.
+    await graphViewNodes.createIndex({ view_node_id: 1 }, { unique: true });
+    await graphViewNodes.createIndex({ status: 1, saturation: -1 as IndexDirection, updated_at: -1 as IndexDirection });
+    await graphViewNodes.createIndex({ child_node_ids: 1, status: 1 });
+    await graphViewNodes.createIndex({ child_view_node_ids: 1, status: 1 });
+    await graphViewNodes.createIndex({ parent_view_node_id: 1, status: 1 });
+    await graphViewNodes.createIndex({ project: 1, status: 1, updated_at: -1 as IndexDirection });
+
+    // Cluster memberships
+    await graphClusterMemberships.createIndex({ node_id: 1 });
+    await graphClusterMemberships.createIndex({ graph_version: 1, cluster_id: 1 });
+    await graphClusterMemberships.createIndex({ clustering_version: 1, cluster_id: 1 });
+
+    // Label nodes — structural graph nodes for categorical labels
+    await graphLabelNodes.createIndex({ label_id: 1 }, { unique: true });
+    await graphLabelNodes.createIndex({ tenant_id: 1, project: 1, updatedAt: -1 as IndexDirection });
+    await graphLabelNodes.createIndex({ label: "text" });
+
+    // Semantic graph runs
+    await semanticGraphRuns.createIndex({ run_id: 1 }, { unique: true });
+    const versionFilter = { graph_version: { $type: "string" } };
+    const versionIndex = (await semanticGraphRuns.indexes()).find(index =>
+      stableJson(index.key) === stableJson({ graph_version: 1 }));
+    if (versionIndex && (versionIndex.unique !== true || stableJson(versionIndex.partialFilterExpression) !== stableJson(versionFilter))) {
+      await semanticGraphRuns.dropIndex(versionIndex.name!);
+    }
+    await semanticGraphRuns.createIndex({ graph_version: 1 }, {
+      unique: true,
+      name: versionIndex?.name ?? "graph_version_1",
+      partialFilterExpression: versionFilter,
+    });
+    await semanticGraphRuns.createIndex({ status: 1, finished_at: -1 as IndexDirection });
+
+    // Lazy migration jobs for validation-triggered and graph-crawl-triggered work
+    await migrationJobs.createIndex({ status: 1, priority: -1 as IndexDirection, updatedAt: 1 });
+    await migrationJobs.createIndex({ entity: 1, object_id: 1, trigger: 1 }, { unique: true });
+
+    // Gardens collection for published websites
+    await gardens.createIndex({ garden_id: 1 }, { unique: true });
+    await gardens.createIndex({ owner_id: 1, createdAt: -1 as IndexDirection });
+    await gardens.createIndex({ status: 1, createdAt: -1 as IndexDirection });
+
+    // Tenant collections — queried on every request, must be indexed
+    const tenants = db.collection("tenants");
+    const tenantPolicies = db.collection("tenant_policies");
+    await tenants.createIndex({ tenant_id: 1 }, { unique: true });
+    await tenants.createIndex({ domains: 1 });
+    await tenantPolicies.createIndex({ tenant_id: 1 }, { unique: true });
+
+    // Ensure default tenant exists (fire-and-forget, non-blocking)
+    void (async () => {
+      try {
+        await tenants.updateOne(
+          { tenant_id: "knoxx-session" },
+          {
+            $setOnInsert: {
+              tenant_id: "knoxx-session",
+              slug: "knoxx-session",
+              name: "Knoxx Session",
+              status: "active",
+              isolation_mode: "shared",
+              domains: [],
+              updated_at: new Date(),
+              created_at: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+        await tenantPolicies.updateOne(
+          { tenant_id: "knoxx-session" },
+          {
+            $setOnInsert: {
+              tenant_id: "knoxx-session",
+              retention_days: 90,
+              review_threshold: 0.5,
+              pii_rules: { detect: true, redact: false, reject: false },
+              translation_config: { default_target_langs: ["en"] },
+              rate_limits: { requests_per_minute: 1000, tokens_per_day: 1000000 },
+              updated_at: new Date(),
+              created_at: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+      } catch {
+        // Silently ignore — tenant resolution is non-strict
+      }
+    })();
+
+    const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
+    const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
+    await reconcileManagedTtl(events, "events_ttl", eventsTtl);
+    await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
+    await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
+    await reconcileManagedTtl(compactVectors, "compact_vectors_ttl", compactedTtl);
+    // Disabled retention must also reconcile already materialized model partitions.
+    for (const [tier, ttl, name] of [["hot", eventsTtl, "hot_vectors_ttl"], ["compact", compactedTtl, "compact_vectors_ttl"]] as const) {
+      if (ttl <= 0) {
+        const partitions = await vectorPartitions.find({ tier }).toArray();
+        for (const partition of partitions) await reconcileManagedTtl(db.collection(partition.collectionName), name, ttl);
+      }
+    }
+
+    return {
+      client,
+      db,
+      events,
+      compacted,
+      hotVectors,
+      compactVectors,
+      vectorPartitions,
+      graphLayoutOverrides,
+      graphNodeEmbeddings,
+      graphSemanticEdges,
+      graphSemanticForceSamples,
+      graphSemanticFieldCells,
+      graphEdges,
+      graphEdgeClaims,
+      graphDaimoiTrails,
+      graphViewNodes,
+      graphClusterMemberships,
+      graphLabelNodes,
+      semanticGraphRuns,
+      migrationJobs,
+      gardens,
+      retention: { eventsTtlSeconds: eventsTtl, compactedTtlSeconds: compactedTtl },
+      ftsEnabled: true, // MongoDB always has text search
+    };
+  } catch (error) {
+    // The caller never receives a handle on failure; this opening operation owns cleanup.
+    try { await client.close(); } catch { /* Preserve the initialization error. */ }
+    throw error;
   }
-
-  return {
-    client,
-    db,
-    events,
-    compacted,
-    hotVectors,
-    compactVectors,
-    vectorPartitions,
-    graphLayoutOverrides,
-    graphNodeEmbeddings,
-    graphSemanticEdges,
-    graphSemanticForceSamples,
-    graphSemanticFieldCells,
-    graphEdges,
-    graphEdgeClaims,
-    graphDaimoiTrails,
-    graphViewNodes,
-    graphClusterMemberships,
-    graphLabelNodes,
-    semanticGraphRuns,
-    migrationJobs,
-    gardens,
-    retention: { eventsTtlSeconds: eventsTtl, compactedTtlSeconds: compactedTtl },
-    ftsEnabled: true, // MongoDB always has text search
-  };
 }
 
 export async function enqueueMigrationJob(

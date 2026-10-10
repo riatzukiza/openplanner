@@ -1,9 +1,13 @@
 (ns openplanner.stores.cache.adapters.memory
   (:require [openplanner.stores.cache.core :as core]
-            [openplanner.stores.cache.protocol :refer [CacheStore]]
+            [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore cache-get]]
             [openplanner.stores.cache.schema :as schema]))
 
 (deftype MemoryLruCache [state recency max-entries default-ttl-ms]
+  CacheEntryStore
+  (cache-get-entry [this k]
+    (when-some [value (cache-get this k)]
+      {:value value :expires-at-ms (schema/entry-expires-at (get @state k))}))
   CacheStore
   (cache-get [_ k]
     (let [entry (get @state k)
@@ -18,8 +22,11 @@
 
   (cache-put! [_ k v opts]
     (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
-          entry (assoc (schema/cache-entry {:key k :value v :ttl-ms ttl-ms})
-                       :cache/recency (swap! recency inc))]
+          options (core/opts-map opts)
+          entry (cond-> (assoc (schema/cache-entry {:key k :value v :ttl-ms ttl-ms})
+                              :cache/recency (swap! recency inc))
+                  (contains? options :expires-at-ms)
+                  (assoc :cache/expires-at-ms (:expires-at-ms options)))]
       (swap! state assoc k entry)
       (while (> (count @state) max-entries)
         (let [victim (reduce-kv (fn [oldest key entry]

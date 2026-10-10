@@ -1,8 +1,12 @@
 (ns openplanner.stores.cache.adapters.lmdb
   (:require [openplanner.stores.cache.core :as core]
-            [openplanner.stores.cache.protocol :refer [CacheStore]]))
+            [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore cache-get]]))
 
 (deftype LmdbTtlCache [^js db prefix default-ttl-ms]
+  CacheEntryStore
+  (cache-get-entry [this k]
+    (when-some [value (cache-get this k)]
+      {:value value :expires-at-ms (core/jget (.get db (str prefix k)) "expiresAt")}))
   CacheStore
   (cache-get [_ k]
     (let [key (str prefix k)
@@ -17,7 +21,10 @@
   (cache-put! [_ k v opts]
     (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
           now (core/now-ms)
-          expires-at (when (pos? ttl-ms) (+ now ttl-ms))]
+          options (core/opts-map opts)
+          expires-at (if (contains? options :expires-at-ms)
+                       (:expires-at-ms options)
+                       (when (pos? ttl-ms) (+ now ttl-ms)))]
       (.put db (str prefix k) #js {:value v
                                    :createdAt now
                                    :touchedAt now

@@ -163,28 +163,24 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
     this.flushTimer = null;
   }
 
-  private async scheduleFlush(): Promise<void> {
-    return new Promise((resolve) => {
-      const doFlush = async () => {
-        await this.flushPending();
-        resolve();
-      };
+  private drainFlushQueue(): void {
+    while (this.activeBatches < this.maxConcurrentBatches && this.batchQueue.length > 0) {
+      const next = this.batchQueue.shift()!;
+      this.activeBatches++;
+      void next().finally(() => {
+        this.activeBatches--;
+        this.drainFlushQueue();
+      });
+    }
+  }
 
-      if (this.activeBatches < this.maxConcurrentBatches) {
-        this.activeBatches++;
-        void doFlush().finally(() => {
-          this.activeBatches--;
-          const next = this.batchQueue.shift();
-          if (next) {
-            this.activeBatches++;
-            void next().finally(() => {
-              this.activeBatches--;
-            });
-          }
-        });
-      } else {
-        this.batchQueue.push(doFlush);
-      }
+  private async scheduleFlush(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.batchQueue.push(async () => {
+        try { await this.flushPending(); resolve(); }
+        catch (error) { reject(error); }
+      });
+      this.drainFlushQueue();
     });
   }
 

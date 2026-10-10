@@ -197,3 +197,60 @@ Unattributed historical derived rows are retained for a separately qualified mig
 All 19 local gates pass again: SDK 64/64; cache 7 tests and 29 assertions; hydration 5/19; portable recall 17/100; compiled graph 50/233; zero failures and errors. All six compiler invocations report 0 warnings, CLJS lint reports 0 errors and 0 warnings, and the injected assertion actually exits 1. Frozen installation, released exports, demonstrations, formatter integration, workflow syntax and diff hygiene pass. The complete command capture is `bounded-coderabbit-10c4f30-complete-green-20261010.json`. The test collection added standard `$ne` matching for the new cleanup operation; the causal assertions are unchanged.
 
 The previous 10c4f30 hosted functional run passed. New source still requires fresh hosted CI and complete current-head review. CodeRabbit's actual latest footer reports Essentials, 0 included reviews remaining and a dynamically adjusted allowance of 1 review per hour. Preserve its cooldown and pending-request state before requesting the next full review; no duplicate or paid review is authorized by this repair. Original source manifests, previous failures, native findings and every journal/reflection prefix remain intact. B1, B2 and live B3 remain incomplete.
+
+
+## Late Codex review 5479596524 repaired — 2026-10-10 UTC
+
+This completed native review covers the preceding `10c4f30` head and adds twelve
+finding roots. The existing `e3d4d61` replacement tests already address its
+empty-source finding. The remaining repairs stay inside the selected SDK,
+cache and graph packages:
+
+- Graph-edge uniqueness includes causal source ownership and project. Only the
+  exact legacy SDK endpoint index is removed; unrelated indexes remain.
+- Arbitrary metadata precedes reserved derived identity/content fields.
+  Sentence identities include their source owner, so equal sentences keep
+  independent provenance and retention labels in either batch order.
+- Search setup records failure and evicts its unsuccessful setup cache entry.
+  A subsequent operation retries. Non-Atlas writes retain their fallback.
+- Invalid batch sizes fail before provider or database effects. Every queued
+  embedding flush completion drains through the same capacity-release path.
+- Hydration checks canonical source and candidate paths before cache lookup or
+  file reading. Actual file and directory escape symlinks are refused. This
+  preflight is not a filesystem race fence.
+- The process-owned hydration cache exposes idempotent `closeHydrationCache`;
+  callers must finish cache operations before closing it. Actual LMDB close,
+  reopen and persisted-entry readback pass. No per-SDK shared-cache shutdown or
+  automatic maker cleanup is claimed.
+- Mongo initialization closes its newly owned client on failure while preserving
+  the original error. Current-dimension scoped recall excludes obsolete vector
+  dimensions; missing current dimensions remain pending. The existing bounded
+  storage overflow still fails visibly.
+- Layered promotion retains the source entry's absolute expiry. Adapters without
+  the optional expiry capability remain readable and are not guessed into a
+  promoted copy. The actual held-clock LMDB-to-memory test expires both copies.
+
+RED `2cd83ee` records SDK 73 tests / 64 pass / 9 fail, cache 8 tests / 33
+assertions / 1 fail and graph 51 tests / 236 assertions / 2 fail. A later
+`2d381e6` RED refines the Atlas test to preserve fallback writes: actual retry
+still leaves search status error before the fix. Earlier prepared-run and fixture
+corrections remain inspectable; no production assertion was removed or weakened.
+
+All nineteen full package gates pass: SDK 73/73, cache 8/33, hydration 5/19,
+portable JVM 17/100 and compiled graph 51/236, with zero failures/errors. Six
+compiler contexts report zero warnings, namespace lint is 0/0, released exports,
+demonstrations, formatter, workflow syntax and hygiene pass, and the real injected
+assertion exits 1. A subsequent final cache capability guard has its own actual
+release/test/lint supplement; it supersedes only the affected cache commands.
+
+The full captured proof is `bounded-codex-10c4f30-complete-green-20261010.json`,
+36,945 bytes, SHA256
+`7751dce7d74f52d2b629db6dfb0e9b950b0e3ede001ff1594ec8eac5a2a40b91`.
+The final cache supplement is `bounded-codex-10c4f30-cache-promotion-final-20261010.json`,
+3,332 bytes, SHA256
+`0adf29d9cde2f900a05d56ba9c33a83f72410b6a16c7a2f4f1461744d8825023`.
+These are actual command captures over isolated/held ports. Current-head hosted
+CI, native finding settlements and full approving reviews remain separate gates.
+The original 56-file import manifest and all receipt/reflection prefix bytes
+remain. This source repair is the B3 dependency prerequisite; it does not complete
+live B1/B2/B3 or change the runtime, board, publication or paid usage.

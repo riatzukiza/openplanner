@@ -149,30 +149,35 @@
     (if (empty? ids)
       (do (await (assert-current! resolve-current-authority authority))
           (select authority (snapshot authority [] [] []) request))
-      (let [indices (decode-indices authority model
-                                   (await (rows! (native-path sdk ["mongo" "graphNodeEmbeddings"])
-                                                 {:project (:project authority) :source_event_id {:$in ids}
-                                                  :node_id {:$in ids} :embedding_model model
-                                                  :$expr {:$eq ["$node_id" "$source_event_id"]}} 1536)))]
+      (let [rows (await (rows! (native-path sdk ["mongo" "graphNodeEmbeddings"])
+                               {:project (:project authority) :source_event_id {:$in ids}
+                                :node_id {:$in ids} :embedding_model model
+                                :$expr {:$eq ["$node_id" "$source_event_id"]}} 1536))
+            by-dimension (into {} (map (fn [[dimension entries]]
+                                         [dimension (decode-indices authority model entries)])
+                                       (group-by :embedding_dimensions rows)))
+            all-indices (vec (mapcat second by-dimension))]
         (await (assert-current! resolve-current-authority authority))
-        (if-not (= (set ids) (set (map :event-id indices)))
-          (select authority (assoc (snapshot authority [] indices []) :index-status :pending) request)
+        (if-not (= (set ids) (set (map :event-id all-indices)))
+          (select authority (assoc (snapshot authority [] all-indices []) :index-status :pending) request)
           (let [query-vector (await (query-embedding! sdk model (:query request) format-query-text))
                 _ (await (assert-current! resolve-current-authority authority))
-                nodes (ranking/rank-nodes (:records authority) indices query-vector)
-                edges (decode-edges authority
-                                    (await (rows! (native-path sdk ["mongo" "graphEdges"])
-                                                  {:project (:project authority) :source_node_id {:$in ids}
-                                                   :target_node_id {:$in ids} :data.scoped_recall.version 1
-                                                   :data.scoped_recall.org_id (:org-id scope)
-                                                   :data.scoped_recall.character_id (:actor-id scope)
-                                                   :data.scoped_recall.project (:project authority)
-                                                   ;; All provenance is admitted in Mongo before the
-                                                   ;; retained-row budget, including nonempty array shape.
-                                                   :data.scoped_recall.provenance_event_ids
-                                                   {:$type "array" :$ne [] :$not {:$elemMatch {:$nin ids}}}} 4096)))]
-            (await (assert-current! resolve-current-authority authority))
-            (select authority (snapshot authority nodes indices edges) request)))))))
+                indices (get by-dimension (count query-vector) [])]
+            (if-not (= (set ids) (set (map :event-id indices)))
+              (select authority (assoc (snapshot authority [] indices []) :index-status :pending) request)
+              (let [nodes (ranking/rank-nodes (:records authority) indices query-vector)
+                    edges (decode-edges authority
+                                        (await (rows! (native-path sdk ["mongo" "graphEdges"])
+                                                      {:project (:project authority) :source_node_id {:$in ids}
+                                                       :target_node_id {:$in ids} :data.scoped_recall.version 1
+                                                       :data.scoped_recall.org_id (:org-id scope)
+                                                       :data.scoped_recall.character_id (:actor-id scope)
+                                                       :data.scoped_recall.project (:project authority)
+                                                       ;; Provenance is admitted before the retained-row budget.
+                                                       :data.scoped_recall.provenance_event_ids
+                                                       {:$type "array" :$ne [] :$not {:$elemMatch {:$nin ids}}}} 4096)))]
+                (await (assert-current! resolve-current-authority authority))
+                (select authority (snapshot authority nodes indices edges) request)))))))))
 
 (defn create-scoped-mongo-recall-js
   "Bind a trusted SDK handle, fresh host callback and owning SDK query formatter;

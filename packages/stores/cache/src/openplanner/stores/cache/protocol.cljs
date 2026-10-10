@@ -15,3 +15,8 @@
 (defn cache-store?
   [value]
   (satisfies? CacheStore value))
+
+(defprotocol CacheEntryStore
+  "Optional value plus absolute expiry lookup for cross-layer promotion.
+   Implementers also accept :expires-at-ms in cache-put! without renewing expiry."
+  (cache-get-entry [this k]))

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { open } from "lmdb";
 import {
@@ -13,7 +13,9 @@ import {
 } from "@open-hax/openplanner-document-hydration";
 import type { CacheHandle } from "@open-hax/openplanner-document-hydration";
 
-let hydrationCachePromise: Promise<CacheHandle> | null = null;
+type OwnedHydrationCache = { cache: CacheHandle; close: () => Promise<void> };
+let hydrationCachePromise: Promise<OwnedHydrationCache> | null = null;
+let hydrationClosePromise: Promise<void> | null = null;
 
 function parseJsonObject(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) return value as Record<string, unknown>;
@@ -32,25 +34,41 @@ function nonBlankString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-async function createHydrationCache(): Promise<CacheHandle> {
+async function createHydrationCache(): Promise<OwnedHydrationCache> {
   const ttlMs = Number(process.env.OPENPLANNER_HYDRATION_CACHE_TTL_MS ?? 5 * 60 * 60 * 1000);
   const layers: CacheHandle[] = [createMemoryLruCache({ maxEntries: 1024, defaultTtlMs: ttlMs })];
 
+  let close: () => Promise<void> = async () => {};
   const lmdbPath = process.env.OPENPLANNER_HYDRATION_LMDB_PATH;
   if (lmdbPath) {
     const db = open({ path: lmdbPath });
+    close = async () => { await db.close(); };
     layers.push(createLmdbCache({ db, prefix: "hydration:", defaultTtlMs: ttlMs }));
   }
 
-  return layers.length === 1 ? layers[0]! : createLayeredCache(layers);
+  return { cache: layers.length === 1 ? layers[0]! : createLayeredCache(layers), close };
 }
 
 export async function getHydrationCache(): Promise<CacheHandle> {
-  hydrationCachePromise ??= createHydrationCache().catch(error => {
-    hydrationCachePromise = null;
-    throw error;
-  });
-  return hydrationCachePromise;
+  if (hydrationClosePromise) await hydrationClosePromise;
+  if (!hydrationCachePromise) {
+    const pending = createHydrationCache().catch(error => {
+      if (hydrationCachePromise === pending) hydrationCachePromise = null;
+      throw error;
+    });
+    hydrationCachePromise = pending;
+  }
+  return (await hydrationCachePromise).cache;
+}
+
+/** Explicit process-level cache lifecycle. Concurrent closes share one operation. */
+export async function closeHydrationCache(): Promise<void> {
+  if (hydrationClosePromise) return hydrationClosePromise;
+  const owned = hydrationCachePromise;
+  if (!owned) return;
+  hydrationCachePromise = null;
+  hydrationClosePromise = owned.then(resource => resource.close()).finally(() => { hydrationClosePromise = null; });
+  return hydrationClosePromise;
 }
 
 export function sourceRoot(): string {
@@ -81,14 +99,14 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
   const cacheKey = documentCacheKey(row);
   if (!cacheKey) return null;
 
-  const hydrationCache = await getHydrationCache();
-  const cached = await cacheGet(hydrationCache, cacheKey);
-  if (typeof cached === "string") return cached;
-
-  const filePath = safeSourceFilePath(row);
-  if (!filePath) return null;
-
+  const candidate = safeSourceFilePath(row);
+  if (!candidate) return null;
   try {
+    const [root, filePath] = await Promise.all([realpath(sourceRoot()), realpath(candidate)]);
+    if (!(filePath === root || filePath.startsWith(`${root}${path.sep}`))) return null;
+    const hydrationCache = await getHydrationCache();
+    const cached = await cacheGet(hydrationCache, cacheKey);
+    if (typeof cached === "string") return cached;
     const text = await readFile(filePath, "utf8");
     await cachePut(hydrationCache, cacheKey, text);
     return text;
