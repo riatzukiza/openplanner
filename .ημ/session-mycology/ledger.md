@@ -550,3 +550,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-four-source-result-boundaries-green-20261010
   note: Four verified defects fixed;200immutableprefixes/56manifest/149inputs preserved. Source/generated collision preflight and connection-local reservation; camel expiry; hydration-first parent admission/backfill; complete finite unique Vexx response. TS/intermediatefixture failures retained; assertions unchanged. No distributed fencing/boundedRAM/liveproof. Old62MiMo38091922861 omitted review_submit twiceFAIL/noverdict; newhead hosted/consumer/review pending. No runtime/board/paid/spore.
+
+- ts: 2026-10-10T23:08:50.478Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a021fa5-eight-native-boundaries-red-20261010
+  note: Eight new confirmed finding reproductions within original four-package import. Existing assertions preserved; ordered provider fixture supplies responseindices. No runtime/board/liveprovider/deploy/paid/spore, approval or completed-round claim.

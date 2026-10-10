@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory } from '../dist/mongodb.js';
+import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
@@ -87,7 +87,7 @@ async function withEnv(values, f) {
   try { return await f(); } finally { for (const [k,v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v; }
 }
 async function withFetch(fixture, f) { const original = globalThis.fetch; globalThis.fetch = fixture; try { return await f(); } finally { globalThis.fetch = original; } }
-const response = vectors => new Response(JSON.stringify({data:vectors.map(embedding=>({embedding}))}),{status:200});
+const response = vectors => new Response(JSON.stringify({data:vectors.map((embedding,index)=>({embedding,index}))}),{status:200});
 
 for (const batch of [false,true]) test(`event ${batch ? 'batch' : 'single'} admission is replay-safe and uses configured retention`, async () => {
   const mongo = mongoFixture(); const admission = createProtocols({mongo}).eventAdmission;
@@ -1340,4 +1340,68 @@ for(const mode of ['native','cosine'])test(`complete Vexx ${mode} matches remain
       const result=await vectors.queryMongoVectorsByText({mongo:parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});assert.deepEqual(result.ids,[['second']]);assert.equal(result.distances[0][0],.25);
     });
   });
+});
+
+
+// Native Codex5481127319: direct SDK admission and provider identity boundaries.
+for(const field of ['project','kind'])for(const value of [{$ne:'expected'},['expected'],17,true])test('native a021 session filters refuse '+field+' '+JSON.stringify(value),async()=>{
+  const mongo=mongoFixture();let effects=0;const find=mongo.events.find.bind(mongo.events);mongo.events.find=filter=>{effects++;return find(filter);};
+  await assert.rejects(createProtocols({mongo}).sessionManagement.getSessionEvents('owned-session',{[field]:value}),/project|kind|string/i);assert.equal(effects,0);
+});
+test('native a021 session listing refuses operator project before aggregate',async()=>{
+  const mongo=mongoFixture();let effects=0;mongo.events.aggregate=()=>{effects++;return {toArray:async()=>[]};};
+  await assert.rejects(createProtocols({mongo}).sessionManagement.listSessions({project:{$ne:'expected'},limit:50,offset:0}),/project.*string/i);assert.equal(effects,0);
+});
+for(const field of ['limit','offset'])for(const value of [1.5,Infinity,NaN,Number.MAX_SAFE_INTEGER+1])test('native a021 session pagination refuses '+field+' '+String(value),async()=>{
+  const mongo=mongoFixture();let effects=0;mongo.events.aggregate=()=>{effects++;return {toArray:async()=>[]};};
+  await assert.rejects(createProtocols({mongo}).sessionManagement.listSessions({limit:50,offset:0,[field]:value}),/pagination|finite.*integer/i);assert.equal(effects,0);
+});
+test('native a021 session pagination bounds limits and keeps exact filters',async()=>{
+  const mongo=mongoFixture();const pipelines=[];mongo.events.aggregate=pipeline=>{pipelines.push(pipeline);return {toArray:async()=>[]};};const sessions=createProtocols({mongo}).sessionManagement;
+  for(const [limit,offset,expected] of [[-2,-2,50],[0,0,50],[1000,0,500],[3,2,3]]){
+    await sessions.listSessions({project:'expected',limit,offset});const page=pipelines.at(-2);
+    assert.deepEqual(page[0].$match.project,'expected');assert.equal(page.at(-1).$limit,expected);assert.equal(page.at(-2).$skip,Math.max(0,offset));
+  }
+  const filterCalls=mongo.events.calls.searches;await sessions.getSessionEvents('owned-session',{project:'expected',kind:'message',limit:1});assert.deepEqual(filterCalls.at(-1),{session:'owned-session',project:'expected',kind:'message'});
+});
+for(const value of [undefined,null,'','   ',false,{$ne:'expected'}])test('native a021 tenant identity rejects '+String(value),async()=>{
+  const mongo=mongoFixture();let effects=0;const tenant=mongo.db.collection('tenants');const insert=tenant.insertOne.bind(tenant);tenant.insertOne=doc=>{effects++;return insert(doc);};
+  await assert.rejects(createProtocols({mongo}).tenantManagement.createTenant({tenant_id:value,label:'retained'}),/tenant_id.*nonblank.*string/i);assert.equal(effects,0);assert.equal(tenant.rows.size,0);
+});
+test('native a021 tenant admission preserves a valid identity and metadata',async()=>{
+  const mongo=mongoFixture();const tenant=await createProtocols({mongo}).tenantManagement.createTenant({tenant_id:'owned-tenant',label:'retained'});assert.equal(tenant.tenant_id,'owned-tenant');assert.equal(tenant.label,'retained');assert.equal(mongo.db.collection('tenants').rows.size,1);
+});
+for(const style of ['embeddings','data'])test('native a021 mixed provider dimensions reject the whole '+style+' batch without cached partials',async()=>{
+  let calls=0;await withFetch(async()=>new Response(JSON.stringify(style==='embeddings'?{embeddings:++calls===1?[[1,0],[1,0,0]]:[[1,0],[0,1]]}:{data:(++calls===1?[[1,0],[1,0,0]]:[[1,0],[0,1]]).map((embedding,index)=>({embedding,index}))}),{status:200}),async()=>{
+    const provider=new EmbedProviderFunction('native-a021-mixed-'+style,'http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});await assert.rejects(provider.generate(['first','second']),/dimension/i);assert.deepEqual(await provider.generate(['first','second']),[[1,0],[0,1]]);assert.equal(calls,2);
+  });
+});
+test('native a021 provider response indices retain text identity through reordered responses and cache',async()=>{
+  let calls=0;await withFetch(async()=>{calls++;return new Response(JSON.stringify({data:[{index:1,embedding:[0,1]},{index:0,embedding:[1,0]}]}),{status:200});},async()=>{
+    const provider=new EmbedProviderFunction('native-a021-reordered','http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});assert.deepEqual(await provider.generate(['first','second']),[[1,0],[0,1]]);assert.deepEqual(await provider.generate(['first','second']),[[1,0],[0,1]]);assert.equal(calls,1);
+  });
+});
+for(const indices of [[0,0],[0,2],[-1,1],[0,.5],[0,'1'],[0,undefined]])test('native a021 malformed provider indices reject '+JSON.stringify(indices),async()=>{
+  await withFetch(async()=>new Response(JSON.stringify({data:indices.map((index,i)=>({index,embedding:i?[0,1]:[1,0]}))}),{status:200}),async()=>{
+    const provider=new EmbedProviderFunction('native-a021-indices','http://fixture.invalid',{batchWindowMs:1});await assert.rejects(provider.generate(['first','second']),/index|indices/i);
+  });
+});
+for(const alias of ['content_hash','contentHash'])test('native a021 hydration uses each computed hash before reused caller '+alias,async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'native-a021-hydration-'));try{await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+    for(const [name,text] of [['first.txt','First independently verified source.'],['second.txt','Second independently verified source.']]){
+      await writeFile(join(dir,name),text);const doc={_id:'native-a021-'+alias+'-'+name,parent_id:'native-a021-'+alias+'-'+name,text:'',source_text_redacted:true,source_ref:{source_path:name,[alias]:'native-a021-reused-caller-hash-'+alias},text_hash_sha256:createHash('sha256').update(text).digest('hex')};assert.equal(await hydrateVectorDocumentText(doc),text);
+    }
+  });}finally{await rm(dir,{recursive:true,force:true});}
+});
+test('native a021 graph embedding identity keeps delimiter-bearing tuples distinct and updates the same tuple',async()=>{
+  const c=collection('native-a021-graph-embeddings');const row=(node_id,embedding_model,embedding)=>({node_id,embedding_model,embedding,embedding_dimensions:2,source_event_id:'source-'+node_id,chunk_index:0,chunk_count:1});
+  await upsertGraphNodeEmbeddings(c,[row('a::b','c',[1,0]),row('a','b::c',[0,1])]);assert.equal(c.rows.size,2);assert.deepEqual([...c.rows.values()].map(r=>r.embedding),[[1,0],[0,1]]);
+  await upsertGraphNodeEmbeddings(c,[row('a::b','c',[.5,.5])]);assert.equal(c.rows.size,2);assert.deepEqual([...c.rows.values()].find(r=>r.node_id==='a::b').embedding,[.5,.5]);assert.deepEqual([...c.rows.values()].find(r=>r.node_id==='a').embedding,[0,1]);
+});
+test('native a021 graph expiration declaration permits the actual null wire value and safe narrowing',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'native-a021-graph-types-'));try{
+    const graphTypes=new URL('../../graph/graph-claim-core/index.d.ts',import.meta.url).pathname;const fixture=join(dir,'consumer.mts');await writeFile(fixture,`import type { NormalizedEdgeClaimInput } from ${JSON.stringify(graphTypes)};\nconst none: NormalizedEdgeClaimInput['valid_until_ms'] = null;\nexport function format(claim: NormalizedEdgeClaimInput) { return claim.valid_until_ms == null ? 'none' : claim.valid_until_ms.toFixed(0); }\n`);
+    await promisify(execFileCallback)(process.execPath,[new URL('../node_modules/typescript/bin/tsc',import.meta.url).pathname,'--noEmit','--strict','--skipLibCheck','--module','NodeNext','--moduleResolution','NodeNext',fixture]);
+    const graph=await import('@open-hax/openplanner-graph-claim-core');assert.equal(graph.normalizeEdgeClaimInput({source_node_id:'a',target_node_id:'b',relation_kind:'related'}).valid_until_ms,null);
+  }finally{await rm(dir,{recursive:true,force:true});}
 });
