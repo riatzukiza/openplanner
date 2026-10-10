@@ -28,10 +28,15 @@
     (let [s (str/trim value)]
       (when-not (str/blank? s) s))))
 
-(defn- first-present
-  "Aliases do not discard explicit false or zero before type admission."
-  [input fields]
-  (first (filter some? (map #(jget input %) fields))))
+(defn- agreeing-alias
+  "Every explicitly supplied identity alias must be a matching nonblank string."
+  [input fields fallback]
+  (let [supplied (when (js-object? input)
+                   (filter #(js/Object.hasOwn input %) fields))
+        values (map #(nonblank (jget input %)) supplied)]
+    (if (seq supplied)
+      (when (and (every? some? values) (= 1 (count (set values)))) (first values))
+      fallback)))
 
 (defn- token-keyword
   [value]
@@ -101,10 +106,9 @@
   (let [direction (normalize-edge-claim-direction (jget input "direction"))
         scope (or (normalize-edge-claim-scope (jget input "scope"))
                   (inferred-scope input))
-        source-node-id (nonblank (first-present input ["sourceNodeId" "source_node_id" "source"]))
-        target-node-id (nonblank (first-present input ["targetNodeId" "target_node_id" "target"]))
-        relation-value (first-present input ["relationKind" "relation_kind" "kind"])
-        relation-kind (if (nil? relation-value) "related_to" (nonblank relation-value))]
+        source-node-id (agreeing-alias input ["sourceNodeId" "source_node_id" "source-node-id" "source"] nil)
+        target-node-id (agreeing-alias input ["targetNodeId" "target_node_id" "target-node-id" "target"] nil)
+        relation-kind (agreeing-alias input ["relationKind" "relation_kind" "relation-kind" "kind"] "related_to")]
     {:source-node-id source-node-id
      :target-node-id target-node-id
      :relation-kind relation-kind
@@ -178,8 +182,10 @@
 (defn edge-claim-from-js
   [input]
   (let [key (edge-claim-key-from-js input)
+        [source-node-id target-node-id] (claims/canonical-endpoints key)
         claim-id (claim-id-from-js input #(build-edge-claim-id input))]
     (assoc key
+           :source-node-id source-node-id :target-node-id target-node-id
            :claim-id claim-id
            :status (normalize-edge-claim-status (jget input "status") :proposed)
            :confidence (clamp-confidence (jget input "confidence") 0.5)

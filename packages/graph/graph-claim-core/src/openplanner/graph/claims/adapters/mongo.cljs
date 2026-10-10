@@ -27,15 +27,18 @@
   (let [camel (present-entry doc [:claim-id :claimId "claimId"])
         snake (present-entry doc [:claim_id "claim_id"])
         storage (when-not (or camel snake) (present-entry doc [:_id "_id" :id "id"]))
-        row #js {:source_node_id (get-any doc [:source-node-id :source_node_id :source "source_node_id" "source"])
-       :target_node_id (get-any doc [:target-node-id :target_node_id :target "target_node_id" "target"])
-       :relation_kind (get-any doc [:relation-kind :relation_kind :kind "relation_kind" "kind"])
-       :direction (get-any doc [:direction "direction"])
+        row #js {:direction (get-any doc [:direction "direction"])
        :status (get-any doc [:status "status"])
        :confidence (get-any doc [:confidence "confidence"])
        :valid_until (get-any doc [:valid-until :valid_until "valid_until"])
        :scope (clj->js (or (get-any doc [:scope "scope"])
                            (select-keys doc [:tenant_id :org_id :project :lake :graph_version])))}]
+    ;; Preserve all supplied identity aliases for the canonical boundary's agreement law.
+    (doseq [field ["sourceNodeId" "source_node_id" "source-node-id" "source"
+                   "targetNodeId" "target_node_id" "target-node-id" "target"
+                   "relationKind" "relation_kind" "relation-kind" "kind"]]
+      (when-let [entry (present-entry doc [(keyword field) field])]
+        (aset row field (:value entry))))
     (when camel (aset row "claimId" (:value camel)))
     (when snake (aset row "claim_id" (:value snake)))
     (when storage (aset row "claim_id" (:value storage)))

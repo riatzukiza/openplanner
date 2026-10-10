@@ -72,9 +72,9 @@ function mergeVectorPayloads(first: Record<string, unknown>, second: Record<stri
 }
 
 export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRequest) {
-  const q = body.q;
+  if (typeof body.q !== "string" || !body.q.trim()) throw new Error("q is required");
+  const q = body.q.trim();
   const limit = body.limit ?? 20;
-  if (!q || typeof q !== "string") throw new Error("q is required");
 
   const lim = boundedSearchLimit(limit);
   const tier = body.tier ?? "both";
@@ -133,10 +133,10 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
 }
 
 export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSearchRequest) {
-  const q = body.q;
+  if (typeof body.q !== "string" || !body.q.trim()) throw new Error("q is required");
+  const q = body.q.trim();
   const k = body.k ?? 20;
 
-  if (!q || typeof q !== "string") throw new Error("q is required");
   const limit = boundedSearchLimit(k);
 
   const whereFromBody = isRecord(body.where) ? { ...body.where } : {};

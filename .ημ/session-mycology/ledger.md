@@ -478,3 +478,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-084-six-native-boundaries-red-20261010
   note: All six findings verified with original production unchanged. Initial SDK fixture syntax failure preserved but not causal proof; no assertion removed or skipped. Keep prepared full084CodeRabbit UNSENT because a concrete next repair is now required. All192 historical receipt/reflection prefixes and original56 manifest retained; no runtime/board/paid/spore.
+
+- ts: 2026-10-10T22:00:07.812Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-f6e-six-native-boundaries-green-20261010
+  note: Six native defects repaired without changing historical tests. Supplied graph identifiers validate before IO; absent projection fields remain admitted. FirstGREEN197/200 overstrict absence failure and stopped4-checkpoint run retained. Stable marker insert-once and direct/Mongo alias/canonical endpoint laws tested with isolated adapters; no live migration/provider/runtime/board/paid/spore or review approval. Original56 manifest and all193 receipt/reflection prefixes intact.

@@ -7,7 +7,7 @@
  */
 import { createHash } from "node:crypto";
 import { createProtocols } from "./protocol-adapters.js";
-import { upsertEvent, upsertGraphEdges, upsertGraphNodeEmbeddings } from "./mongodb.js";
+import { upsertEvent, upsertGraphEdges, upsertGraphNodeEmbeddings, eventRetentionExpiry } from "./mongodb.js";
 import type { MongoConnection } from "./mongodb.js";
 import { prepareIndexDocument } from "./indexing.js";
 import { indexTextInMongoVectors, replaceMongoVectorEntries } from "./mongo-vectors.js";
@@ -73,6 +73,23 @@ export function validateEvent(ev: EventEnvelopeV1) {
     }
   }
   if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
+  // Use the writer's shared label admission before any batch event is persisted.
+  eventRetentionExpiry(ev.extra, 0, new Date(0));
+  const extra = ev.extra ?? {};
+  const supplied = ev.kind === "graph.edge" ? ["source_node_id", "target_node_id", "edge_type", "edge_kind"]
+    : ev.kind === "graph.node" ? ["node_id"] : [];
+  for (const field of supplied) {
+    if (Object.hasOwn(extra, field)
+        && (typeof extra[field] !== "string" || !String(extra[field]).trim())) {
+      throw new Error("graph identifier must be a nonblank string: " + field);
+    }
+  }
+  if (ev.kind === "graph.edge") {
+    const edgeType = extra.edge_type as string | undefined, edgeKind = extra.edge_kind as string | undefined;
+    if (edgeType && edgeKind && edgeType.trim() !== edgeKind.trim()) {
+      throw new Error("graph relation identifier must be a nonblank string with agreeing aliases");
+    }
+  }
   if (ev.text !== undefined && typeof ev.text !== "string") {
     throw new Error(`${ev.kind} event text must be a string when supplied`);
   }
@@ -93,7 +110,7 @@ function graphLabelId(tenantId: string, label: string): string {
 function eventLabels(extra: Record<string, unknown>): string[] {
   const labels = (extra.openplanner_labels as any)?.labels;
   if (!Array.isArray(labels)) return [];
-  return [...new Set(labels.map((label) => String(label ?? "").trim()).filter(Boolean))];
+  return [...new Set(labels.map((label: string) => label.trim()))];
 }
 
 export function shouldIndexEventHotVectors(ev: EventEnvelopeV1): boolean {

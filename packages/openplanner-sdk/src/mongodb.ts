@@ -35,7 +35,10 @@ function labelsFromExtra(extra: unknown): string[] {
   if (!openplannerLabels || typeof openplannerLabels !== "object" || Array.isArray(openplannerLabels)) return [];
   const labels = (openplannerLabels as Record<string, unknown>).labels;
   if (!Array.isArray(labels)) return [];
-  return [...new Set(labels.map((label) => String(label ?? "").trim()).filter(Boolean))];
+  if (labels.some(label => typeof label !== "string" || !label.trim())) {
+    throw new Error("retention labels must be nonblank strings");
+  }
+  return [...new Set(labels.map(label => label.trim()))];
 }
 
 /** The event writer and session adapter share the same retention decision. */

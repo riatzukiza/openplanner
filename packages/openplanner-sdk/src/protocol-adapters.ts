@@ -7,6 +7,7 @@
  * env var PROTOCOL_IMPL: "mongo" (default) | "rest"
  */
 
+import { createHash } from "node:crypto";
 import { upsertEvent, eventRetentionExpiry, type MongoConnection } from "./mongodb.js";
 
 /**
@@ -69,13 +70,22 @@ class MongoSessionManagement implements SessionManagement {
   constructor(private ctx: ProtocolContext) {}
 
   async createSession(opts: any): Promise<any> {
-    const { expiresAt: _callerExpiry, ...content } = opts;
+    if (typeof opts?.session !== "string" || !opts.session.trim()) throw new Error("session must be a nonblank string");
+    const { expiresAt: _callerExpiry, _id: _callerId, ...content } = opts;
     const now = new Date();
     const expiresAt = eventRetentionExpiry(content.extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
-    const doc = { ...content, kind: "session", createdAt: now, updatedAt: now,
+    const existing = await this.getSession(content.session);
+    if (existing) return existing; // Preserve an already stored legacy marker on retry.
+    const markerId = "session-marker:" + createHash("sha256").update(JSON.stringify(["session", content.session])).digest("hex");
+    const doc = { ...content, _id: markerId, kind: "session", createdAt: now, updatedAt: now,
       ...(expiresAt ? { expiresAt } : {}) };
-    await this.ctx.mongo.events.insertOne(doc);
-    return doc;
+    // Mongo's unique _id makes concurrent new marker creation converge atomically.
+    await this.ctx.mongo.events.updateOne({ _id: markerId }, { $setOnInsert: doc }, { upsert: true });
+    const stored = await this.ctx.mongo.events.findOne({ _id: markerId });
+    if (!stored || stored.kind !== "session" || stored.session !== content.session) {
+      throw new Error("session marker identity conflicts with stored document");
+    }
+    return stored;
   }
 
   async getSession(sessionId: string): Promise<any> {
