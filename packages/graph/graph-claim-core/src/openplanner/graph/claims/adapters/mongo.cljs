@@ -16,7 +16,7 @@
 
 (defn- mongo-claim->js
   [doc]
-  #js {:claim_id (get-any doc [:_id :id :claim-id :claim_id "_id" "id" "claim_id"])
+  #js {:claim_id (get-any doc [:claim-id :claim_id "claim_id" :_id "_id" :id "id"])
        :source_node_id (get-any doc [:source-node-id :source_node_id :source "source_node_id" "source"])
        :target_node_id (get-any doc [:target-node-id :target_node_id :target "target_node_id" "target"])
        :relation_kind (get-any doc [:relation-kind :relation_kind :kind "relation_kind" "kind"])

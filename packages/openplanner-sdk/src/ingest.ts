@@ -110,6 +110,9 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   const log = ctx.log ?? noopLogger;
   const protocols = createProtocols({ mongo });
 
+  // Refuse the whole batch before starting event, projection or vector writes.
+  for (const ev of events) validateEvent(ev);
+
   const ids: string[] = [];
   const acceptedEvents: EventEnvelopeV1[] = [];
   const eventVectorTasks: Array<Promise<void>> = [];
@@ -209,7 +212,6 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   };
 
   for (const ev of events) {
-    validateEvent(ev);
     acceptedEvents.push(ev);
 
     const sr = ev.source_ref ?? {};

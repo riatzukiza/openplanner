@@ -33,16 +33,25 @@ export class PersistentEmbeddingCache {
     return result;
   }
 
-  set(_key: string, _value: EmbeddingCacheEntry): void {
-    // no-op stub
+  private trimToLimit(): void {
+    while (this.map.size > this.maxEntries) {
+      const firstKey = this.map.keys().next().value;
+      if (firstKey !== undefined) this.map.delete(firstKey);
+    }
   }
 
-  has(_key: string): boolean {
-    return false;
+  set(key: string, value: EmbeddingCacheEntry): void {
+    this.map.delete(key);
+    this.map.set(key, value.embedding);
+    this.trimToLimit();
   }
 
-  delete(_key: string): void {
-    // no-op stub
+  has(key: string): boolean {
+    return this.map.has(key);
+  }
+
+  delete(key: string): void {
+    this.map.delete(key);
   }
 
   clear(): void {
@@ -61,10 +70,7 @@ export class PersistentEmbeddingCache {
         this.map.delete(key);
         this.map.set(key, vector);
       }
-      while (this.map.size > this.maxEntries) {
-        const firstKey = this.map.keys().next().value;
-        if (firstKey) this.map.delete(firstKey);
-      }
+      this.trimToLimit();
     } finally {
       this.flushing = false;
     }

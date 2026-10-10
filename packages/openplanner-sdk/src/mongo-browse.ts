@@ -6,6 +6,24 @@
 import type { MongoConnection } from "./mongodb.js";
 
 const ALLOWED_SORT_DIRECTIONS = new Set([1, -1]);
+const SERVER_JAVASCRIPT_OPERATORS = new Set(["$where", "$function", "$accumulator"]);
+const QUERY_MAX_TIME_MS = 5000;
+
+function assertSafeFilter(filter: Record<string, unknown>): void {
+  const pending: unknown[] = [filter];
+  const visited = new WeakSet<object>();
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (!value || typeof value !== "object" || visited.has(value)) continue;
+    visited.add(value);
+    for (const [key, child] of Object.entries(value)) {
+      if (SERVER_JAVASCRIPT_OPERATORS.has(key)) {
+        throw new Error(`Unsupported server-side JavaScript operator: ${key}`);
+      }
+      pending.push(child);
+    }
+  }
+}
 
 export function sanitizeCollectionName(name: unknown): string | null {
   if (typeof name !== "string") return null;
@@ -54,13 +72,12 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
   const collectionName = sanitizeCollectionName(body.collection);
   if (!collectionName) throw new Error("Invalid collection name");
 
-  const db = ctx.mongo.db;
-  const collection = db.collection(collectionName);
-
   let filter: Record<string, unknown> = {};
   if (body.filter && typeof body.filter === "object" && !Array.isArray(body.filter)) {
     filter = body.filter as Record<string, unknown>;
   }
+  assertSafeFilter(filter);
+  const collection = ctx.mongo.db.collection(collectionName);
 
   const rawLimit = Number(body.limit);
   const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 50 : rawLimit, 500));
@@ -86,8 +103,8 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
     projection = body.projection as Record<string, number>;
   }
 
-  const total = await collection.countDocuments(filter);
-  const cursor = collection.find(filter, { projection }).sort(sort).skip(skip).limit(limit);
+  const total = await collection.countDocuments(filter, { maxTimeMS: QUERY_MAX_TIME_MS });
+  const cursor = collection.find(filter, { projection, maxTimeMS: QUERY_MAX_TIME_MS }).sort(sort).skip(skip).limit(limit);
   const rows = await cursor.toArray();
 
   return {

@@ -200,12 +200,12 @@ class MongoTenantManagement implements TenantManagement {
     const doc = {
       ...policy,
       tenant_id: tenantId,
-      created_at: now,
       updated_at: now,
     };
+    delete (doc as Record<string, unknown>).created_at;
     await this.policiesCollection().updateOne(
       { tenant_id: tenantId },
-      { $set: doc },
+      { $set: doc, $setOnInsert: { created_at: now } },
       { upsert: true }
     );
     return doc;

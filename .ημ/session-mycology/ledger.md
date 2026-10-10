@@ -160,3 +160,12 @@
   spore: none
   receipt-refs: cephalon-bounded-second-native-review-red-20261010
   note: A clean checkout test must compile current source; partial batch admission and identity precedence require independent negative assertions. Preserve actual RED output before repairs.
+
+- ts: 2026-10-10
+  task: Repair remaining bounded native findings
+  p-efficiency: 0.82
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-bounded-second-native-review-green-20261010
+  note: Preserve explicit semantic identity over storage identity and validate the whole input batch before starting effects. A successful clean-dist package command proves current source is tested. Local source gates remain separate from native approval and live character proof.

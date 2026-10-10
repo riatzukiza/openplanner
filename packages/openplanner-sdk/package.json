@@ -20,6 +20,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
+    "pretest": "tsc",
     "test": "node --test --test-reporter=tap test/*.test.mjs"
   },
   "dependencies": {
