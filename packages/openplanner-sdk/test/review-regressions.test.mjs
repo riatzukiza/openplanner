@@ -667,7 +667,7 @@ test('source expiry and exemption propagate to graph node embeddings and their o
     for(const row of rows){if(labels.length)assert.equal(row.expiresAt,null);else{assert.ok(source.expiresAt instanceof Date);assert.equal(row.expiresAt?.getTime(),source.expiresAt.getTime());}}
   }
   const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
-  try{await withEnv({MONGODB_EVENTS_TTL_SECONDS:'60'},()=>openMongoDB(openingConfig));assert.ok(mongo.graphNodeEmbeddings.calls.indexes.some(i=>i.keys.expiresAt===1&&i.opts.name==='graph_node_embeddings_ttl'&&i.opts.expireAfterSeconds===0));}
+  try{await openMongoDB({...openingConfig,eventsTtlSeconds:60});assert.ok(mongo.graphNodeEmbeddings.calls.indexes.some(i=>i.keys.expiresAt===1&&i.opts.name==='graph_node_embeddings_ttl'&&i.opts.expireAfterSeconds===0));}
   finally{connect.mock.restore();db.mock.restore();}
 });
 test('browse projections reject recursive server Javascript before collection access',async()=>{
@@ -680,4 +680,9 @@ test('tier and quality fusion retain incomplete vector partition coverage',async
   const providerFor=model=>({generate:async()=>{if(model==='obsolete-model')throw new Error('PRIVATE provider error');return [[1,0]];}});
   const result=await vectorSearchWithQuality({mongo,embeddingRuntime:{hot:{getEmbeddingFunctionForModel:providerFor},compact:{getEmbeddingFunctionForModel:providerFor}}},{q:'outside',k:2,tier:'both',quality:'good_then_not_bad'});
   assert.deepEqual(result.result.ids,[['healthy']]);assert.equal(result.result.partial,true);assert.deepEqual(result.result.unavailable_partitions,['obsolete_vectors']);
+});
+
+test('an empty second tier cannot turn all unavailable query models into success',async()=>{
+  const mongo=queryFixture();const unavailable=()=>{throw new Error('PRIVATE provider unavailable');};
+  await assert.rejects(vectorSearchWithQuality({mongo,embeddingRuntime:{hot:{getEmbeddingFunctionForModel:unavailable},compact:{getEmbeddingFunctionForModel:unavailable}}},{q:'outside',tier:'both',quality:'any'}),/vector query embedding unavailable for all partitions/);
 });
