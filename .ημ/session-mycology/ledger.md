@@ -268,3 +268,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-006-native-red-20261010
   note: Four new roots confirm graph retention leakage, unsafe browse projections, invalid projected claims with explicit identity, and negative memory capacity. SDK partial coverage must survive tier and quality fusion. The first cache RED capture ran only the original eight tests because the new definition followed the run-tests macro; the definition was moved before it and actual five failures captured. That initial result is not new-test coverage. Earlier e3 source repairs are uncommitted in this RED capture and its source hashes disclose that scope. Exact historical journal prefixes and original56 manifest preserved; no runtime, board, paid usage or spore.
+
+- ts: 2026-10-10T16:11:35.940Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-e3-006-native-green-20261010
+  note: Owned hot-vector replacement, parent terminal reservations, duplicate-ID admission, versioned normalized hydration, Atlas labels, safe partial queries, immutable policy identity, visibility cap, graph source retention, projection validation and memory capacity repaired. Reservations are connection-local, not distributed fencing. Cache test definition placement, explicit TTL config and prepared TypeScript corrections are disclosed. An operator base-prefix probe failed because this base contains no journals; receipt append then failed without mutation, but shell continued and committed source/proof51e4a0a. This ordinary follow-up restores report and validated receipt; no fabricated base-prefix pass or history rewrite. Original56 manifest and current journal prefixes remain exact. Hosted CI and native approvals owed; no runtime, board, deployment, paid usage or spore.

@@ -254,3 +254,66 @@ CI, native finding settlements and full approving reviews remain separate gates.
 The original 56-file import manifest and all receipt/reflection prefix bytes
 remain. This source repair is the B3 dependency prerequisite; it does not complete
 live B1/B2/B3 or change the runtime, board, publication or paid usage.
+
+## Late e3 and 006 Codex reviews repaired — 2026-10-10 UTC
+
+Native reviews 5479630941 (e3d4d61, nine roots) and 5479730893 (0065680,
+four roots) exposed further confirmed defects inside the selected four packages.
+The original 56 source selections and exact immutable import manifest remain.
+
+- Empty or structural replacements remove owned hot vectors from flat and model
+  partition storage, including retention-exempt rows. SDK connection-local
+  parent reservations serialize replacements until all detached writes terminate.
+  Batch reservation does not yield; unrelated parents remain separate. Providers
+  start after base projections succeed. This is not distributed fencing or live
+  maker recovery proof.
+- Identical batch IDs fan out once; conflicting replacements refuse the complete
+  batch. Policy round trips omit Mongo storage identity. Visibility detail reads
+  are capped at 1000. Recursive server JavaScript operators in raw browse
+  projections are refused before collection access.
+- Hydration uses computed source hashes when the caller omits a hash. Redacted
+  normalized references record coordinate space and validate raw and chunk hashes
+  before exact hydration. A normalization not reconstructable from the saved
+  source stays inline. Actual files cover CRLF, tabs, HTML and same-path revisions;
+  no filesystem race fence is claimed.
+- Atlas projections retain labels. Unavailable historical models preserve healthy
+  partition results; safe partition identities and partial coverage survive tier
+  and quality fusion. Entirely unavailable queries fail with a named error even
+  when another tier has no partitions.
+- Graph embeddings carry the admitted source's exact expiry or exemption,
+  including reused embeddings after retention changes. The SDK reconciles its
+  owned graph embedding TTL index. This does not migrate old rows whose source
+  is already absent, or prove a TTL sweep deadline.
+- Projection validates normalized claims with explicit stored identity. Core owns
+  validation and schema delegates. Memory capacity refuses negative, fractional,
+  nonfinite and unsafe integers; zero capacity is valid.
+
+RED 7b7702a captures SDK81/71/10 and supplemental83/71/12. RED9e714ef
+captures prepared e3 fixes with four 006 defects still present: SDK86/83/3,
+graph52 tests/244 assertions/8 failures. Its first cache run executed only eight
+old tests because the new definition followed the run-tests macro; the retained
+correction executes nine tests/39 assertions with five failures. A supplemental
+empty-tier negative failed before repair. The TTL-index fixture was corrected to
+use explicit config (253b41b), and a prepared TypeScript return-type error was
+repaired before final verification. These corrections do not relabel earlier
+runs as coverage.
+
+Final gates: all19 PASS; SDK**87/87**, cache**9/39**, hydration**5/19**,
+JVM**17/100**, graph**52/244**; zero failures/errors; six compiler contexts
+with zero warnings; lint0/0; released exports, demonstrations, formatter,
+workflow syntax and hygiene. A separately injected real graph assertion exits1.
+Full captured output: `bounded-codex-e3-006-complete-green-20261010.json`, 40,178 bytes, SHA256 `65851dca99fd435e709fbefdbfbf5602bb148d5285a4f6dd5edeee2c39d07d77`.
+Local missing NPM_TOKEN substitution warnings remain visible separately from
+compiler warnings; frozen offline install and gates pass.
+
+The source fix is committed in 51e4a0a. An operator incorrectly attempted a
+base journal-prefix check although this base has no journals; the check and
+subsequent receipt append failed before changing journal bytes. The shell
+continued and committed source plus actual gate output. This follow-up records
+the missing report and validated receipt through ordinary history-preserving
+commits; no failed prefix check is claimed as a pass.
+
+Current hosted CI, native settlements and full approving reviews remain separate
+obligations. This verifies the B3 dependency source; live B1/B2/B3, character,
+mood, social behavior and physical graph admission remain incomplete. No runtime,
+board, deployment, publication, paid usage or spore change was made.
