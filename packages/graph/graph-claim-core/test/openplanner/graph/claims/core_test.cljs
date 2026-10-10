@@ -224,3 +224,18 @@
       (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))))
   (is (= "related_to" (aget (boundary/normalize-edge-claim-input-js
                             #js {:source_node_id " a " :target_node_id " b "}) "relation_kind"))))
+
+
+(deftest supplied-claim-identities-are-never-replaced-by-generated-identities
+  (doseq [field ["claimId" "claim_id"]
+          value [42 #js {:id "malformed"} true false #js ["malformed"] nil js/undefined "" "  "]]
+    (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active"}]
+      (aset claim field value)
+      (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))) )
+  (let [claim #js {:claimId false :claim_id "valid-other-alias" :source_node_id "a"
+                   :target_node_id "b" :relation_kind "related" :status "active"}]
+    (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+    (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000}))))
+  (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active"}]
+    (is (re-matches #"edge_claim:[a-f0-9]{24}" (aget (boundary/project-edge-claim-js claim #js {:now 1000}) "claim_id")))) )

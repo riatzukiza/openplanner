@@ -1022,3 +1022,57 @@ test("dimension pair configuration preserves own prototype-named model contract"
     assert.equal(Object.getPrototypeOf(dimensions), Object.prototype);
   });
 });
+
+
+// Native Codex5480380498 and CodeRabbit5480383537: causal regressions on a27d70e.
+for (const [oldLabels, updates, expectedExpiry] of [
+  [[], {extra:{openplanner_labels:{labels:['keep']}}}, false],
+  [['keep'], {extra:{openplanner_labels:{labels:[]}}}, true],
+  [['keep'], {expiresAt:new Date(0)}, false],
+  [[], {'extra.openplanner_labels':{labels:['keep']}}, false],
+]) test(`session update reconciles managed retention ${JSON.stringify(updates)}`, async () => {
+  const mongo=mongoFixture();let stored={_id:'stored',session:'owned',kind:'session',createdAt:new Date(0),extra:{openplanner_labels:{labels:oldLabels}},...(oldLabels.length?{}:{expiresAt:new Date(1)})};
+  mongo.events.findOne=async()=>({...stored});
+  mongo.events.updateOne=async(filter,update)=>{mongo.events.calls.writes.push({filter,update});for(const [key,value] of Object.entries(update.$set??{})){if(key==='extra.openplanner_labels')stored.extra.openplanner_labels=value;else stored[key]=value;}for(const key of Object.keys(update.$unset??{}))delete stored[key];};
+  const before=Date.now();const row=await createProtocols({mongo}).sessionManagement.updateSession('owned',updates);
+  assert.equal(Object.hasOwn(row,'expiresAt'),expectedExpiry);
+  if(expectedExpiry){assert.ok(row.expiresAt>=new Date(before+60_000));assert.ok(row.expiresAt<=new Date(Date.now()+60_000));}
+  const write=mongo.events.calls.writes.at(-1);assert.equal(Object.hasOwn(write.update.$set,'expiresAt')&&Object.hasOwn(write.update.$unset??{},'expiresAt'),false);
+});
+
+const models=await import('../dist/embedding-models.js');
+for(const scope of [{project:'constructor'},{source:'toString'},{kind:'__proto__'}])test(`embedding scope ignores inherited model ${JSON.stringify(scope)}`,()=>{
+  assert.equal(models.resolveEmbeddingModel({defaultModel:'default',byProject:{},bySource:{},byKind:{}},scope),'default');
+});
+test('model precedence accepts only own nonempty string entries',()=>{
+  const config={defaultModel:'default',byProject:{p:42},bySource:{s:''},byKind:{k:'kind'}};
+  assert.equal(models.resolveEmbeddingModel(config,{project:'p',source:'s',kind:'k'}),'kind');
+  assert.equal(models.resolveEmbeddingModel({...config,byProject:{p:'project'},bySource:{s:'source'}},{project:'p',source:'s',kind:'k'}),'project');
+});
+for(const raw of ['__proto__=fixture','{"__proto__":"fixture"}'])test(`explicit prototype-named model map remains own ${raw}`,()=>{
+  const map=models.parseModelMap(raw);assert.equal(Object.hasOwn(map,'__proto__'),true);assert.equal(map.__proto__,'fixture');assert.equal(Object.getPrototypeOf(map),Object.prototype);
+});
+
+function parentQueryFixture(mode, rows) {
+  const mongo=queryFixture();const c=mongo.db.collection('healthy_vectors');c.rows.clear();for(const row of rows)c.rows.set(row._id,row);
+  const matching=filter=>rows.filter(r=>(filter.quality_label!=='good'||r.quality_label==='good')&&(!(filter.quality_label?.$ne==='bad')||r.quality_label!=='bad')&&(!(filter.parent_id?.$nin?.includes(r.parent_id)))&&(!(filter.parent_id?.$eq)||r.parent_id===filter.parent_id.$eq));
+  c.find=filter=>{c.calls.searches.push(filter);let selected=matching(filter);return {sort(){return this;},limit(n){selected=selected.slice(0,n);return this;},toArray:async()=>selected};};
+  c.aggregate=pipeline=>({toArray:async()=>{if(mode==='cosine')throw new Error('native unavailable');const query=pipeline[0].$vectorSearch;c.calls.searches.push(query.filter??{});return matching(query.filter??{}).slice(0,query.limit);}});
+  return mongo;
+}
+const vectorRow=(id,parent,score,quality='good')=>({_id:id,parent_id:parent,text:'outside encounter',embedding:[score,Math.sqrt(1-score*score)],embedding_model:'healthy-model',embedding_dimensions:2,quality_label:quality,score,ts:new Date()});
+for(const mode of ['native','cosine'])test(`vector ${mode} fills unique parents before final limit`,async()=>{
+  const mongo=parentQueryFixture(mode,[vectorRow('a-1','a',1),vectorRow('a-2','a',0.99),vectorRow('a-3','a',0.98),vectorRow('b-1','b',0.9)]);
+  const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+  assert.deepEqual(result.metadatas[0].map(x=>x.parent_id),['a','b']);assert.deepEqual(result.ids,[['a-1','b-1']]);
+});
+for(const mode of ['native','cosine'])test(`vector ${mode} quality backfill excludes already selected good parents`,async()=>{
+  const mongo=parentQueryFixture(mode,[vectorRow('a-1','a',1),vectorRow('a-2','a',0.99),vectorRow('b-1','b',0.9,'neutral'),vectorRow('c-1','c',0.8,'neutral')]);
+  const providerFor=()=>({generate:async()=>[[1,0]]});const result=await vectorSearchWithQuality({mongo,embeddingRuntime:{hot:{getEmbeddingFunctionForModel:providerFor},compact:{getEmbeddingFunctionForModel:providerFor}}},{q:'outside',k:3,tier:'hot',quality:'good_then_not_bad'});
+  assert.deepEqual(result.result.ids,[['a','b','c']]);assert.ok(mongo.db.collection('healthy_vectors').calls.searches.some(filter=>filter.parent_id?.$nin?.includes('a')));
+});
+for(const name of ['ftsSearch','ilikeSearch'])test(`${name} snippets truncate at Unicode code point boundaries`,async()=>{
+  const storage=await import('../dist/mongodb.js');const text='a'.repeat(239)+'海🙂';let observed;
+  const c={find(filter,options){observed=options.projection.text;const [operator,args]=Object.entries(observed)[0];const value=operator==='$substrCP'?Array.from(text).slice(args[1],args[1]+args[2]).join(''):Buffer.from(text).subarray(args[1],args[1]+args[2]).toString('utf8');return {sort(){return this;},limit(){return this;},toArray:async()=>[{id:'unicode',text:value}]};}};
+  const rows=await storage[name](c,'a');assert.deepEqual(observed,{$substrCP:['$text',0,240]});assert.equal(rows[0].snippet,'a'.repeat(239)+'海');assert.ok(!rows[0].snippet.includes('\uFFFD'));
+});

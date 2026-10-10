@@ -424,3 +424,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-explicit-dimension-declarations-green-20261010
   note: A strict dimension pair-list parser rejects missing or malformed declarations instead of silently dropping them, and defines prototype-named model contracts as own properties. The legacy model-map parser is untouched. Seven causal regressions now pass without changing old assertions. Original56manifest and186receipt/reflection prefixes remain exact. Current remote0aa MiMo remains real historical review work until this substantive successor is pushed. No approval, runtime, board, paid or spore action.
+
+- ts: 2026-10-10T18:58:03.574Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a27-native-boundaries-red-20261010
+  note: Actual new reviewers restore Codex availability; model-map finding duplicated in two native roots. Six distinct defects remain active for same bounded roots. Original56manifest and187 journal/reflection prefix unchanged. No merge/deployment/paid/spore. Earlier a27 CI/consumer proof is source-bound historical after this RED.
