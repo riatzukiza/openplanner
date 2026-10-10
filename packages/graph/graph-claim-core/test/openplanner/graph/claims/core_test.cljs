@@ -348,3 +348,9 @@
              (aget (aget from-mongo "stats") "edges")))
       (aset row "validUntil" "2099-01-01T00:00:00.000Z")
       (is (= 1 (alength (aget (mongo/project-mongo-edge-claims-js #js [row] opts) "edges")))))))
+
+(deftest expiration-wire-null-matches-typescript-contract
+  (let [wire (boundary/normalize-edge-claim-input-js
+               #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"})]
+    (is (.hasOwn js/Object wire "valid_until_ms"))
+    (is (nil? (aget wire "valid_until_ms")))))

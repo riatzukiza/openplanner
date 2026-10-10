@@ -1402,6 +1402,17 @@ test('native a021 graph expiration declaration permits the actual null wire valu
   const dir=await mkdtemp(join(tmpdir(),'native-a021-graph-types-'));try{
     const graphTypes=new URL('../../graph/graph-claim-core/index.d.ts',import.meta.url).pathname;const fixture=join(dir,'consumer.mts');await writeFile(fixture,`import type { NormalizedEdgeClaimInput } from ${JSON.stringify(graphTypes)};\nconst none: NormalizedEdgeClaimInput['valid_until_ms'] = null;\nexport function format(claim: NormalizedEdgeClaimInput) { return claim.valid_until_ms == null ? 'none' : claim.valid_until_ms.toFixed(0); }\n`);
     await promisify(execFileCallback)(process.execPath,[new URL('../node_modules/typescript/bin/tsc',import.meta.url).pathname,'--noEmit','--strict','--skipLibCheck','--module','NodeNext','--moduleResolution','NodeNext',fixture]);
-    const graph=await import('@open-hax/openplanner-graph-claim-core');assert.equal(graph.normalizeEdgeClaimInput({source_node_id:'a',target_node_id:'b',relation_kind:'related'}).valid_until_ms,null);
+    // The matching null wire assertion runs in graph-claim-core itself; SDK tests need no built graph runtime.
   }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+// Identity repair must preserve the installed tuple index and legacy stored IDs.
+test('native a021 graph embedding identity updates a legacy tuple without duplicating its unique index',async()=>{
+  const rows=[{_id:'legacy::fixture::2::0',node_id:'legacy',embedding_model:'fixture',embedding_dimensions:2,chunk_index:0,embedding:[1,0]}];
+  const fields=['node_id','embedding_model','embedding_dimensions','chunk_index'];
+  const c={async bulkWrite(ops){for(const {updateOne:{filter,update}} of ops){const old=rows.find(row=>Object.entries(filter).every(([key,value])=>row[key]===value));const next={...(!old?update.$setOnInsert:{}),...old,...filter,...update.$set};if(!old&&rows.some(row=>fields.every(key=>row[key]===next[key])))throw new Error('fixture unique graph_node_chunk_identity rejects a duplicate tuple');if(old)Object.assign(old,next);else rows.push(next);}}};
+  await upsertGraphNodeEmbeddings(c,[{node_id:'legacy',embedding_model:'fixture',embedding_dimensions:2,chunk_index:0,source_event_id:'legacy-source',chunk_count:1,embedding:[0,1]}]);assert.equal(rows.length,1);assert.equal(rows[0]._id,'legacy::fixture::2::0');assert.deepEqual(rows[0].embedding,[0,1]);
+});
+test('native a021 graph embedding identity preserves null versus empty model tuple values',async()=>{
+  const c=collection('native-a021-model-identities');await upsertGraphNodeEmbeddings(c,[{node_id:'same-node',embedding_model:null,embedding_dimensions:2,chunk_index:0,source_event_id:'null-model',chunk_count:1,embedding:[1,0]},{node_id:'same-node',embedding_model:'',embedding_dimensions:2,chunk_index:0,source_event_id:'empty-model',chunk_count:1,embedding:[0,1]}]);assert.equal(c.rows.size,2);assert.deepEqual([...c.rows.values()].map(row=>row.embedding_model),[null,'']);
 });

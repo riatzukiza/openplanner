@@ -559,3 +559,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-a021fa5-eight-native-boundaries-red-20261010
   note: Eight new confirmed finding reproductions within original four-package import. Existing assertions preserved; ordered provider fixture supplies responseindices. No runtime/board/liveprovider/deploy/paid/spore, approval or completed-round claim.
+
+- ts: 2026-10-10T23:13:04.006Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a021-eight-identity-compatibility-red-20261010
+  note: Original37nativecausal failures fixed in working bytes; two additional concrete identity risks proven before final repair. Move runtime null assertion to actualgraphsuite, preserveTS/assertions. No liveMongo/provider/runtime/board/deploy/paid/spore/approval claim.
