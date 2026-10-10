@@ -84,5 +84,14 @@
     (is (not= (hydration/document-cache-key a) (hydration/document-cache-key b)))
     (is (nil? (hydration/document-cache-key #js {:project "lake" :extra #js {:hostname "same.example"}})))))
 
+(deftest source-reference-key-components-cannot-alias
+  (doseq [field ["source_path" "url"]]
+    (let [a #js {:id "a" :project "a" :extra (doto #js {} (aset field "b:c"))}
+          b #js {:id "b" :project "a:b" :extra (doto #js {} (aset field "c"))}]
+      (is (not= (hydration/document-cache-key a) (hydration/document-cache-key b)))))
+  (let [a #js {:project "lake" :extra #js {:source_path "same"}}
+        b #js {:project "lake" :extra #js {:url "same"}}]
+    (is (not= (hydration/document-cache-key a) (hydration/document-cache-key b)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

@@ -769,3 +769,68 @@ test('building Atlas indexes preserve writes and become ready without repeating 
     assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');assert.equal(probes,2);assert.equal(part.calls.indexes.length,indexes);assert.ok(part.rows.has('ready'));
   }finally{clock.mock.restore();}
 });
+
+// Exact-head Codex review 5479951707: executable regressions before repair.
+test('read queries refresh a pending Atlas index once per bounded cadence without another write',async()=>{
+  const mongo=mongoFixture();const original=mongo.db.collection;let ready=false,probes=0,queries=0;
+  mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__')){
+    c.listSearchIndexes=()=>({toArray:async()=>{probes++;return [{status:ready?'READY':'BUILDING',queryable:ready}];}});
+    c.aggregate=()=>({toArray:async()=>{queries++;return [...c.rows.values()].map(doc=>({...doc,score:1}));}});
+  }return c;};
+  const clock=mock.method(Date,'now',()=>1000);
+  try{await upsertMongoVectorDocuments(mongo,'hot',[entry('read-ready')]);ready=true;clock.mock.mockImplementation(()=>6001);
+    const query=()=>queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,2]]})});
+    await Promise.all([query(),query()]);assert.equal(probes,2);assert.equal(queries,2);assert.equal([...mongo.vectorPartitions.rows.values()][0].searchIndexStatus,'ready');
+  }finally{clock.mock.restore();}
+});
+test('embedding batches overlap up to the configured cap and all queued waiters complete',async()=>{
+  let release;const gate=new Promise(resolve=>release=resolve);let active=0,maximum=0,started=0;
+  await withFetch(async(_,opts)=>{started++;active++;maximum=Math.max(maximum,active);await gate;active--;return response(JSON.parse(opts.body).input.map(()=>[1,2]));},async()=>{
+    const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{maxConcurrentBatches:2,maxBatchItems:1});
+    const result=provider.generate(['one','two','three','four']);
+    try{await new Promise(resolve=>setImmediate(resolve));assert.equal(started,2);assert.equal(maximum,2);}
+    finally{release();assert.equal((await result).length,4);}
+    assert.equal(started,4);assert.equal(maximum,2);
+  });
+});
+test('embedding provider errors never consume or expose arbitrary error bodies',async()=>{
+  let textReads=0;const logs=[];const logger=mock.method(console,'error',(...values)=>logs.push(values.map(String).join(' ')));
+  try{await withFetch(async()=>({ok:false,status:503,statusText:'PRIVATE status',text:async()=>{textReads++;return 'PRIVATE submitted text and credential';},body:{cancel:async()=>{}}}),async()=>{
+    const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{maxBatchItems:1});
+    await assert.rejects(provider.generate(['PRIVATE submitted text']),error=>/503/.test(error.message)&&!error.message.includes('PRIVATE'));
+  });assert.equal(textReads,0);assert.ok(!logs.join(' ').includes('PRIVATE'));}
+  finally{logger.mock.restore();}
+});
+test('non-string and whitespace event identities refuse the complete batch before writes or indexing',async()=>{
+  for(const field of ['id','source','kind'])for(const value of [123,{},true,'   ']){
+    const mongo=mongoFixture();let calls=0;const provider={generate:async()=>{calls++;return [[1,2]];}};
+    const row=ordinaryEvent('valid','Outside information');
+    await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[row,{...row,[field]:value}]),new RegExp(`event\\.${field}`));
+    assert.equal(mongo.events.rows.size,0);assert.equal(calls,0);
+  }
+});
+for(const ttl of [60,0])test(`legacy relative TTL remains owned by its retained writer when SDK TTL is ${ttl}`,async()=>{
+  const c=collection('legacy');c.indexes=async()=>[{name:'events_ttl',key:{createdAt:1},expireAfterSeconds:60},{name:'events_ttl_absolute',key:{expiresAt:1},expireAfterSeconds:0}];
+  await reconcileManagedTtl(c,'events_ttl',ttl);assert.ok(!c.calls.drops.includes('events_ttl'));
+  assert.ok(!c.calls.indexes.some(i=>i.opts.name==='events_ttl'));
+  if(ttl>0)assert.ok(c.calls.indexes.some(i=>i.opts.name==='events_ttl_absolute'&&i.keys.expiresAt===1));
+  else assert.ok(c.calls.drops.includes('events_ttl_absolute'));
+});
+test('enforced Vexx ranks small nonempty partitions and accepts empty search results',async()=>{
+  const script=`import assert from 'node:assert/strict';
+    process.env.VEXX_BASE_URL='http://fixture.invalid';process.env.VEXX_ENFORCE='true';process.env.VEXX_MIN_CANDIDATES='256';
+    const {queryMongoVectorsByText}=await import(process.argv[1]);let calls=0,rows=[{_id:'one',parent_id:'one',text:'outside',embedding:[1,0],embedding_model:'fixture',ts:new Date()}];
+    globalThis.fetch=async(_,options)=>{calls++;const body=JSON.parse(options.body);assert.equal(body.candidates.length,1);return new Response(JSON.stringify({matches:[{id:'one',score:1}]}),{status:200});};
+    const part={tier:'hot',model:'fixture',dimensions:2,collectionName:'small',searchIndexName:'fixture',searchIndexStatus:'ready'};
+    const mongo={vectorPartitions:{find:()=>({sort(){return this;},toArray:async()=>[part]})},db:{collection:()=>({collectionName:'small',aggregate:()=>({toArray:async()=>rows}),find:()=>({sort(){return this;},limit(){return this;},toArray:async()=>rows})})}};
+    const query=()=>queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:10,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+    assert.deepEqual((await query()).ids,[['one']]);assert.equal(calls,1);rows=[];assert.deepEqual((await query()).ids,[[]]);assert.equal(calls,1);`;
+  await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/mongo-vectors.js',import.meta.url).href],{timeout:5000});
+});
+test('mongoBatchSize groups complete parent replacements into bounded transactions',async()=>{
+  const mongo=mongoFixture();let transactions=0;mongo.client.startSession=()=>({withTransaction:async f=>{transactions++;await f();},endSession:async()=>{}});
+  const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:Array.from({length:5},(_,n)=>item(`batch-parent-${n}`)),embeddingFunction:{generate:async texts=>texts.map(()=>[1,2])},config:{mongoBatchSize:2,concurrency:2}});
+  assert.deepEqual(result,{indexed:5,failed:[]});assert.equal(transactions,3);
+  assert.deepEqual(mongo.hotVectors.calls.deletes.map(f=>f.parent_id.$in.length).sort(),[1,2,2]);
+  assert.ok(mongo.hotVectors.rows.size>=5);
+});

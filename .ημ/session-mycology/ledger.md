@@ -304,3 +304,12 @@
   spore: none
   receipt-refs: cephalon-bounded-bdc-native-green-20261010
   note: All17 native findings repaired and all19 local gates PASS. Original56 manifest and historical ledger/reflection prefixes preserved. New mock cleanup fixture corrections and changed-key compatibility failure retained in combined proof; no tests removed. Earlier hosted/Knoxx pass binds bdc, not this repair. Complete149 changed inputs/full journals await fresh hosted and full exact-head reviews. No approval/runtime/board/social/paid/spore claim.
+
+- ts: 2026-10-10T17:06:32.896Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-376f-native-and-false-expiry-red-20261010
+  note: Native current-head Codex completed8findings/noapproval restores cohort obligation after quota. Initial Vexx cursor fixture failure retained; corrected causal RED captured before production. Tool-host recovery and expired session handles are operator state, no runtime repair. Immutable56manifest and journal prefixes preserved. Full149input review/CI owed after repair; no runtime, board, paid, or spore.

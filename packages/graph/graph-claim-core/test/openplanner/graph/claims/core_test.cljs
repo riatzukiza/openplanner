@@ -209,7 +209,7 @@
   (is (= 0 (aget (boundary/normalize-edge-claim-input-js #js {:confidence 0}) "confidence"))))
 
 (deftest malformed-supplied-claim-expiration-is-never-unbounded
-  (doseq [value ["invalid-time" (js/Date. "invalid") js/Infinity]]
+  (doseq [value ["invalid-time" (js/Date. "invalid") js/Infinity false]]
     (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active" :validUntil value}]
       (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))
       (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?"))))))
