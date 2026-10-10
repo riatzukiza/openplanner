@@ -205,3 +205,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-487-derived-red-20261010
   note: Five initial production repairs are uncommitted prepared work; this follow-up RED records their hashes truthfully rather than claiming a pristine baseline. Earlier SDK58/57/1 and59/57/2 attempts retained. Empty replacement fixture sets extra:{} to match its intent; no assertion removed or weakened. All historic receipts/reflections preserved; no runtime, board, paid or spore.
+
+- ts: 2026-10-10T15:13:22.693Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-487-native-green-20261010
+  note: Exact raw source binding includes explicit graph nodes/chunks/sentences; immutable session identity; owned projection replacement and conflicting batch refusal; exact obsolete owned index upgrade; unknown mode refusal; retention-aware derived events and labels; one RRF vote per parent per tier. Unknown legacy ownership refuses before mutation; no distributed transaction/fencing/live Mongo or arbitrary index migration claim. Preserve initial compiler failure and authored empty-payload fixture correction. Original56manifest and every historical receipt/reflection prefix retained. Fresh hosted CI/review/consumer integration still owed; no runtime, board, publication, paid or spore.

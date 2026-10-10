@@ -79,9 +79,10 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async updateSession(sessionId: string, updates: any): Promise<any> {
+    const { _id, session, kind, createdAt, ...mutable } = updates;
     await this.ctx.mongo.events.updateOne(
       { session: sessionId, kind: "session" },
-      { $set: { ...updates, updatedAt: new Date() } }
+      { $set: { ...mutable, session: sessionId, kind: "session", updatedAt: new Date() } }
     );
     return this.getSession(sessionId);
   }

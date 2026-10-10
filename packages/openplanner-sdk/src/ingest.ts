@@ -7,7 +7,7 @@
  */
 import { createHash } from "node:crypto";
 import { createProtocols } from "./protocol-adapters.js";
-import { upsertGraphEdges, upsertGraphNodeEmbeddings } from "./mongodb.js";
+import { upsertEvent, upsertGraphEdges, upsertGraphNodeEmbeddings } from "./mongodb.js";
 import type { MongoConnection } from "./mongodb.js";
 import { prepareIndexDocument } from "./indexing.js";
 import { indexTextInMongoVectors } from "./mongo-vectors.js";
@@ -121,6 +121,32 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
 
   // Refuse the whole batch before starting event, projection or vector writes.
   for (const ev of events) validateEvent(ev);
+  const batchPayloads = new Map<string, string>();
+  for (const ev of events) {
+    const payload = JSON.stringify(ev);
+    const previous = batchPayloads.get(ev.id);
+    if (previous !== undefined && previous !== payload) {
+      throw new Error(`conflicting event replacements in one batch: ${ev.id}`);
+    }
+    batchPayloads.set(ev.id, payload);
+  }
+  // Old endpoint-keyed edges can lack causal ownership. Refuse replacement
+  // rather than mutate the event and retain stale or delete another owner.
+  for (const ev of events) {
+    const previous = await mongo.events.findOne({ _id: ev.id });
+    if (previous?.kind === "graph.edge") {
+      const old = (previous.extra as Record<string, unknown> | undefined) ?? {};
+      const source = norm(old.source_node_id)?.trim();
+      const target = norm(old.target_node_id)?.trim();
+      const kind = (norm(old.edge_type) ?? norm(old.edge_kind))?.trim();
+      if (source && target && kind) {
+        const legacy = await mongo.graphEdges.findOne({ _id: `${source}||${target}||${kind}` });
+        if (legacy && legacy.data?.source_event_id !== ev.id) {
+          throw new Error(`graph projection ownership unavailable for event ${ev.id}`);
+        }
+      }
+    }
+  }
 
   const ids: string[] = [];
   const acceptedEvents: EventEnvelopeV1[] = [];
@@ -158,6 +184,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     nodeKind: string;
     label: string;
     preview: string;
+    retentionLabels: string[];
     extra?: Record<string, unknown>;
   }): void => {
     if (derivedEventIds.has(params.id)) return;
@@ -189,6 +216,10 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               content_hash: computeTextHash(params.preview),
               lake: params.project ?? undefined,
               ...(params.extra ?? {}),
+              openplanner_labels: {
+                ...((params.extra?.openplanner_labels as Record<string, unknown> | undefined) ?? {}),
+                labels: params.retentionLabels,
+              },
             },
             schema_version: OPENPLANNER_SCHEMA_TARGETS.event,
             migration_state: eventMigrationState(now),
@@ -224,6 +255,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   };
 
   for (const ev of events) {
+    const projectionStart = projectedGraphEdges.length;
     acceptedEvents.push(ev);
 
     const sr = ev.source_ref ?? {};
@@ -348,6 +380,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             sourceEventId: ev.id,
             project,
             text: prepared.normalizedText,
+            sourceText: ev.text ?? "",
             chunkCount: 1,
           });
         } else {
@@ -364,6 +397,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               nodeKind: "doc_chunk",
               label: chunkLabel,
               preview: chunkPreview,
+              retentionLabels: labels,
               extra: {
                 parent_node_id: nodeId,
                 chunk_index: chunk.chunkIndex,
@@ -391,6 +425,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               sourceEventId: ev.id,
               project,
               text: chunk.text,
+              sourceText: ev.text ?? "",
               chunkCount: chunk.chunkCount,
             });
           }
@@ -425,6 +460,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
                 nodeKind: "sentence",
                 label: sent.sentence.length > 120 ? sent.sentence.slice(0, 117) + "..." : sent.sentence,
                 preview: sent.sentence,
+                retentionLabels: labels,
                 extra: {
                   derived_from_node_id: nodeId,
                 },
@@ -449,6 +485,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               sourceEventId: ev.id,
               project,
               text: sent.sentence,
+              sourceText: ev.text ?? "",
               chunkCount: 1,
             });
           }
@@ -476,6 +513,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
         nodeKind: ev.kind,
         label,
         preview,
+        retentionLabels: labels,
         extra: {
           lake: project ?? undefined,
           entity_key: ev.id,
@@ -493,6 +531,11 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
         sourceText: ev.text!,
         chunkCount: 1,
       });
+    }
+
+    for (let index = projectionStart; index < projectedGraphEdges.length; index++) {
+      const edge = projectedGraphEdges[index]!;
+      edge.data = { ...edge.data, source_event_id: ev.id };
     }
 
     if (shouldIndexEventHotVectors(ev)) {
@@ -538,9 +581,8 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   }
 
   if (derivedGraphNodeOps.length > 0) {
-    const batchSize = 1000;
-    for (let i = 0; i < derivedGraphNodeOps.length; i += batchSize) {
-      await mongo.events.bulkWrite(derivedGraphNodeOps.slice(i, i + batchSize), { ordered: false });
+    for (const operation of derivedGraphNodeOps) {
+      await upsertEvent(mongo.events, operation.updateOne.update.$set, mongo.retention?.eventsTtlSeconds);
     }
   }
 
@@ -551,6 +593,9 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     }
   }
 
+  // Replacing an admitted source removes its old owned projection, including
+  // when the replacement produces no edges. Unrelated owners remain intact.
+  if (ids.length > 0) await mongo.graphEdges.deleteMany({ "data.source_event_id": { $in: ids } });
   if (projectedGraphEdges.length > 0) {
     await upsertGraphEdges(mongo.graphEdges, projectedGraphEdges);
   }

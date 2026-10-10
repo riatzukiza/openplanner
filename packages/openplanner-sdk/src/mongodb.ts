@@ -11,6 +11,7 @@
  */
 
 import { MongoClient, Db, Collection, IndexDirection } from "mongodb";
+import { createHash } from "node:crypto";
 import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS, type MigrationState } from "./schema-versions.js";
 
 // Default TTL: 30 days in seconds (disabled if 0)
@@ -663,7 +664,13 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
   await graphLayoutOverrides.createIndex({ updated_at: -1 as IndexDirection });
   await graphLayoutOverrides.createIndex({ layout_source: 1, updated_at: -1 as IndexDirection });
 
-  await graphNodeEmbeddings.createIndex({ node_id: 1, embedding_model: 1, embedding_dimensions: 1 }, { unique: true });
+  await graphNodeEmbeddings.createIndex({ node_id: 1, embedding_model: 1, embedding_dimensions: 1, chunk_index: 1 }, { unique: true, name: "graph_node_chunk_identity" });
+  for (const index of await graphNodeEmbeddings.indexes()) {
+    if (index.name === "node_id_1_embedding_model_1_embedding_dimensions_1" && index.unique
+        && JSON.stringify(index.key) === JSON.stringify({ node_id: 1, embedding_model: 1, embedding_dimensions: 1 })) {
+      await graphNodeEmbeddings.dropIndex(index.name);
+    }
+  }
   await graphNodeEmbeddings.createIndex({ source_event_id: 1, embedding_model: 1, embedding_dimensions: 1 });
   await graphNodeEmbeddings.createIndex({ project: 1, updated_at: -1 as IndexDirection });
   await graphNodeEmbeddings.createIndex({ updated_at: -1 as IndexDirection });
@@ -1184,7 +1191,10 @@ export async function upsertGraphEdges(
   await collection.bulkWrite(
     rows.map((row) => {
       // Edge ID includes kind to allow multiple edge types between same nodes
-      const edgeId = `${row.source_node_id}||${row.target_node_id}||${row.edge_kind}`;
+      const owner = row.data?.source_event_id;
+      const edgeId = typeof owner === "string" && owner.length > 0
+        ? `event-edge:${createHash("sha256").update(JSON.stringify([owner, row.project ?? null, row.source_node_id, row.target_node_id, row.edge_kind])).digest("hex")}`
+        : `${row.source_node_id}||${row.target_node_id}||${row.edge_kind}`;
 
       return {
         updateOne: {

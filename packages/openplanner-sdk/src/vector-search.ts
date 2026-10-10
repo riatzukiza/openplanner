@@ -76,7 +76,9 @@ export function mergeTieredVectorHits(
         continue;
       }
 
-      existing.fusedScore += reciprocalRank;
+      // A parent contributes at most one vote from each tier; duplicate chunks
+      // may improve its displayed match without multiplying that tier's vote.
+      if (!existing.searchTiers.has(hit.tier)) existing.fusedScore += reciprocalRank;
       existing.searchTiers.add(hit.tier);
 
       if (nextDistance < existing.bestDistance) {
