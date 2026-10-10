@@ -187,3 +187,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-f5-native-green-20261010
   note: Current review restores Codex cohort; no synthetic approval. Fix disabled TTL/default policy preservation/tenant identity/timestamp preflight/label and nested scope identity/cache restart persistence/absolute source paths/unknown lifecycle refusal/source-hash embedding binding/URL inline text/terminal indexing ownership/passage formatting. Atomic cache snapshot is not a distributed lock; awaiting actual indexing termination may exceed timeout and is not general maker fencing. Legacy unbound index rows remain pending, no migration or historical ID rewrite. Original56manifest and all exact journal/reflection prefixes retained. Hosted CI/review and source integration remain owed; no live B1/B2/B3 completion, runtime, social, board, paid or spore.
+
+- ts: 2026-10-10T15:02:53.471Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-487-native-red-20261010
+  note: New native Codex5479413326 actually completed exact487 at14:48:10, superseding14:42quota availability; seven actualroots remainopen untilverifiedfix. Prior root359 snapshot49settled/quotais historically superseded, notrewritten. Preserve exact native rawreview/comments. Graphnode rawhash/sessionimmutability/projectionreplacement/chunkunique/modevalidation/derivedretention/per-tierRRF all causalRED beforeproduction. No CodeRabbit request on now superseded candidate planned; newhead requiresfresh reviews. No source scope expansion, runtime, board, publication, paid or spore change.

@@ -19,6 +19,8 @@ import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVecto
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
+import { getSessionResponse } from '../dist/sessions-core.js';
+import { mergeTieredVectorHits } from '../dist/vector-search.js';
 
 function collection(name, initial = []) {
   const rows = new Map(initial.map(r => [r._id ?? r.id, r]));
@@ -354,4 +356,73 @@ test('ordinary graph embedding persistence binds the exact untrimmed Unicode sou
   const row=[...mongo.graphNodeEmbeddings.rows.values()][0];assert.equal(row.source_text_hash_sha256,createHash('sha256').update(event.text,'utf8').digest('hex'));assert.ok(row.text.includes('海 memory'));
   const previous=calls;const next={...event,text:'海 memory'};const second=await ingestEvents({mongo,embeddingRuntime},[next]);await second.backgroundIndexing;
   assert.ok(calls>previous);assert.equal([...mongo.graphNodeEmbeddings.rows.values()][0].source_text_hash_sha256,createHash('sha256').update(next.text,'utf8').digest('hex'));
+});
+
+test('explicit graph-node embeddings bind the authoritative raw event text',async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};
+  const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'explicit-node',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'  <p>海 memory</p>  ',extra:{node_id:'explicit-node'}};
+  const result=await ingestEvents({mongo,embeddingRuntime},[event]);await result.backgroundIndexing;
+  assert.equal([...mongo.graphNodeEmbeddings.rows.values()][0].source_text_hash_sha256,createHash('sha256').update(event.text,'utf8').digest('hex'));
+});
+test('session updates retain immutable identity and creation time',async()=>{
+  const mongo=mongoFixture();const original={_id:'stored',session:'session-a',kind:'session',createdAt:'original'};let stored={...original};
+  mongo.events.updateOne=async(filter,update)=>{assert.deepEqual(filter,{session:'session-a',kind:'session'});Object.assign(stored,update.$set);};
+  mongo.events.findOne=async filter=>stored.session===filter.session&&stored.kind===filter.kind?stored:null;
+  const result=await createProtocols({mongo}).sessionManagement.updateSession('session-a',{_id:'foreign',session:'session-b',kind:'message',createdAt:'replaced',title:'changed'});
+  assert.deepEqual({...result,updatedAt:undefined},{...original,title:'changed',updatedAt:undefined});
+});
+test('event replacement removes only its previously projected edges',async()=>{
+  const mongo=mongoFixture();const edges=mongo.graphEdges;
+  edges.deleteMany=async filter=>{edges.calls.deletes.push(filter);for(const [id,row] of edges.rows)if(filter['data.source_event_id']?.$in?.includes(row.data?.source_event_id))edges.rows.delete(id);};
+  const event={schema:'openplanner.event.v1',id:'edge-source',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related',openplanner_labels:{labels:['old']}}};
+  await ingestEvents({mongo,embeddingRuntime:{}},[event]);
+  edges.rows.set('unrelated',{source_node_id:'x',target_node_id:'y',data:{source_event_id:'another-source'}});
+  await ingestEvents({mongo,embeddingRuntime:{}},[{...event,extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]);
+  const owned=[...edges.rows.values()].filter(r=>r.data?.source_event_id==='edge-source');
+  assert.equal(owned.length,1);assert.equal(owned[0].target_node_id,'c');assert.ok(edges.rows.has('unrelated'));assert.equal([...edges.rows.values()].some(r=>r.target_node_id==='b'||r.edge_kind==='has_label'),false);
+  await ingestEvents({mongo,embeddingRuntime:{}},[{...event,kind:'message',text:''}]);
+  assert.equal([...edges.rows.values()].filter(r=>r.data?.source_event_id==='edge-source').length,0);
+});
+test('two source events with equal endpoints retain independent projection ownership',async()=>{
+  const mongo=mongoFixture();const edges=mongo.graphEdges;
+  edges.deleteMany=async filter=>{for(const [id,row] of edges.rows)if(filter['data.source_event_id']?.$in?.includes(row.data?.source_event_id))edges.rows.delete(id);};
+  const event={schema:'openplanner.event.v1',id:'owner-a',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+  await ingestEvents({mongo,embeddingRuntime:{}},[event,{...event,id:'owner-b'}]);
+  assert.equal(edges.rows.size,2);
+  await ingestEvents({mongo,embeddingRuntime:{}},[{...event,extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]);
+  assert.equal(edges.rows.size,2);assert.equal([...edges.rows.values()].find(r=>r.data?.source_event_id==='owner-b').target_node_id,'b');
+});
+test('replacement refuses unattributed legacy edge ownership before event mutation',async()=>{
+  const mongo=mongoFixture();const previous={_id:'legacy',id:'legacy',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+  mongo.events.rows.set('legacy',previous);mongo.graphEdges.rows.set('a||b||related',{source_node_id:'a',target_node_id:'b',edge_kind:'related',data:{}});
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:{}},[{schema:'openplanner.event.v1',id:'legacy',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'c',edge_kind:'related'}}]),/projection ownership/i);
+  assert.equal(mongo.events.calls.writes.length,0);assert.deepEqual(mongo.events.rows.get('legacy'),previous);assert.equal(mongo.graphEdges.calls.deletes.length,0);
+});
+test('embedding uniqueness admits separate chunks and replaces only the obsolete owned index',async()=>{
+  const mongo=mongoFixture();const c=mongo.graphNodeEmbeddings;
+  c.indexes=async()=>[{name:'node_id_1_embedding_model_1_embedding_dimensions_1',key:{node_id:1,embedding_model:1,embedding_dimensions:1},unique:true},{name:'unrelated_unique',key:{project:1},unique:true}];
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await openMongoDB({uri:'mongodb://fixture.invalid',dbName:'fixture',eventsCollection:'events',compactedCollection:'compacted',vectorHotCollection:'hot_vectors',vectorCompactCollection:'compact_vectors',graphLayoutCollection:'layout',graphNodeEmbeddingCollection:'embeddings'});
+    assert.ok(c.calls.indexes.some(i=>i.opts.unique&&i.keys.chunk_index===1));
+    assert.deepEqual(c.calls.drops,['node_id_1_embedding_model_1_embedding_dimensions_1']);
+  }finally{connect.mock.restore();db.mock.restore();}
+});
+test('unknown session detail modes refuse before reading history',async()=>{
+  const mongo=mongoFixture();let reads=0;mongo.events.find=()=>{reads++;throw new Error('history should not be read');};
+  for(const mode of ['visiblity','',{},42])await assert.rejects(getSessionResponse({mongo},'session-a',{mode}),/mode.*full.*resume.*visibility/i);
+  assert.equal(reads,0);
+});
+test('derived graph-node event content follows resolved retention and label exemptions',async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'retained-source',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'outside retained content'};
+  const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;
+  const derived=mongo.events.rows.get('graph.node:derive:retained-source');assert.ok(derived.expiresAt instanceof Date);assert.equal(derived.expiresAt-derived.updatedAt,60_000);
+  const second=await ingestEvents({mongo,embeddingRuntime},[{...event,extra:{openplanner_labels:{labels:['keep']}}}]);await second.backgroundIndexing;
+  assert.equal(mongo.events.rows.get('graph.node:derive:retained-source').expiresAt,undefined);
+});
+test('RRF contributes one vote per parent per tier while retaining its best displayed chunk',()=>{
+  const hit=(id,parent,rank,distance,tier='hot')=>({id,tier,rank,distance,document:id,metadata:{parent_id:parent}});
+  const result=mergeTieredVectorHits([[hit('a1','a',0,.4),hit('a2','a',1,.1),hit('b1','b',2,.2)],[hit('b2','b',0,.2,'compact')]],2);
+  assert.deepEqual(result.ids,[['b','a']]);assert.equal(result.metadatas[0][1].best_match_id,'a2');assert.equal(result.metadatas[0][1].rrf_score,Number((1/61).toFixed(8)));
 });
