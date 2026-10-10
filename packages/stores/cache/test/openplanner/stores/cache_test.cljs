@@ -1,7 +1,8 @@
 (ns openplanner.stores.cache-test
   (:require [cljs.test :as t :refer [async deftest is run-tests]]
             [openplanner.stores.cache.boundary :as boundary]
-            [openplanner.stores.cache.schema :as schema]))
+            [openplanner.stores.cache.schema :as schema]
+            [openplanner.stores.cache.core :as core]))
 
 (defmethod t/report [:cljs.test/default :summary] [m]
   (println "\nRan" (:test m) "tests containing" (+ (:pass m) (:fail m) (:error m)) "assertions.")
@@ -85,6 +86,32 @@
     (is (= "A" (boundary/cache-get-js cache "a")))
     (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 25)
     (is (nil? (boundary/cache-get-js cache "a")))))
+
+(deftest same-millisecond-recency-is-strict-and-deterministic
+  (with-redefs [core/now-ms (constantly 100)]
+    (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 2})]
+      (boundary/cache-put-js cache "a" "A")
+      (boundary/cache-put-js cache "b" "B")
+      (is (= "A" (boundary/cache-get-js cache "a")))
+      (boundary/cache-put-js cache "c" "C")
+      (is (nil? (boundary/cache-get-js cache "b")))
+      (is (= "A" (boundary/cache-get-js cache "a")))
+      (is (= "C" (boundary/cache-get-js cache "c"))))))
+
+(deftest expired-touch-cannot-revive-memory-or-lmdb-entries
+  (let [clock (atom 100)
+        store (atom {})
+        db #js {:get #(get @store %)
+                :put (fn [k v] (swap! store assoc k v) true)
+                :remove (fn [k] (swap! store dissoc k) true)}]
+    (with-redefs [core/now-ms #(deref clock)]
+      (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 5})
+                     (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 5})]]
+        (reset! clock 100)
+        (boundary/cache-put-js cache "expired" "value")
+        (reset! clock 106)
+        (is (false? (boundary/cache-touch-js cache "expired" 20)))
+        (is (nil? (boundary/cache-get-js cache "expired")))))))
 
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

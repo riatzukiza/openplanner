@@ -19,7 +19,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "node --test --test-reporter=tap test/*.test.mjs"
   },
   "dependencies": {
     "@open-hax/openplanner-document-hydration": "workspace:*",

@@ -73,5 +73,10 @@
     (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 25)
     (is (nil? (hydration/cache-get-js cache "a")))))
 
+(deftest date-timestamps-use-the-stable-iso-representation
+  (let [iso "2026-01-02T03:04:05.006Z"]
+    (is (= iso (.-ts (hydration/row-to-document #js {:id "date" :ts (js/Date. iso)}))))
+    (is (= iso (.-ts (hydration/row-to-document #js {:id "string" :ts iso}))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

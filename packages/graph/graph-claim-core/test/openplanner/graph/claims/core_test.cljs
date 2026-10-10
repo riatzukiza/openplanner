@@ -160,3 +160,11 @@
   (let [result (run-tests 'openplanner.graph.claims.core-test)]
     (when (pos? (+ (:fail result) (:error result)))
       (js/process.exit 1))))
+
+(deftest mongo-id-only-rows-preserve-the-stored-identity
+  (let [rows #js [#js {:_id "stored-only-id" :source_node_id "a" :target_node_id "b"
+                       :relation_kind "supports" :status "supported" :confidence 0.8
+                       :tenant_id "tenant-a"}]
+        result (mongo/project-mongo-edge-claims-js rows #js {:now "2026-01-01T00:00:00.000Z"})]
+    (is (= "stored-only-id" (aget result "edges" 0 "claim_id")))
+    (is (= "tenant-a" (aget result "edges" 0 "scope" "tenant_id")))))

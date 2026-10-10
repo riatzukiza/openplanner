@@ -58,6 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @open-hax/openplanner-sdk build
+          pnpm --filter @open-hax/openplanner-sdk test
           pnpm --filter @open-hax/openplanner-sdk exec node --input-type=module -e 'import("./dist/index.js").then(m => { if (typeof m.createOpenPlannerSdk !== "function") throw new Error("missing SDK entry point"); })'
       - name: Portable recall laws
         working-directory: packages/graph/graph-claim-core

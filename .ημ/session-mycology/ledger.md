@@ -123,3 +123,22 @@
   spore: none
   receipt-refs: cephalon-openplanner-bounded-import-verified-20261010
   note: Exact package sources and locked transitive values are separate from fresh native review and deployed maker proof.
+
+- ts: 2026-10-10T04:37:02.850Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Publish bounded import and native verification
+  p-efficiency: 0.78
+  p-friction: 0.24
+  p-skill-candidate: 0.17
+  spore: none
+  receipt-refs: cephalon-bounded-openplanner-native-delivery-20261010
+  note: A new source binding needs independent native evidence; actual CI success and pending reviews remain distinct.
+
+- ts: 2026-10-10
+  task: Reproduce bounded import native findings
+  p-efficiency: 0.7
+  p-friction: 0.3
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-bounded-native-review-red-20261010
+  note: Native review found real inherited defects despite a passing build. Preserve the RED tests before repair; no provenance history rewrite.
