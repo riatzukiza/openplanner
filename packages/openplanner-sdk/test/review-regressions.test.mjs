@@ -14,7 +14,7 @@ import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embeddi
 import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
-import { ftsSearchWithQuality } from '../dist/search-core.js';
+import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
 import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText } from '../dist/mongo-vectors.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
@@ -655,4 +655,29 @@ test('failed base projection starts no detached provider work',async()=>{
   const provider={generate:async texts=>{calls++;return texts.map(()=>[1,2]);}};
   await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[ordinaryEvent('base-failure','Outside information.')]),/owned projection failed/);
   assert.equal(calls,0);
+});
+
+// Native Codex 5479730893: confirmed on 0065680, before these four production fixes.
+test('source expiry and exemption propagate to graph node embeddings and their owned TTL index',async()=>{
+  const mongo=ownedProjectionFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};
+  const event={...ordinaryEvent('graph-retention','Outside information changes creative choices.'),kind:'graph.node',extra:{node_id:'graph-retention'}};
+  for(const labels of [[],['keep'],[]]){
+    const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[{...event,extra:{...event.extra,openplanner_labels:{labels}}}]);await result.backgroundIndexing;
+    const source=mongo.events.rows.get(event.id);const rows=[...mongo.graphNodeEmbeddings.rows.values()];assert.ok(rows.length>0);
+    for(const row of rows){if(labels.length)assert.equal(row.expiresAt,null);else{assert.ok(source.expiresAt instanceof Date);assert.equal(row.expiresAt?.getTime(),source.expiresAt.getTime());}}
+  }
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await withEnv({MONGODB_EVENTS_TTL_SECONDS:'60'},()=>openMongoDB(openingConfig));assert.ok(mongo.graphNodeEmbeddings.calls.indexes.some(i=>i.keys.expiresAt===1&&i.opts.name==='graph_node_embeddings_ttl'&&i.opts.expireAfterSeconds===0));}
+  finally{connect.mock.restore();db.mock.restore();}
+});
+test('browse projections reject recursive server Javascript before collection access',async()=>{
+  for(const projection of [{bad:{$function:{body:'return 1',args:[],lang:'js'}}},{nested:{$cond:[true,{$accumulator:{}},0]}},{nested:[{$where:'true'}]}]){
+    let calls=0;await assert.rejects(queryCollectionResponse({mongo:{db:{collection(){calls++;throw new Error('collection must not be reached');}}}},{collection:'events',projection}),/Unsupported server-side JavaScript operator/);assert.equal(calls,0);
+  }
+});
+test('tier and quality fusion retain incomplete vector partition coverage',async()=>{
+  const mongo=queryFixture();mongo.vectorPartitions.rows.set('obsolete',{_id:'obsolete',tier:'hot',model:'obsolete-model',dimensions:2,collectionName:'obsolete_vectors',searchIndexStatus:'ready'});
+  const providerFor=model=>({generate:async()=>{if(model==='obsolete-model')throw new Error('PRIVATE provider error');return [[1,0]];}});
+  const result=await vectorSearchWithQuality({mongo,embeddingRuntime:{hot:{getEmbeddingFunctionForModel:providerFor},compact:{getEmbeddingFunctionForModel:providerFor}}},{q:'outside',k:2,tier:'both',quality:'good_then_not_bad'});
+  assert.deepEqual(result.result.ids,[['healthy']]);assert.equal(result.result.partial,true);assert.deepEqual(result.result.unavailable_partitions,['obsolete_vectors']);
 });

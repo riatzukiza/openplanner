@@ -259,3 +259,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-e3-native-red-20261010
   note: Confirmed nine late e3 review roots: stale hot replacement vectors, detached version race, cache identity, identical batch deduplication, Atlas labels, policy Mongo identity, unavailable historical provider, normalized reference hydration, visibility bound. Supplemental negatives require safe all-provider failure and no detached work before base projection succeeds. Normalized inline-only expectations are replaced by stricter saved-reference plus exact hydration assertions as required by the native contract. Original RED capture and exact journal prefixes remain; no runtime, board, paid usage or spore.
+
+- ts: 2026-10-10T16:05:03.368Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-006-native-red-20261010
+  note: Four new roots confirm graph retention leakage, unsafe browse projections, invalid projected claims with explicit identity, and negative memory capacity. SDK partial coverage must survive tier and quality fusion. The first cache RED capture ran only the original eight tests because the new definition followed the run-tests macro; the definition was moved before it and actual five failures captured. That initial result is not new-test coverage. Earlier e3 source repairs are uncommitted in this RED capture and its source hashes disclose that scope. Exact historical journal prefixes and original56 manifest preserved; no runtime, board, paid usage or spore.

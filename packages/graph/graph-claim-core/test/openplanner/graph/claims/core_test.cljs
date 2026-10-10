@@ -14,6 +14,7 @@
               :relation-kind "depends_on"
               :direction :directed
               :scope {:project "devel"}
+              :scope-json "{}"
               :confidence 0.8
               :valid-until-ms nil}
         opts {:statuses claims/projectable-statuses
@@ -188,3 +189,15 @@
 (deftest unknown-lifecycle-actions-never-promote-a-claim
   (doseq [action ["supprt" "" nil "delete"]]
     (is (thrown? js/Error (lifecycle/transition-plan action #js {})))))
+
+(deftest projection-validates-even-explicit-claim-identities
+  (let [base {:claim-id "explicit" :source-node-id "a" :target-node-id "b"
+              :relation-kind "supports" :direction :directed :scope-json "{}"
+              :status :active :confidence 0.8}
+        opts {:now-ms 1000}]
+    (doseq [change [{:source-node-id nil} {:target-node-id "a"} {:confidence 2}
+                    {:direction :unknown} {:scope-json nil} {:scope []}]]
+      (is (nil? (claims/claim->projected-edge (merge base change) opts))))
+    (doseq [row [#js {:_id "explicit" :target_node_id "b" :status "active"}
+                 #js {:_id "explicit" :source_node_id "a" :target_node_id "a" :status "supported"}]]
+      (is (empty? (array-seq (aget (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000}) "edges")))))))

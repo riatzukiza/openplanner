@@ -137,5 +137,13 @@
             (.catch (fn [error] (is false (str error))))
             (.finally (fn [] (set! core/now-ms original) (done))))))))
 
+
+(deftest memory-capacity-must-be-a-nonnegative-safe-integer
+  (doseq [capacity [-1 0.5 js/NaN js/Infinity 9007199254740992]]
+    (is (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))))
+  (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 0})]
+    (boundary/cache-put-js cache "zero" "value" nil)
+    (is (nil? (boundary/cache-get-js cache "zero")))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))
