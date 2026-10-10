@@ -79,6 +79,16 @@ async function ensureTtlIndex(
   });
 }
 
+/** Reconcile only the SDK-owned TTL index and expiration field. */
+export async function reconcileManagedTtl(collection: Collection<any>, name: string, ttlSeconds: number): Promise<void> {
+  if (ttlSeconds > 0) {
+    await ensureTtlIndex(collection, { expiresAt: 1 }, { name, expireAfterSeconds: 0 });
+  } else {
+    if ((await collection.indexes()).some(index => index.name === name)) await collection.dropIndex(name);
+    await collection.updateMany({ expiresAt: { $exists: true } }, { $unset: { expiresAt: "" } });
+  }
+}
+
 async function waitForQueryableSearchIndex(
   collection: Collection<any>,
   indexName: string,
@@ -268,6 +278,7 @@ export interface GraphNodeEmbeddingDocument {
   chunk_index: number;
   chunk_count: number;
   text?: string;
+  source_text_hash_sha256?: string;
   updated_at: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -764,7 +775,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
       await tenants.updateOne(
         { tenant_id: "knoxx-session" },
         {
-          $set: {
+          $setOnInsert: {
             tenant_id: "knoxx-session",
             slug: "knoxx-session",
             name: "Knoxx Session",
@@ -772,15 +783,15 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
             isolation_mode: "shared",
             domains: [],
             updated_at: new Date(),
+            created_at: new Date(),
           },
-          $setOnInsert: { created_at: new Date() },
         },
         { upsert: true }
       );
       await tenantPolicies.updateOne(
         { tenant_id: "knoxx-session" },
         {
-          $set: {
+          $setOnInsert: {
             tenant_id: "knoxx-session",
             retention_days: 90,
             review_threshold: 0.5,
@@ -788,8 +799,8 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
             translation_config: { default_target_langs: ["en"] },
             rate_limits: { requests_per_minute: 1000, tokens_per_day: 1000000 },
             updated_at: new Date(),
+            created_at: new Date(),
           },
-          $setOnInsert: { created_at: new Date() },
         },
         { upsert: true }
       );
@@ -798,57 +809,18 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     }
   })();
 
-  // TTL index for events (auto-expire old signals)
   const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
-  if (eventsTtl > 0) {
-    // Only non-labeled documents receive expiresAt; labeled documents keep expiresAt unset.
-    await ensureTtlIndex(
-      events,
-      { expiresAt: 1 },
-      {
-        expireAfterSeconds: 0,
-        name: "events_ttl",
-      }
-    );
-    console.log(`[mongodb] Created TTL index on non-labeled events (expireAfterSeconds: ${eventsTtl})`);
-  }
-
-  // TTL index for compacted_memories (longer retention, optional)
   const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
-  if (compactedTtl > 0) {
-    await ensureTtlIndex(
-      compacted,
-      { expiresAt: 1 },
-      {
-        expireAfterSeconds: 0,
-        name: "compacted_ttl",
-      }
-    );
-    console.log(`[mongodb] Created TTL index on non-labeled compacted_memories (expireAfterSeconds: ${compactedTtl})`);
-  }
-
-  if (eventsTtl > 0) {
-    await ensureTtlIndex(
-      hotVectors,
-      { expiresAt: 1 },
-      {
-        expireAfterSeconds: 0,
-        name: "hot_vectors_ttl",
-      },
-    );
-    console.log(`[mongodb] Created TTL index on non-labeled hot vectors (expireAfterSeconds: ${eventsTtl})`);
-  }
-
-  if (compactedTtl > 0) {
-    await ensureTtlIndex(
-      compactVectors,
-      { expiresAt: 1 },
-      {
-        expireAfterSeconds: 0,
-        name: "compact_vectors_ttl",
-      },
-    );
-    console.log(`[mongodb] Created TTL index on non-labeled compact vectors (expireAfterSeconds: ${compactedTtl})`);
+  await reconcileManagedTtl(events, "events_ttl", eventsTtl);
+  await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
+  await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
+  await reconcileManagedTtl(compactVectors, "compact_vectors_ttl", compactedTtl);
+  // Disabled retention must also reconcile already materialized model partitions.
+  for (const [tier, ttl, name] of [["hot", eventsTtl, "hot_vectors_ttl"], ["compact", compactedTtl, "compact_vectors_ttl"]] as const) {
+    if (ttl <= 0) {
+      const partitions = await vectorPartitions.find({ tier }).toArray();
+      for (const partition of partitions) await reconcileManagedTtl(db.collection(partition.collectionName), name, ttl);
+    }
   }
 
   return {
@@ -1035,6 +1007,7 @@ export async function upsertGraphNodeEmbeddings(
     chunk_index?: number;
     chunk_count: number;
     text?: string;
+    source_text_hash_sha256?: string;
     updated_at?: Date;
   }>,
 ): Promise<number> {
@@ -1058,6 +1031,7 @@ export async function upsertGraphNodeEmbeddings(
             chunk_index: row.chunk_index ?? 0,
             chunk_count: row.chunk_count,
             ...(row.text != null ? { text: row.text } : {}),
+            ...(row.source_text_hash_sha256 != null ? { source_text_hash_sha256: row.source_text_hash_sha256 } : {}),
             updated_at: row.updated_at ?? now,
             updatedAt: now,
           },

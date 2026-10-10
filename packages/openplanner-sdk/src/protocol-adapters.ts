@@ -176,9 +176,10 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async updateTenant(tenantId: string, updates: any): Promise<any | null> {
+    const { _id: _storageId, tenant_id: _tenantId, created_at: _createdAt, ...mutable } = updates;
     const result = await this.collection().findOneAndUpdate(
       { tenant_id: tenantId },
-      { $set: { ...updates, updated_at: new Date().toISOString() } },
+      { $set: { ...mutable, updated_at: new Date().toISOString() } },
       { returnDocument: "after" }
     );
     return result;

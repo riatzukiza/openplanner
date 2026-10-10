@@ -73,7 +73,7 @@ export function safeSourceFilePath(row: Record<string, unknown>): string | undef
   if (!rawPath) return undefined;
 
   const root = path.resolve(sourceRoot());
-  const candidate = path.resolve(root, rawPath.startsWith("/") ? rawPath.slice(1) : rawPath);
+  const candidate = path.isAbsolute(rawPath) ? path.resolve(rawPath) : path.resolve(root, rawPath);
   return candidate.startsWith(`${root}${path.sep}`) || candidate === root ? candidate : undefined;
 }
 

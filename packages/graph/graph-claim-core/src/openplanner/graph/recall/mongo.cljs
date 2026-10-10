@@ -73,11 +73,18 @@
     (when (> (count rows) maximum) (fail! :storage-limit-exceeded))
     rows))
 
+(defn- text-sha256 [text]
+  (let [hash (goog.crypt.Sha256.)]
+    (.update hash (crypt/stringToUtf8ByteArray text))
+    (crypt/byteArrayToHex (.digest hash))))
+
 (defn- decode-indices [authority model rows]
   (let [ids (set (map :id (:records authority)))
+        texts (into {} (map (juxt :id :text) (:records authority)))
         ;; Exclude foreign/legacy compact rows before inspecting their content.
         bound (filterv #(and (ids (:source_event_id %)) (= (:node_id %) (:source_event_id %))
-                              (= (:project authority) (:project %)) (= model (:embedding_model %))) rows)
+                              (= (:project authority) (:project %)) (= model (:embedding_model %))
+                              (= (:source_text_hash_sha256 %) (text-sha256 (get texts (:source_event_id %))))) rows)
         decoded (mapv #(hash-map :id (:_id %) :event-id (:source_event_id %) :model (:embedding_model %)
                                  :dimensions (:embedding_dimensions %) :chunk (:chunk_index %)
                                  :embedding (:embedding %)) bound)]

@@ -5,6 +5,7 @@
  * publishing are intentionally NOT here — they are API-server concerns layered
  * on by the route.
  */
+import { createHash } from "node:crypto";
 import { createProtocols } from "./protocol-adapters.js";
 import { upsertGraphEdges, upsertGraphNodeEmbeddings } from "./mongodb.js";
 import type { MongoConnection } from "./mongodb.js";
@@ -54,7 +55,7 @@ function norm(v: any): string | null {
 export function validateEvent(ev: EventEnvelopeV1) {
   if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
   if (!ev.id) throw new Error("event.id required");
-  if (!ev.ts) throw new Error("event.ts required (ISO)");
+  if (typeof ev.ts !== "string" || !ev.ts.trim() || !Number.isFinite(Date.parse(ev.ts))) throw new Error("event.ts must be a valid timestamp (ISO)");
   if (!ev.source) throw new Error("event.source required");
   if (!ev.kind) throw new Error("event.kind required");
 }
@@ -68,7 +69,7 @@ function labelSlug(value: string): string {
 }
 
 function graphLabelId(tenantId: string, label: string): string {
-  return `label:${tenantId}:${labelSlug(label)}`;
+  return `label:${tenantId}:${labelSlug(label)}:${createHash("sha256").update(label, "utf8").digest("hex")}`;
 }
 
 function eventLabels(extra: Record<string, unknown>): string[] {
@@ -91,13 +92,21 @@ export function shouldIndexEventHotVectors(ev: EventEnvelopeV1): boolean {
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timer: NodeJS.Timeout | null = null;
+  let timedOut = false;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+        timer = setTimeout(() => { timedOut = true; reject(new Error(`${label} timed out after ${timeoutMs}ms`)); }, timeoutMs);
       }),
     ]);
+  } catch (error) {
+    if (timedOut) {
+      // Provider cancellation is not available on every embedding implementation.
+      // Retain ownership until the underlying operation settles; expiry is not termination.
+      try { await promise; } catch { /* Preserve the original timeout outcome. */ }
+    }
+    throw error;
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -131,6 +140,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     source_event_id: string;
     project?: string | null;
     text: string;
+    source_text_hash_sha256: string;
     chunk_count: number;
   }>();
 
@@ -199,6 +209,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     project?: string | null;
     text: string;
     chunkCount?: number;
+    sourceText?: string;
   }): void => {
     const normalized = formatEmbeddingPassageText(params.text);
     if (!normalized) return;
@@ -207,6 +218,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
       source_event_id: params.sourceEventId,
       project: params.project ?? null,
       text: normalized,
+      source_text_hash_sha256: createHash("sha256").update(params.sourceText ?? params.text, "utf8").digest("hex"),
       chunk_count: params.chunkCount ?? 1,
     });
   };
@@ -478,6 +490,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
         sourceEventId: ev.id,
         project,
         text: preview,
+        sourceText: ev.text!,
         chunkCount: 1,
       });
     }
@@ -550,6 +563,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             source_event_id: string;
             project?: string | null;
             text: string;
+            source_text_hash_sha256: string;
             chunk_count: number;
           };
           const groupedByModel = new Map<string, GraphNodeEmbeddingInput[]>();
@@ -570,13 +584,13 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             const nodeIds = rows.map((row) => row.node_id);
             const existing = await mongo.graphNodeEmbeddings
               .find({ node_id: { $in: nodeIds }, embedding_model: model })
-              .project({ node_id: 1, text: 1 })
+              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1 })
               .toArray();
-            const existingTextById = new Map(existing.map((row: any) => [String(row.node_id), String(row.text ?? "")] as const));
+            const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
 
             const toEmbed = rows.filter((row) => {
-              const previous = existingTextById.get(row.node_id);
-              return !previous || previous !== row.text;
+              const previous = existingById.get(row.node_id);
+              return !previous || previous.text !== row.text || previous.source_text_hash_sha256 !== row.source_text_hash_sha256;
             });
 
             if (toEmbed.length === 0) continue;
@@ -599,6 +613,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
                 embedding,
                 chunk_count: row.chunk_count ?? 1,
                 text: row.text,
+                source_text_hash_sha256: row.source_text_hash_sha256,
                 updated_at: new Date(),
               }];
             });

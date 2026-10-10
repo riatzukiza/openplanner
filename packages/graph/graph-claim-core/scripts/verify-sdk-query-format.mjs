@@ -1,12 +1,13 @@
 // LGPL-3.0-or-later. Actual owning SDK formatter; held provider and storage only.
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {createScopedMongoRecall} from '../dist/index.js';
 import {formatEmbeddingQueryText} from '../../../openplanner-sdk/src/embedding-text.ts';
 
 const scope={'actor-id':'creator','org-id':'org','membership-id':'member','user-id':'user','policy-revision':'policy:1'};
 const authority={scope,project:'project',records:[{id:'event',text:'harbor encounter'}]};
 const request={version:1,'recall-id':'recall',query:'  harbor  ',k:1,fetch:1,'max-nodes':1,'max-cost':1,feedback:'none'};
-const index={_id:'event::held-model::2::0',node_id:'event',source_event_id:'event',project:'project',embedding_model:'held-model',embedding_dimensions:2,embedding:[1,0],chunk_index:0,chunk_count:1};
+const index={source_text_hash_sha256:createHash('sha256').update(authority.records[0].text,'utf8').digest('hex'),_id:'event::held-model::2::0',node_id:'event',source_event_id:'event',project:'project',embedding_model:'held-model',embedding_dimensions:2,embedding:[1,0],chunk_index:0,chunk_count:1};
 const collection=rows=>({find(){return {sort(){return this},limit(){return this},maxTimeMS(){return this},async toArray(){return rows}}}});
 const captured=[];
 const hot={getModel:()=> 'held-model',getEmbeddingFunctionForModel:()=>({async generate(texts){captured.push(...texts);return [[1,0]]}})};

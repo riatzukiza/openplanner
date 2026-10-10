@@ -38,7 +38,8 @@
 
 (defn transition-plan
   [action body]
-  (let [action (or (action-keyword action) :support)]
+  (let [action (or (action-keyword action)
+                   (throw (ex-info "Unknown edge claim lifecycle action" {:action action})))]
     (case action
       :support
       (let [status (boundary/normalize-edge-claim-status (jget body "status") :supported)

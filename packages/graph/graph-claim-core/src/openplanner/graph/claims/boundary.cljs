@@ -74,12 +74,20 @@
          :lake (jget input "lake")
          :graph_version (jget input "graph_version")}))
 
+(defn- stable-json
+  "Preserve all nested JSON keys while sorting object keys at every depth."
+  [value]
+  (cond
+    (array? value) (str "[" (str/join "," (map stable-json (array-seq value))) "]")
+    (js-object? value) (str "{" (str/join "," (map (fn [k]
+                                                   (str (js/JSON.stringify k) ":" (stable-json (aget value k))))
+                                                 (sort (array-seq (js/Object.keys value))))) "}")
+    :else (js/JSON.stringify value)))
+
 (defn- canonical-scope-json
   [scope]
   (if (seq scope)
-    (let [obj (clj->js scope)
-          keys (clj->js (sort (keys scope)))]
-      (js/JSON.stringify obj keys))
+    (stable-json (clj->js scope))
     "{}"))
 
 (defn edge-claim-key-from-js

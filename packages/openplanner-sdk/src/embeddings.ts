@@ -208,7 +208,7 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         try {
           const embeddings = await this.resolveBatch(entries);
 
-          void this.cache?.putMany(entries.map(([key], index) => ({ key, vector: embeddings[index]! })));
+          await this.cache?.putMany(entries.map(([key], index) => ({ key, vector: embeddings[index]! })));
 
           for (let i = 0; i < entries.length; i++) {
             const entry = entries[i]![1];

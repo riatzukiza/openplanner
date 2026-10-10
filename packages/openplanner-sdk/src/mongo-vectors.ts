@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import type { ClientSession, Collection, Filter } from "mongodb";
 import type { IEmbeddingFunction } from "./embeddings.js";
-import { formatEmbeddingQueryText } from "./embedding-text.js";
+import { formatEmbeddingQueryText, formatEmbeddingPassageText } from "./embedding-text.js";
+import { reconcileManagedTtl } from "./mongodb.js";
 import { batchPreparedChunks, isContextOverflowError, prepareIndexDocument } from "./indexing.js";
 import type { MongoConnection, MongoVectorDocument, MongoVectorPartitionDocument } from "./mongodb.js";
 import { OPENPLANNER_SCHEMA_TARGETS, vectorChunkMigrationState } from "./schema-versions.js";
@@ -116,7 +117,8 @@ function sourceRefFromExtra(extra: Record<string, unknown> | undefined): SourceR
     ?? nonBlankString(metadata.content_hash)
     ?? nonBlankString(objectValue(extra?.migration_2).text_hash_sha256);
 
-  if (!sourcePath && !url && !hostname) return null;
+  // Hydration currently supports filesystem paths only. Keep URL-only text inline.
+  if (!sourcePath) return null;
   return {
     ...(sourcePath ? { source_path: sourcePath } : {}),
     ...(url ? { url } : {}),
@@ -349,28 +351,8 @@ function vectorTtlSeconds(mongo: MongoConnection, tier: MongoVectorTier): number
 }
 
 async function ensureVectorTtlIndex(collection: Collection<MongoVectorDocument>, tier: MongoVectorTier, ttlSeconds: number): Promise<void> {
-  if (ttlSeconds <= 0) return;
-
   const name = tier === "hot" ? "hot_vectors_ttl" : "compact_vectors_ttl";
-  const existing = (await collection.indexes()).find((index) => index.name === name);
-  if (
-    existing
-    && (
-      existing.expireAfterSeconds !== 0
-      || JSON.stringify(existing.partialFilterExpression ?? {}) !== JSON.stringify({})
-    )
-  ) {
-    await collection.dropIndex(name);
-  }
-
-  await collection.createIndex(
-    { expiresAt: 1 },
-    {
-      expireAfterSeconds: 0,
-      name,
-      background: true,
-    },
-  );
+  await reconcileManagedTtl(collection, name, ttlSeconds);
 }
 
 function sanitizeModelName(model: string): string {
@@ -915,7 +897,7 @@ export async function indexTextInMongoVectors(params: {
     const entries: MongoVectorEntry[] = [];
 
     for (const batch of batchPreparedChunks(prepared.chunks)) {
-      const texts = batch.map((chunk) => chunk.text);
+      const texts = batch.map((chunk) => formatEmbeddingPassageText(chunk.text));
       const embeddings = await params.embeddingFunction.generate(texts);
       if (!Array.isArray(embeddings) || embeddings.length !== batch.length) {
         throw new Error(`embedding batch size mismatch: expected ${batch.length}, got ${Array.isArray(embeddings) ? embeddings.length : 0}`);
@@ -1253,7 +1235,7 @@ export async function batchIndexTextsInMongoVectors(params: {
 
   for (let offset = 0; offset < allChunks.length; offset += embeddingBatchSize) {
     const batch = allChunks.slice(offset, offset + embeddingBatchSize);
-    const texts = batch.map((c) => c.text);
+    const texts = batch.map((c) => formatEmbeddingPassageText(c.text));
 
     try {
       const vectors = await embeddingFunction.generate(texts);

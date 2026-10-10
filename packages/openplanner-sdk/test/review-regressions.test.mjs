@@ -344,3 +344,14 @@ test('background indexing cannot settle after a timeout while its underlying tas
   try{const result=await ingestEvents({mongo,embeddingRuntime,log:{warn(){warned++;}}},[{schema:'openplanner.event.v1',id:'slow',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory'}]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));const premature=settled;release();await result.backgroundIndexing;assert.equal(premature,false);assert.ok(warned>0);assert.ok(mongo.hotVectors.calls.writes.length>0);
   }finally{release?.();timer.mock.restore();}
 });
+
+test('ordinary graph embedding persistence binds the exact untrimmed Unicode source text',async()=>{
+  const mongo=mongoFixture();let calls=0;
+  const provider={generate:async texts=>{calls++;return texts.map(()=>[1,2]);}};
+  const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
+  const event={schema:'openplanner.event.v1',id:'bound-text',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'  海 memory  '};
+  const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;
+  const row=[...mongo.graphNodeEmbeddings.rows.values()][0];assert.equal(row.source_text_hash_sha256,createHash('sha256').update(event.text,'utf8').digest('hex'));assert.ok(row.text.includes('海 memory'));
+  const previous=calls;const next={...event,text:'海 memory'};const second=await ingestEvents({mongo,embeddingRuntime},[next]);await second.backgroundIndexing;
+  assert.ok(calls>previous);assert.equal([...mongo.graphNodeEmbeddings.rows.values()][0].source_text_hash_sha256,createHash('sha256').update(next.text,'utf8').digest('hex'));
+});

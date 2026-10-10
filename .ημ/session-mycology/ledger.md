@@ -178,3 +178,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-f5-native-red-20261010
   note: Native Codex current finding review restores available cohort and supersedes old quota. Confirmed retention disable, default tenant/policy overwrite, tenant identity, invalid timestamps, label and nested scope collisions, cache persistence, absolute source paths, unknown lifecycle, stale index binding, URL redaction, detached indexing and passage formatting. Initial authored timer mock used unavailable original method; preserved initial proof, corrected mock before source changes and reproduced actual completion failure. Historical receipts and original56blob provenance retained. No runtime, clock, deployment, social, board, paid or spore change.
+
+- ts: 2026-10-10T14:38:45.145Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-f5-native-green-20261010
+  note: Current review restores Codex cohort; no synthetic approval. Fix disabled TTL/default policy preservation/tenant identity/timestamp preflight/label and nested scope identity/cache restart persistence/absolute source paths/unknown lifecycle refusal/source-hash embedding binding/URL inline text/terminal indexing ownership/passage formatting. Atomic cache snapshot is not a distributed lock; awaiting actual indexing termination may exceed timeout and is not general maker fencing. Legacy unbound index rows remain pending, no migration or historical ID rewrite. Original56manifest and all exact journal/reflection prefixes retained. Hosted CI/review and source integration remain owed; no live B1/B2/B3 completion, runtime, social, board, paid or spore.
