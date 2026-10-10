@@ -1,0 +1,4 @@
+{:paths ["src" "test"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+        metosin/malli {:mvn/version "0.16.4"}}
+ :aliases {:recall-test {:main-opts ["-m" "openplanner.graph.recall.core-test"]}}}

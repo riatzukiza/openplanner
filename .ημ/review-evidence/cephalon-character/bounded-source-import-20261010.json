@@ -1,0 +1,899 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-10T04:20:48.738Z",
+  "tier": "observed selected Git blob import; not review or runtime qualification",
+  "human_authorization": "bring over the limited 56 files.",
+  "base": "f95a53a4da8ed90588b0be320ba8e86c6a03668d",
+  "sync_source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+  "recall_source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+  "source_file_count": 56,
+  "selected": [
+    {
+      "path": "packages/graph/graph-claim-core/LICENSE",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "5550e2db15f239ea8d3cf54bfa3b035eab8d3174",
+      "mode": "100644",
+      "sha256": "ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c",
+      "bytes": 7651,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/README.md",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "72bdb932d21b827cb65b38a1d87a0a282a9f3100",
+      "mode": "100644",
+      "sha256": "c848845fa9beafc6c2cdcad4de40f62ae006be4b3e60f290b718a7c1c08e1e75",
+      "bytes": 2167,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/index.d.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "297097a4df6239b7a4cd0e3021397cbaa7a5f99b",
+      "mode": "100644",
+      "sha256": "2ab39dce01274c52bdc63036fa9d0d111692eb8d215beda30691dc7a8f95bcbb",
+      "bytes": 3367,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/package.json",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "79367fd94a4615344d786e266c3d0112a38dde90",
+      "mode": "100644",
+      "sha256": "7231f50bf4f227836bfaf7bcc47785a75b9666a34eed5e3965177e14bc4bd817",
+      "bytes": 561,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/shadow-cljs.edn",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "82041069ea87e807c37b5e1457540618d2c3faa7",
+      "mode": "100644",
+      "sha256": "3323fb9e75c2067c965d080841904ab17388d972a3be4acecfcf788682fbf10e",
+      "bytes": 1903,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/adapters/mongo.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "c4dcf0922cfe7622b36c6cc655efab3434913ac3",
+      "mode": "100644",
+      "sha256": "1f5d7193259bfd5c310e99a44bab60d554643d1f5dd8972174cc8d097505d511",
+      "bytes": 2674,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/boundary.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "73966c39777be24e47c61bbc1b6d761b1cbe1e19",
+      "mode": "100644",
+      "sha256": "1d5e0ac07e1776f7407547258aeb66601066eabc088eb7eb8885d2391a172f83",
+      "bytes": 9050,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/core.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "9b7a19ede6f12aa0fed10c2634035f2acd4cd0fe",
+      "mode": "100644",
+      "sha256": "3f5c1792695f81cee78644d7b11f9420d0c337a183bd749b9f1fef9ac0d0de31",
+      "bytes": 2806,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/lifecycle.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "a20da2ab7a56a017f47c506435e2ee1ce9891e10",
+      "mode": "100644",
+      "sha256": "d8b72293db7c71147d4766ba2d9f68e833068ce920be71f3c0fa9894c31ffde1",
+      "bytes": 2502,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/policy.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "7716a42ccc1f01de43747b207b7bcc11ce19fccc",
+      "mode": "100644",
+      "sha256": "0a74696e33e0efd6670443268de643096f31c7c505eefdf257004145c77e9f45",
+      "bytes": 2503,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/claims/schema.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "844ce4f26fc52608a2789727cbc1d9a3e90c6c28",
+      "mode": "100644",
+      "sha256": "7bed57862a12aebb0bb558594c092504bf852e0c7640e4b792ecb32599c568d1",
+      "bytes": 3115,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/claims/core_test.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "412eee8429111998c1089b32f4a13150dac85c27",
+      "mode": "100644",
+      "sha256": "2f4317c8a041bd7afbd3db44de0b3def41767d8d82bc79356fb7d0e1fa3dc7dc",
+      "bytes": 8016,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/package.json",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "2f220212888da16d6e51918050ff1065d6594197",
+      "mode": "100644",
+      "sha256": "942f686c7b1e1e841040d9d1c35e32146aaf01bc469a1044ff73f62f3e6e26e6",
+      "bytes": 1008,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/config.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "1a2b32be359fc0d477253bbd69e1647868fea752",
+      "mode": "100644",
+      "sha256": "eef6ca6b31d97b8e459baa5a333b2487e65c29a2d97c207d1644bcb06682bf31",
+      "bytes": 5361,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/embedding-cache.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "4a91949e54f4b379a5bce7ff5bd2c7bc6cfd1af6",
+      "mode": "100644",
+      "sha256": "2ecbaf59330f0655b32a3fa8e99658d553050e134eead099d5f12df3c610b921",
+      "bytes": 1650,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/embedding-models.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "ef1b448fe6d0a88f81ae8abda7845c6f0a1fc4c1",
+      "mode": "100644",
+      "sha256": "8a6ea95336c0089de0fc773b5436359f00c721c6bd8165c63704ea5f9a718377",
+      "bytes": 2317,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/embedding-runtime.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "6e1ebcac1f14e70fb17e614aad178276df7489cb",
+      "mode": "100644",
+      "sha256": "bd8e83a52c3cc72c4cc3ae66dd8793db692a456842a41db8669d0f6e08992ab2",
+      "bytes": 4494,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/embedding-text.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "b97318ecf6667ee682bb8ccfbbe26093faaeea14",
+      "mode": "100644",
+      "sha256": "de4753c62b57ceab0b212414d5c71f27d5033d7ab67fc5eca01fd39fa67ad3dd",
+      "bytes": 1036,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/embeddings.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "32ed8f95e0521e9f8b35e25a7ef8cd6b52414c7e",
+      "mode": "100644",
+      "sha256": "67b1bf33bed2948cbd656310390890a6d65422796c7abeddbc4e2456bbe2e625",
+      "bytes": 11632,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/index.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "19b9027cb3e5eb2ec1795f8c31cc3ccafa7bd2f8",
+      "mode": "100644",
+      "sha256": "355511c667248b65ae72d8d81e06ab3a571948dabc2b3a270890e4196a1bf147",
+      "bytes": 1747,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/indexing.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "1369c4048a705b038b77f821d61e9be08ea43349",
+      "mode": "100644",
+      "sha256": "3662b6478948087a905cb1aabff3b177ade7497dc9ddb0ce1236ca728e345fd1",
+      "bytes": 9656,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/ingest.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "40e5778648e8e88fd86c2fb202445489ee4fcc14",
+      "mode": "100644",
+      "sha256": "6a6a6e96068cb5ab19877453120de307fdc7f406bbade0bd9af939881ff53639",
+      "bytes": 21979,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/mongo-browse.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "f431c52246279b50c38c4b9ec9ac9bc406cbe6a1",
+      "mode": "100644",
+      "sha256": "14a8366449483665e0c8687754d0ae3b096427cf5c85b1d73ec70d62a17ee46d",
+      "bytes": 3498,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/mongo-vectors.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "cf7a00ca2b18c97f5d5113eaf8ccf584d0c77309",
+      "mode": "100644",
+      "sha256": "74b76b3d68a9c6c788701fd09a6e33164c5d38eceef72529ce4ea6111ecd9637",
+      "bytes": 47450,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/mongodb.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "72a951af1894be90e4033fcdb725eaec2dc8834b",
+      "mode": "100644",
+      "sha256": "728f1721a052d0ad83e2430760e5a3d49702ecc34a5b6443ed3c1f2fd36c935b",
+      "bytes": 43904,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/protocol-adapters.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "1192673e77f8438bde757a2486a08b71a3f2f0ec",
+      "mode": "100644",
+      "sha256": "cdb100e142a1847238fbf7ce9c625338583fd9b0efa04f6d08e94395b9b8177c",
+      "bytes": 7607,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/schema-versions.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "40e823bc59ed956544e11364316d8ebb42249e18",
+      "mode": "100644",
+      "sha256": "48f04d75b9f7614bcabca3eaa2499ef0162fbd70dd29c06a90316f271c3b85f5",
+      "bytes": 1050,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/sdk.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "01123de9a15d0f8b3d9d6abf69f982b0a30d6eb5",
+      "mode": "100644",
+      "sha256": "6b72b6959c8d500c60c2cd464b1bbe4599605e4bf8da1fa930e2e19e6523d6c7",
+      "bytes": 3470,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/search-core.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "d32dd1a77a1e79d36d56184702609e14849e2311",
+      "mode": "100644",
+      "sha256": "d398e1f983ad858cfdf879eb723e0d26ed1bd112b6da4510941279b2b62127be",
+      "bytes": 7354,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/sentence-split.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "837f4b52075fcc32797dd907cf785a97833912e4",
+      "mode": "100644",
+      "sha256": "f4f41887b2a36447d75628685b4d0f2266ab84209482ea1fcaa60a5cd8500570",
+      "bytes": 1659,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/sessions-core.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "faadb626998e7133dfcbadcf94bd943b4e51480c",
+      "mode": "100644",
+      "sha256": "b667e31c1ee0d41d812174a630f0dd547dc8818506f472b186d8863f978c45da",
+      "bytes": 3584,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/source-hydration.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "e933e4a8d8a9f83895aac1c13c1552585cd812c9",
+      "mode": "100644",
+      "sha256": "9107631402efbf50d30f0261d5b39f0820d99268468c908f62d956ed1ac3b123",
+      "bytes": 3661,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/turndown.d.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "134930d4b8ff26e439cdcdcfd75612b9eb2324d9",
+      "mode": "100644",
+      "sha256": "13339b3bd56b56faa57d96d11f9c5487fce053ace345c9b820aad738ae4b3b50",
+      "bytes": 306,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/types.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "8a12677f8c796af25149e798dc3b079f7ae6dceb",
+      "mode": "100644",
+      "sha256": "393f96ce39ef1afa35c5b2e4aedfdf39b8f02f88e09ad89a2ab6e1dca00d4790",
+      "bytes": 5493,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/src/vector-search.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "06cc95f8402188e1fe1f56d5d84343a6ccfcdd18",
+      "mode": "100644",
+      "sha256": "af743cadc1b9fdbc1fbe8ea30e6419e9d5dacbbd2c64275cfd93f49d7c0e8198",
+      "bytes": 3620,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/openplanner-sdk/tsconfig.json",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "16a3d56e707c1acc798012242f55d073149f469b",
+      "mode": "100644",
+      "sha256": "0dcfba93caef4d76dacbe1a7736dbe97123bdad8ccb40da8a734a67fb26860b3",
+      "bytes": 438,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/LICENSE",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "5550e2db15f239ea8d3cf54bfa3b035eab8d3174",
+      "mode": "100644",
+      "sha256": "ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c",
+      "bytes": 7651,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/README.md",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "0b81e54d6875602322c57c69b2e4e4280e97417d",
+      "mode": "100644",
+      "sha256": "063fa93a4015124d27c3e2f09baecc3e8f357fb851c964eecf589c9248bd20e7",
+      "bytes": 2492,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/index.d.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "92a27404d8b59593e374e1162780a2060042a243",
+      "mode": "100644",
+      "sha256": "0ac5810adac2ecb8fbc3fe62c78e13e328e597e8ba4944402f0350cf092c9151",
+      "bytes": 2468,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/package.json",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "a5a9b43f2c9a2be66a5852d28d0d98c3a0f3648b",
+      "mode": "100644",
+      "sha256": "becb551baeb524f01c62e2ab1c8a4450adf1372c1f4d5b5b9cc19141774c90f8",
+      "bytes": 556,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/shadow-cljs.edn",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "bc3344c4363398bcab6382aa0ce90b24c035c060",
+      "mode": "100644",
+      "sha256": "61adb6eb699e0f98dbeab3efd6e6aa0edec21ddf09c1e60a05471a7d637d86a9",
+      "bytes": 1684,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/adapters/lmdb.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "39194f8144a24c88412de8f9eb962407f6228d85",
+      "mode": "100644",
+      "sha256": "02128b54e0c00731fe9764f01ef96d4a4034b1884cf8cb81c000f0ee7304e6ba",
+      "bytes": 1995,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/adapters/memory.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "2b08883c2bc3cff22c0df82fa93cbf09bc0cf336",
+      "mode": "100644",
+      "sha256": "868abe3597f873b2ebf90fae790455ae59d4b4fe7dc3c7c4b9f70fb1e0e92ddc",
+      "bytes": 2400,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/boundary.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "b3c2b62d2c38431c83bbd716e74a484dd8bb3ce8",
+      "mode": "100644",
+      "sha256": "e3563da03094a1a0949c9238c51e6466dd0cfee9be1bfba68b64c3bac2a552ae",
+      "bytes": 4510,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/core.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "0c306a61c0821338e42d4beea1d17b95a606b084",
+      "mode": "100644",
+      "sha256": "73095dd51a450c29a30174d3ec0ec2f638d57997f25b6318812161fbac210c70",
+      "bytes": 692,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/layered.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "125fbe0dcce32586daa3a1d9d3952e29c10c466e",
+      "mode": "100644",
+      "sha256": "3ce8871bf1e30e571e572ec69204182c6324f6df03e687343150711e84d6bf00",
+      "bytes": 1824,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/protocol.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "f7f3a8309fbfdebb5f18294b147ef59514851310",
+      "mode": "100644",
+      "sha256": "c2f9f0c544736fb33f4f099ecbc9075c0f3a5d05d8b9a79946e94f7b5aee4741",
+      "bytes": 497,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/src/openplanner/stores/cache/schema.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "4cf051b5134c3c7d7d48ee45f1d0c7f353e3c7c0",
+      "mode": "100644",
+      "sha256": "3454bb174ead2b84bc038319d40c09b11b3f22db3ff012d0006d539d0cd94f23",
+      "bytes": 5209,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/cache/test/openplanner/stores/cache_test.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "11a42b0c467bf0abf4e7c6747ad018febefe2d89",
+      "mode": "100644",
+      "sha256": "a5d515b922e5cedfba3968b056268171469be46427af170524e8b23b6309480a",
+      "bytes": 4428,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/LICENSE",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "5550e2db15f239ea8d3cf54bfa3b035eab8d3174",
+      "mode": "100644",
+      "sha256": "ee907919ec88c9c017b1f8b608db20960b6598aefcc4fe58820bde955d65ed3c",
+      "bytes": 7651,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/README.md",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "af09febcff113027e3f624cd36d339ab52cf93d7",
+      "mode": "100644",
+      "sha256": "a1a28c99074d0941285eac71bcf6c80fdce41e6e57469a42c2a62b5ca2a20eeb",
+      "bytes": 1206,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/index.d.ts",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "57803fc30e99538c45b730fcaf9e57a36a280236",
+      "mode": "100644",
+      "sha256": "6da57001e7c3958c03b2c6d507d38fc32c4745ae04235163f61926f8a7d89f2f",
+      "bytes": 1729,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/package.json",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "3f491d98ced2eb33af9b3bd2d55154e0eeee8ad4",
+      "mode": "100644",
+      "sha256": "d71e08f273f4c64d6cd112f998157b27164931410c8938ea91bf35428da9b6d6",
+      "bytes": 643,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/shadow-cljs.edn",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "2c30329b3a9c7b7783f2a4ff960c0efb327edf30",
+      "mode": "100644",
+      "sha256": "0b9d50c453e045e358a9059c40857829f14345be6e93691184a246bead4c586d",
+      "bytes": 1864,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/src/openplanner/stores/document_hydration.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "aafd09a411e408bddef6b553b8fad2ed0d4a4f26",
+      "mode": "100644",
+      "sha256": "31ba334dc0793b2c28faad7617f8d99c33fc835595f6c056d4ddcd0300e6be7e",
+      "bytes": 5586,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": "packages/stores/document-hydration/test/openplanner/stores/document_hydration_test.cljs",
+      "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+      "git_blob": "91b47ab71e80cb7e2274e9a1c77da41bea3f6635",
+      "mode": "100644",
+      "sha256": "9b7899ad2184f34bb7e0bd970dc093f680e11ba91c67561f5dae6fc7719bb429",
+      "bytes": 3402,
+      "kind": "authorized-56-source"
+    },
+    {
+      "path": ".clj-kondo/config.edn",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "5f39e3b68237df6fbf2ed06e52664833cd8678a4",
+      "mode": "100644",
+      "sha256": "fa09ae3caebcc284cdcb4fa5de9dc0cbcd6fc8fd1bc5b228deb247efe66dda8e",
+      "bytes": 507,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".coderabbit.yaml",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "3ebfd1b97c5fd2aeb9a85e99ac1959ea36c825d4",
+      "mode": "100644",
+      "sha256": "f8875acabeb693ff2251ea4a4a8552d107212304e2c947b1c32543596fba9c13",
+      "bytes": 222,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".github/workflows/eta-mu-review.yml",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "4558ade8d89cb71e60dcab9cc65d0a8d9e084784",
+      "mode": "100644",
+      "sha256": "7e901842a4b57ca93f4c4a98b2876cbbee9e1bcf8c0b73d56f176c675940366f",
+      "bytes": 1014,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".github/workflows/scoped-graph-recall.yml",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "075c54b4a503d4fdd06a1bbe893391a828e03238",
+      "mode": "100644",
+      "sha256": "80f6d81976ff38a2a2c877de636e42dd9ff04be8d60e0ceb055a8dfbd4fe5755",
+      "bytes": 2157,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".gitignore",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "abba5257b5c5a4854e43ec08548ca9addd7e4d3b",
+      "mode": "100644",
+      "sha256": "66238de281125a7db7624582acb069674dd98a99791e072ac84fe60e2ab60ef7",
+      "bytes": 911,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-async-runner-sequencing-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "d5e99da1317f3accce865b26aa8ce8b4ccc983a0",
+      "mode": "100644",
+      "sha256": "bd14d70e8405fd5976e74982e06261cad7c8e1b343c59154f26173a1b5249c01",
+      "bytes": 3301,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-corrections-green-reviewed-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "b970541aee3451b9eef8bac22b3ba01d55640a5c",
+      "mode": "100644",
+      "sha256": "9904c39f87cb3a544a87bfc671925c1a7deb5a6e739925f815882adffdada3f5",
+      "bytes": 12024,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-cross-id-index-budget-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "95c700b53f5d7afbd7c069279a9402751ac0f2e5",
+      "mode": "100644",
+      "sha256": "996575e98cb760ed5b47b6a5bc717eed04b4a2d5ecdc1ba18f247ced111e3bf6",
+      "bytes": 35070,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-local-review-corrections-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "3bc5ec65394b3b6d889768e41a27274166a39414",
+      "mode": "100644",
+      "sha256": "b2edb886a0472899d0eed59acaa7178ecaba3a1c69c4349deebedfc808743a8c",
+      "bytes": 10201,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-mongo-independent-review-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "e710da708d84e803a339b91736c9489400850465",
+      "mode": "100644",
+      "sha256": "ca4054bf63b54544c50dfb7e0eb5cb0918f5d846f2cceb895fccf7ca8f82b920",
+      "bytes": 6810,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-mongo-inflight-grant-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "e1cef5139e1ecf1db331c1e9dd8c787d8a908704",
+      "mode": "100644",
+      "sha256": "152636b2eae685cafd8db28071d613ef1053149c7b00770dfaefc20b4648d543",
+      "bytes": 76570,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-scoped-mongo-green-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "3ef719241c2dd85c6cd6ce516a27fcf776d36933",
+      "mode": "100644",
+      "sha256": "4f6686c1c70806d7a7a61a06b8fe5c77d8d662fad8e1e62585bd8acfc15826a2",
+      "bytes": 431226,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-scoped-mongo-recall-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "ba0185f3030d1f10730b5c9237a3b3557c645b34",
+      "mode": "100644",
+      "sha256": "adab2fed5444c31dc2955949b957cfd1f6d77348d4560e53f910a95b9acc0e08",
+      "bytes": 15849,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-scoped-recall-green-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "71447ad3e697d2284959ad17cd0c04db2f86b35d",
+      "mode": "100644",
+      "sha256": "beab173472a9a03a6a451908a25952bcd65122dfa9eedfa4ebfbe02496df5ddd",
+      "bytes": 16099,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-scoped-recall-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "07dd33d813c5c0ce1f9989aa35c4da7ba68367fe",
+      "mode": "100644",
+      "sha256": "4193b6ec1dda5567e2ed9dd12a84ff09604e06f09dbfcf1fc0fabf4eea16aa1e",
+      "bytes": 9348,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-scoped-review-route-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "6d59cb78e351f4a1d6eefeb26b5567dcd31c6906",
+      "mode": "100644",
+      "sha256": "32ab85dac0d0396c52fa72c80e4b7f66c792aa5d89abb49ec1899ac2b46f85a0",
+      "bytes": 15188,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-sdk-query-format-green-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "824820b24fb882e4a502c6173fe2a27f3a156fb3",
+      "mode": "100644",
+      "sha256": "21452663dcff8cbd969a35365092cd0cb9909091c90adcdcafd0f3dc0289d1d1",
+      "bytes": 39947,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-sdk-query-format-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "13e8a1205462e49ce2c562e790a42305df9589d6",
+      "mode": "100644",
+      "sha256": "6774cee90e492323719a1ca8d8a0c002bdd50fa302936bc6303930ec02683ca2",
+      "bytes": 23475,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-shared-compact-summary-review-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "5081059d6bf318ec85626266c520842ed6d29b2d",
+      "mode": "100644",
+      "sha256": "f73b08502d2b7274ee093945d31b3af0f88c866a06df4b11c6f8cc703bf0fcc7",
+      "bytes": 13958,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/openplanner-wire-result-contract-red-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "30c16d5c6a5b2683cf19d6b1b79af44a7127af3b",
+      "mode": "100644",
+      "sha256": "f80459709f092842ecac35c5746d5734a0ea2aedd554e5729f3c21173ec0ba73",
+      "bytes": 35122,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/review-evidence/cephalon-character/review-caller-scratch-configuration-20261009.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "7e0aaea1c19ed2639eebccd0a1ad0965fcee51eb",
+      "mode": "100644",
+      "sha256": "bbf55bb33f6383a612657dbd6b6330b7715b66ff1d85652313aa6158fba3f3d4",
+      "bytes": 2999,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": ".ημ/session-mycology/ledger.md",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "972a96ee06d1dd6655ef72aa9e8659c4584652d0",
+      "mode": "100644",
+      "sha256": "d9e461894362417a819cd8dd60a87e733dee7463d071cab8697e0612d404a1a2",
+      "bytes": 5201,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "docs/verification/cephalon-scoped-graph-recall.md",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "fee83fc1ae0c317c44a967991e811747cc04786d",
+      "mode": "100644",
+      "sha256": "2870ca6fa909300d11470931aa2c0e517f67613aa28d4dedffe6bc4416b97882",
+      "bytes": 9574,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/deps.edn",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "0e008821d19cb8913bace5e2d754191886be842e",
+      "mode": "100644",
+      "sha256": "21943b637b7be465fb2f84876120935c37e0514f9ff0c3aeb85c01fd64d97ea6",
+      "bytes": 205,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/index.d.ts",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "b9ca35b9ebe859f3cdd9bd60efdd3a353b6201d4",
+      "mode": "100644",
+      "sha256": "c6a14c3531efdb1d8a566882a8d56ef072790c8b661a3ace12d5b7857563f7cc",
+      "bytes": 4112,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/package.json",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "bf26d3188bdef7c906c5177ff5d2fb840604fea6",
+      "mode": "100644",
+      "sha256": "5af8e76c2f02d3d836c0ecac3ef1077ebe7e3fe000d6909fe3385fd222af3d51",
+      "bytes": 597,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "bf9b43a4301946369e7e7763d01dd0ff53d0b68c",
+      "mode": "100644",
+      "sha256": "6d5ed659003e28301dddce0eb18bfe4a57d5c6c7c00f0a8065508ba56753212b",
+      "bytes": 3796,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-scoped-recall.mjs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "e418a8724b7fed49e8177299da8c621831ba8b51",
+      "mode": "100644",
+      "sha256": "b0c5ee8f09cb2852e058581996315c2ba41179a7709cae2513fd5ea560b5bbee",
+      "bytes": 2663,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-sdk-query-format.mjs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "7da4f71d1c4617cd5ab6639f271d6f53e0abcfa1",
+      "mode": "100644",
+      "sha256": "daf21d7b71897b79b1f52587ea5c3fd658b9042a59fc97b1259631a7750fc127",
+      "bytes": 2878,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/shadow-cljs.edn",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "95e476c6d02ebd0e6c3b1f8dd39016cfcafea0df",
+      "mode": "100644",
+      "sha256": "a779ec2f5eb6dc7fd971e7dc271663ac2bd75b9d20510fa9da1cc9cbaa246867",
+      "bytes": 2401,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/boundary.cljs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "3aead4d9a79b1a5f635ea151656ec594b6b4b5d7",
+      "mode": "100644",
+      "sha256": "2a84a6e581684e0ea7152098f09b5f2771985707b3b188be48369f0575f33011",
+      "bytes": 1502,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/contract.cljc",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "a1315b4e8421e81ee6ff28c2865acf5bd7f0d054",
+      "mode": "100644",
+      "sha256": "350499515a80c71c6c9afc9ca463e9a4813e5d637da257049ec35eb8eb3f9d94",
+      "bytes": 4878,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/core.cljc",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "9a13c3b88d89e84f51db9f9e9ab085dadff0017e",
+      "mode": "100644",
+      "sha256": "63756f955e12a8583f82bd6e33ccf1ade137f2942b98b23c521d2e41067c5202",
+      "bytes": 7955,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/mongo.cljs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "c8a581987646f59cd38472cde2725a3bb93bc431",
+      "mode": "100644",
+      "sha256": "8feca33ec8fbb68831fc8bb032b9935a675145bbebb0c2359788e5f6fa14ea71",
+      "bytes": 11900,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/mongo_contract.cljc",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "cd3a8a85cf1170d96292b71a53208ea79d84f5d8",
+      "mode": "100644",
+      "sha256": "54d7ea1ac1ee05dde96deb45ea54f52e02dbd3ec45f72066bce1b90ed9adfad0",
+      "bytes": 3558,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/ranking.cljc",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "fd978baf18385c46f8e5b6d35bbbf73434025392",
+      "mode": "100644",
+      "sha256": "a24bfb3bbf3d6101553841241b50de988c7d8008a2e75089abca491526296f76",
+      "bytes": 1805,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/core_test.cljc",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "fab91ec4efea568f46070decee54f24774278b01",
+      "mode": "100644",
+      "sha256": "2dea3d085d23897bec09ff1df16efb8ea1ac80b56105e6c86a0e1ae3b99fbd6d",
+      "bytes": 11167,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/mongo_test.cljs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "63ab3580ed2e3ca4a4aed841c693908d12e7c471",
+      "mode": "100644",
+      "sha256": "1d718dad8a551d0f79583c5fb0d7a05ce10eabfc42bcdf5665583f55cf109905",
+      "bytes": 15414,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/runner.cljs",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "c6183ea6e0a2733aa9507cd3818a61e85610f902",
+      "mode": "100644",
+      "sha256": "51438fcd0dee2a9448066192d07066adf30bd419e1acaa886d413914ee3604c8",
+      "bytes": 1491,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "receipts.edn",
+      "source": "a09894c48760748b7fca7bf9e94f36471f599a47",
+      "git_blob": "615cecbae343bd47a3f5b1494e48f27f5835893d",
+      "mode": "100644",
+      "sha256": "390eac55d2ab82b50f64de65b57747e9be55a4b2997645a21cf5e59b019e89db",
+      "bytes": 148949,
+      "kind": "existing-scoped-recall"
+    },
+    {
+      "path": "receipts.edn",
+      "source": "observed-worktree:/home/err/spaces/cephalon-scoped-graph/openplanner",
+      "sha256": "e560c633ed6706ce263492134d0a925bb93edc42056fb0c81924a82c60b8ae70",
+      "bytes": 150377,
+      "kind": "preserved-held-journal-prefix"
+    },
+    {
+      "path": ".ημ/session-mycology/ledger.md",
+      "source": "observed-worktree:/home/err/spaces/cephalon-scoped-graph/openplanner",
+      "sha256": "3eb5ec1d0bc49de2d3cee60dea4c1cb701790d593ed347d32edc59634d8bb076",
+      "bytes": 5691,
+      "kind": "preserved-held-journal-prefix"
+    }
+  ],
+  "operator_failures": [
+    "Initial inventory reader used nonexistent files key and failed before copying any bytes; git_blob_paths is actual key."
+  ],
+  "limits": [
+    "Original source refs, worktrees, source journals and PR1/PR2 remain intact.",
+    "No historical approval transfer; this new base/head requires fresh full review.",
+    "The 56-source baseline is overlaid with existing scoped recall; required configuration and provenance are additional inputs.",
+    "Root legacy application source/configuration retained; no synchronization merge."
+  ]
+}

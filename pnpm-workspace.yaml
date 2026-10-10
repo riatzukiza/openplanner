@@ -1,0 +1,12 @@
+# GPL-3.0-or-later. Only the four authorized recall dependency packages.
+packages:
+  - packages/openplanner-sdk
+  - packages/stores/document-hydration
+  - packages/stores/cache
+  - packages/graph/graph-claim-core
+
+onlyBuiltDependencies:
+  - lmdb
+  - msgpackr-extract
+
+linkWorkspacePackages: true

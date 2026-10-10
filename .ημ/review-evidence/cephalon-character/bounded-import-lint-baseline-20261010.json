@@ -1,0 +1,41 @@
+{
+  "tier": "actual package lint capture; graph claims two inherited warnings are retained, not a whole zero-warning PASS",
+  "commands": [
+    {
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "src",
+        "test"
+      ],
+      "exit_code": 0,
+      "stdout": "linting took 60ms, errors: 0, warnings: 0\n",
+      "stderr": ""
+    },
+    {
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "src",
+        "test"
+      ],
+      "exit_code": 0,
+      "stdout": "linting took 53ms, errors: 0, warnings: 0\n",
+      "stderr": ""
+    },
+    {
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "src",
+        "test"
+      ],
+      "exit_code": 2,
+      "stdout": "src/openplanner/graph/claims/boundary.cljs:34:8: warning: Unused private var openplanner.graph.claims.boundary/status->wire\nsrc/openplanner/graph/claims/schema.cljs:49:115: warning: unused binding claim\nlinting took 408ms, errors: 0, warnings: 2\n",
+      "stderr": ""
+    }
+  ]
+}
