@@ -164,11 +164,20 @@
    :include-expired? (true? (jget opts "includeExpired"))
    :now-ms (or (parse-ms (jget opts "now")) (.now js/Date))})
 
+(defn- claim-id-from-js
+  "Generate only when neither alias was supplied; malformed explicit IDs stay invalid."
+  [input fallback]
+  (let [fields (when (js-object? input)
+                 (filter #(js/Object.hasOwn input %) ["claimId" "claim_id"]))]
+    (if (seq fields)
+      (when (every? #(nonblank (jget input %)) fields)
+        (nonblank (jget input (first fields))))
+      (fallback))))
+
 (defn edge-claim-from-js
   [input]
   (let [key (edge-claim-key-from-js input)
-        claim-id (or (nonblank (or (jget input "claimId") (jget input "claim_id")))
-                     (build-edge-claim-id input))]
+        claim-id (claim-id-from-js input #(build-edge-claim-id input))]
     (assoc key
            :claim-id claim-id
            :status (normalize-edge-claim-status (jget input "status") :proposed)
@@ -182,9 +191,9 @@
         canonical-key (assoc key
                              :source-node-id source-node-id
                              :target-node-id target-node-id)
-        claim-id (or (nonblank (or (jget input "claimId") (jget input "claim_id")))
-                     (when (claims/valid-claim-key? canonical-key)
-                       (str "edge_claim:" (sha256-hex-24 (claims/claim-id-material canonical-key)))))]
+        claim-id (claim-id-from-js input
+                   #(when (claims/valid-claim-key? canonical-key)
+                      (str "edge_claim:" (sha256-hex-24 (claims/claim-id-material canonical-key)))))]
     (assoc canonical-key
            :claim-id claim-id
            :status (normalize-edge-claim-status (jget input "status") :proposed)

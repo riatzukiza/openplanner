@@ -68,7 +68,7 @@ function parsePairList(raw: string): Record<string, string> {
     const key = normKey(entry.slice(0, eq));
     const value = normKey(entry.slice(eq + 1));
     if (!key || !value) continue;
-    out[key] = value;
+    Object.defineProperty(out, key, { value, enumerable: true, writable: true, configurable: true });
   }
   return out;
 }
@@ -83,7 +83,7 @@ function parseJsonObject(raw: string): Record<string, string> {
     const key = normKey(k);
     const value = normKey(v);
     if (!key || !value) continue;
-    out[key] = value;
+    Object.defineProperty(out, key, { value, enumerable: true, writable: true, configurable: true });
   }
   return out;
 }
@@ -104,25 +104,19 @@ export function parseModelMap(raw: string | undefined): Record<string, string> {
   return parsePairList(input);
 }
 
+function ownModel(map: Readonly<Record<string, string>>, key: string | undefined): string | undefined {
+  if (!key || !Object.hasOwn(map, key)) return undefined;
+  const model = map[key];
+  return typeof model === "string" && model.length > 0 ? model : undefined;
+}
+
 export function resolveEmbeddingModel(config: EmbeddingModelConfig, scope: EmbeddingScope): string {
   const project = normKey(scope.project);
   const source = normKey(scope.source);
   const kind = normKey(scope.kind);
 
-  if (project) {
-    const model = config.byProject[project];
-    if (model) return model;
-  }
-
-  if (source) {
-    const model = config.bySource[source];
-    if (model) return model;
-  }
-
-  if (kind) {
-    const model = config.byKind[kind];
-    if (model) return model;
-  }
-
-  return config.defaultModel;
+  return ownModel(config.byProject, project)
+    ?? ownModel(config.bySource, source)
+    ?? ownModel(config.byKind, kind)
+    ?? config.defaultModel;
 }

@@ -433,3 +433,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-a27-native-boundaries-red-20261010
   note: Actual new reviewers restore Codex availability; model-map finding duplicated in two native roots. Six distinct defects remain active for same bounded roots. Original56manifest and187 journal/reflection prefix unchanged. No merge/deployment/paid/spore. Earlier a27 CI/consumer proof is source-bound historical after this RED.
+
+- ts: 2026-10-10T19:04:28.905Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a27-six-fixed-mongo-identity-red-20261010
+  note: Six distinct same-root defects repaired, seventh root duplicates model lookup. Mongo adapter is still unchanged and must preserve explicit alias presence. Guarded missing-edge fixture retains exact identity assertion. Failed preparation/missing candidate append occurred before journal mutation. Original56manifest/188 earlier prefixes immutable. Current review findings not yet settled; no approval/merge/deployment/paid/spore.

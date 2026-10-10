@@ -83,10 +83,27 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async updateSession(sessionId: string, updates: any): Promise<any> {
-    const { _id, session, kind, createdAt, ...mutable } = updates;
+    const { _id, session, kind, createdAt, expiresAt: _callerExpiry, ...mutable } = updates;
+    const now = new Date();
+    const retentionUpdate: Record<string, unknown> = {};
+    if (["extra", "extra.openplanner_labels", "extra.openplanner_labels.labels", "expiresAt"]
+      .some(key => Object.hasOwn(updates, key))) {
+      const stored = await this.getSession(sessionId);
+      let extra = Object.hasOwn(mutable, "extra") ? mutable.extra : stored?.extra;
+      if (Object.hasOwn(mutable, "extra.openplanner_labels")) {
+        extra = { ...extra, openplanner_labels: mutable["extra.openplanner_labels"] };
+      }
+      if (Object.hasOwn(mutable, "extra.openplanner_labels.labels")) {
+        extra = { ...extra, openplanner_labels: { ...extra?.openplanner_labels,
+          labels: mutable["extra.openplanner_labels.labels"] } };
+      }
+      const managedExpiry = eventRetentionExpiry(extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
+      if (managedExpiry) mutable.expiresAt = managedExpiry;
+      else retentionUpdate.$unset = { expiresAt: "" };
+    }
     await this.ctx.mongo.events.updateOne(
       { session: sessionId, kind: "session" },
-      { $set: { ...mutable, session: sessionId, kind: "session", updatedAt: new Date() } }
+      { $set: { ...mutable, session: sessionId, kind: "session", updatedAt: now }, ...retentionUpdate }
     );
     return this.getSession(sessionId);
   }

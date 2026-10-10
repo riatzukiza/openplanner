@@ -1004,14 +1004,41 @@ export async function indexTextInMongoVectors(params: {
   }
 }
 
+function queryFilter(where: Record<string, unknown> | undefined, excludeParentIds: string[] = []): Filter<MongoVectorDocument> {
+  const filter = buildMongoFilter(where);
+  if (excludeParentIds.length > 0) {
+    const current = filter.parent_id;
+    filter.parent_id = {
+      ...(typeof current === "object" && current !== null ? current : current !== undefined ? { $eq: current } : {}),
+      $nin: excludeParentIds,
+    };
+  }
+  return filter;
+}
+
+/** Rank the bounded candidate set by distinct parent, never by chunk slots. */
+function uniqueParentRows(rows: Array<{ doc: MongoVectorDocument; score: number }>, k: number): Array<{ doc: MongoVectorDocument; score: number }> {
+  const seen = new Set<string>();
+  return [...rows]
+    .sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))
+    .filter(entry => {
+      const parent = entry.doc.parent_id ?? entry.doc._id;
+      if (seen.has(parent)) return false;
+      seen.add(parent);
+      return true;
+    })
+    .slice(0, Math.max(1, k));
+}
+
 async function queryPartitionWithNativeVectorSearch(params: {
   collection: Collection<MongoVectorDocument>;
   partition: MongoVectorPartitionDocument;
   queryEmbedding: number[];
   k: number;
   where?: Record<string, unknown>;
+  excludeParentIds?: string[];
 }): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
-  const filter = buildMongoFilter(params.where);
+  const filter = queryFilter(params.where, params.excludeParentIds);
   const pipeline: Record<string, unknown>[] = [
     {
       $vectorSearch: {
@@ -1071,16 +1098,16 @@ async function queryPartitionWithNativeVectorSearch(params: {
   const rescored = await queryPartitionWithVexxTopK({
     candidates: rows,
     queryEmbedding: params.queryEmbedding,
-    k: params.k,
+    k: rows.length,
   }).catch((error) => {
     if (VEXX_ENFORCE) throw error;
     return null;
   });
-  if (rescored) return rescored;
+  if (rescored) return uniqueParentRows(rescored, params.k);
   if (VEXX_ENFORCE) {
     throw vexxRequiredError(`native_vector_search:${params.partition.collectionName}`);
   }
-  return rows.map((doc) => ({ doc, score: typeof doc.score === "number" ? doc.score : Number.NEGATIVE_INFINITY }));
+  return uniqueParentRows(rows.map((doc) => ({ doc, score: typeof doc.score === "number" ? doc.score : Number.NEGATIVE_INFINITY })), params.k);
 }
 
 async function queryPartitionWithCosineScan(params: {
@@ -1088,26 +1115,25 @@ async function queryPartitionWithCosineScan(params: {
   queryEmbedding: number[];
   k: number;
   where?: Record<string, unknown>;
+  excludeParentIds?: string[];
 }): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
-  const filter = buildMongoFilter(params.where);
+  const filter = queryFilter(params.where, params.excludeParentIds);
   const candidates = await params.collection.find(filter).sort({ ts: -1 }).limit(Math.max(params.k * 50, 1000)).toArray();
   const vexxRows = await queryPartitionWithVexxTopK({
     candidates,
     queryEmbedding: params.queryEmbedding,
-    k: params.k,
+    k: candidates.length,
   }).catch((error) => {
     if (VEXX_ENFORCE) throw error;
     return null;
   });
-  if (vexxRows) return vexxRows;
+  if (vexxRows) return uniqueParentRows(vexxRows, params.k);
   if (VEXX_ENFORCE) {
     throw vexxRequiredError(`cosine_scan:${params.collection.collectionName}`);
   }
-  return candidates
+  return uniqueParentRows(candidates
     .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
-    .filter((entry) => Number.isFinite(entry.score))
-    .sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))
-    .slice(0, Math.max(1, params.k));
+    .filter((entry) => Number.isFinite(entry.score)), params.k);
 }
 
 export async function queryMongoVectorsByText(params: {
@@ -1116,6 +1142,7 @@ export async function queryMongoVectorsByText(params: {
   q: string;
   k: number;
   where?: Record<string, unknown>;
+  excludeParentIds?: string[];
   getEmbeddingFunctionForModel: (model: string) => IEmbeddingFunction;
 }): Promise<RawQueryResult> {
   const queryText = formatEmbeddingQueryText(params.q);
@@ -1154,16 +1181,16 @@ export async function queryMongoVectorsByText(params: {
       if (partition.searchIndexStatus === "ready") {
         try {
           partitionRows = await queryPartitionWithNativeVectorSearch({
-            collection, partition, queryEmbedding, k: params.k, where: params.where,
+            collection, partition, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
           });
         } catch {
           partitionRows = await queryPartitionWithCosineScan({
-            collection, queryEmbedding, k: params.k, where: params.where,
+            collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
           });
         }
       } else {
         partitionRows = await queryPartitionWithCosineScan({
-          collection, queryEmbedding, k: params.k, where: params.where,
+          collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
         });
       }
 
@@ -1182,9 +1209,7 @@ export async function queryMongoVectorsByText(params: {
       unavailablePhases.size > 1 ? "mixed" : unavailablePhases.has("execution") ? "execution" : "embedding");
   }
 
-  const sorted = rows
-    .sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))
-    .slice(0, Math.max(1, params.k));
+  const sorted = uniqueParentRows(rows, params.k);
   const documents = await Promise.all(sorted.map((entry) => hydrateVectorDocumentText(entry.doc)));
 
   return {

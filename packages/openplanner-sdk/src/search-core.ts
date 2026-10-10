@@ -160,7 +160,7 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
 
   const embeddingRuntime = ctx.embeddingRuntime;
 
-  const runVector = async (quality: "good" | "not_bad" | "any", vectorLimit = limit): Promise<Record<string, unknown>> => {
+  const runVector = async (quality: "good" | "not_bad" | "any", vectorLimit = limit, excludeParentIds: string[] = []): Promise<Record<string, unknown>> => {
     const where: Record<string, unknown> = { ...mongoWhere };
     if (quality === "good") where.quality_label = "good";
     if (quality === "not_bad") where.quality_label = { $ne: "bad" };
@@ -172,6 +172,7 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
         const result = await queryMongoVectorsByText({
           mongo: ctx.mongo, tier: rowTier, q, k: vectorLimit,
           where: Object.keys(where).length > 0 ? where : undefined,
+          excludeParentIds,
           getEmbeddingFunctionForModel: model => embeddingRuntime[rowTier].getEmbeddingFunctionForModel(model),
         });
         for (const name of result.unavailable_partitions ?? []) unavailable.add(name);
@@ -202,8 +203,9 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
   if (mode === "good_then_not_bad") {
     const good = runVector("good");
     const goodResult = await good;
-    const goodCount = firstNestedArray<string>(goodResult.ids).length;
-    const result = goodCount >= limit ? goodResult : mergeVectorPayloads(goodResult, await runVector("not_bad", limit), limit);
+    const goodIds = firstNestedArray<string>(goodResult.ids);
+    const goodCount = goodIds.length;
+    const result = goodCount >= limit ? goodResult : mergeVectorPayloads(goodResult, await runVector("not_bad", limit - goodCount, goodIds), limit);
     return { ok: true, result, tier, qualityMode: mode, storageBackend: "mongodb" as const };
   }
 

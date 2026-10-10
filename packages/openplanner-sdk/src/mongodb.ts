@@ -1306,7 +1306,7 @@ export async function ftsSearch(
         role: 1,
         model: 1,
         extra: 1,
-        text: { $substr: ["$text", 0, 240] },
+        text: { $substrCP: ["$text", 0, 240] },
       },
     })
     .sort({ ts: -1 })
@@ -1365,7 +1365,7 @@ export async function ilikeSearch(
         role: 1,
         model: 1,
         extra: 1,
-        text: { $substr: ["$text", 0, 240] },
+        text: { $substrCP: ["$text", 0, 240] },
       },
     })
     .sort({ ts: -1 })

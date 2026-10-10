@@ -239,3 +239,16 @@
     (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000}))))
   (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active"}]
     (is (re-matches #"edge_claim:[a-f0-9]{24}" (aget (boundary/project-edge-claim-js claim #js {:now 1000}) "claim_id")))) )
+
+
+(deftest mongo-normalization-preserves-explicit-malformed-identity-presence
+  (doseq [field ["claim_id" "claimId"] value [false nil]]
+    (let [row #js {:_id "storage-fallback" :source_node_id "a" :target_node_id "b"
+                   :relation_kind "related" :status "active"}]
+      (aset row field value)
+      (is (zero? (aget (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000}) "stats" "edges")))))
+  (let [row #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active"}
+        result (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000})
+        edge (aget (aget result "edges") 0)
+        claim-id (when edge (aget edge "claim_id"))]
+    (is (and (string? claim-id) (re-matches #"edge_claim:[a-f0-9]{24}" claim-id)))))
