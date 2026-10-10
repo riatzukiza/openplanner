@@ -145,5 +145,16 @@
     (boundary/cache-put-js cache "zero" "value" nil)
     (is (nil? (boundary/cache-get-js cache "zero")))))
 
+(deftest explicit-zero-touch-removes-prior-expiry
+  (let [clock (atom 100) original core/now-ms]
+    (set! core/now-ms #(deref clock))
+    (try
+      (let [cache (boundary/create-memory-lru-cache #js {:defaultTtlMs 5})]
+        (boundary/cache-put-js cache "k" "value")
+        (is (true? (boundary/cache-touch-js cache "k" 0)))
+        (reset! clock 1000)
+        (is (= "value" (boundary/cache-get-js cache "k"))))
+      (finally (set! core/now-ms original)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

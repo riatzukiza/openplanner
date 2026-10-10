@@ -9,13 +9,14 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch } from '../dist/mongodb.js';
+import { openMongoDB, ilikeSearch, reconcileManagedTtl } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText } from '../dist/source-hydration.js';
 import { EmbedProviderFunction } from '../dist/embeddings.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
 import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText } from '../dist/mongo-vectors.js';
+import { createOpenPlannerSdk } from '../dist/sdk.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
@@ -685,4 +686,70 @@ test('tier and quality fusion retain incomplete vector partition coverage',async
 test('an empty second tier cannot turn all unavailable query models into success',async()=>{
   const mongo=queryFixture();const unavailable=()=>{throw new Error('PRIVATE provider unavailable');};
   await assert.rejects(vectorSearchWithQuality({mongo,embeddingRuntime:{hot:{getEmbeddingFunctionForModel:unavailable},compact:{getEmbeddingFunctionForModel:unavailable}}},{q:'outside',tier:'both',quality:'any'}),/vector query embedding unavailable for all partitions/);
+});
+
+
+test('provider vectors survive failed or pending optional cache persistence',async()=>{
+  for(const persist of [async()=>{throw new Error('read-only cache');},()=>new Promise(()=>{})]){
+    const cache={getMany:async()=>new Map(),putMany:persist};
+    await withFetch(async()=>response([[1,2]]),async()=>{
+      const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{batchWindowMs:1,cache});
+      const result=await Promise.race([provider.generate(['outside information']),new Promise(resolve=>setTimeout(()=>resolve('blocked'),80))]);
+      assert.deepEqual(result,[[1,2]]);
+    });
+  }
+});
+test('cache batch returns before persistence while explicit flush remains durable',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-debounced-'));const path=join(dir,'cache.json');
+  try{const cache=new PersistentEmbeddingCache(path);await cache.putMany([{key:'one',vector:[1,2]}]);
+    await assert.rejects(readFile(path),{code:'ENOENT'});await cache.flush();
+    assert.deepEqual((await new PersistentEmbeddingCache(path).getMany(['one'])).get('one'),[1,2]);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('SDK runtime construction failures occur before opening Mongo',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-sdk-init-'));const path=join(dir,'invalid.json');await writeFile(path,'invalid JSON');let connected=0;
+  const mongo=mongoFixture();const connect=mock.method(MongoClient.prototype,'connect',async function(){connected++;return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await assert.rejects(createOpenPlannerSdk({config:{embedProviderCachePath:path,mongodb:openingConfig}}));assert.equal(connected,0);}finally{connect.restore();db.restore();await rm(dir,{recursive:true,force:true});}
+});
+test('SDK protocol setup rejection closes the newly connected client',async()=>{
+  const script=`import assert from 'node:assert/strict';const {MongoClient}=await import('mongodb');
+    const module=await import(process.argv[1]);const collections=new Map();const collection=()=>({createIndex:async()=>'',indexes:async()=>[],dropIndex:async()=>{},updateMany:async()=>{},updateOne:async()=>{},findOne:async()=>null,listSearchIndexes:()=>({toArray:async()=>[]})});
+    let closed=0;MongoClient.prototype.connect=async function(){return this;};MongoClient.prototype.db=()=>({collection:n=>{if(!collections.has(n))collections.set(n,collection());return collections.get(n);}});MongoClient.prototype.close=async()=>{closed++;};
+    await assert.rejects(module.createOpenPlannerSdk({config:{embedProviderCachePath:undefined}}),/REST protocol/);assert.equal(closed,1);`;
+  await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/sdk.js',import.meta.url).href],{cwd:new URL('..',import.meta.url),env:{...process.env,PROTOCOL_IMPL:'rest',EMBED_PROVIDER_CACHE_PATH:'/fixture-cache-unused'},timeout:5000});
+});
+test('duplicate vector parent IDs refuse the complete batch before provider or writes',async()=>{
+  const mongo=mongoFixture();let embedded=0;
+  await assert.rejects(batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('same','first text'),item('same','different text')],embeddingFunction:{generate:async texts=>{embedded++;return texts.map(()=>[1,2]);}}}),/duplicate.*parent/i);
+  assert.equal(embedded,0);assert.equal(mongo.hotVectors.calls.writes.length,0);
+});
+test('owned graph edges and delayed hot vectors retain exact source expiry',async()=>{
+  const mongo=mongoFixture();const expiry=new Date('2026-01-01T00:01:00Z');const original=mongo.events.findOne;
+  mongo.events.findOne=async filter=>({...await original.call(mongo.events,filter),expiresAt:expiry});
+  const rows=[{...ordinaryEvent('message-ttl','Outside information.'),extra:{}},{...ordinaryEvent('edge-ttl',''),kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}}];
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,2])})},rows);await result.backgroundIndexing;
+  assert.ok(mongo.hotVectors.rows.size);for(const row of mongo.hotVectors.rows.values())assert.equal(row.expiresAt?.getTime(),expiry.getTime());
+  assert.ok(mongo.graphEdges.rows.size);for(const row of mongo.graphEdges.rows.values())assert.equal(row.expiresAt?.getTime(),expiry.getTime());
+});
+test('graph model failures do not skip independently healthy groups',async()=>{
+  const mongo=mongoFixture();const models=[];const runtime={hot:{getModel:scope=>scope.project==='failed-project'?'failed':'healthy',getBackgroundEmbeddingFunctionForModel:model=>({generate:async texts=>{models.push(model);if(model==='failed')throw new Error('model unavailable');return texts.map(()=>[1,2]);}})}};
+  const rows=['failed','healthy'].map(id=>({schema:'openplanner.event.v1',id,ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.node',text:'Outside information.',source_ref:{project:id+'-project'},extra:{node_id:id}}));
+  const result=await ingestEvents({mongo,embeddingRuntime:runtime},rows);await result.backgroundIndexing;
+  assert.ok(models.includes('healthy'));assert.ok([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.embedding_model==='healthy'));
+});
+test('TTL disable reconciles stored dates without rewriting explicit nonexpiring rows',async()=>{
+  const c=collection('retention');await reconcileManagedTtl(c,'managed',0);assert.deepEqual(c.calls.writes[0].filter,{expiresAt:{$type:'date'}});
+});
+test('opening Mongo indexes source-owned cleanup and retained graph edges',async()=>{
+  const mongo=mongoFixture();const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  try{await openMongoDB({...openingConfig,eventsTtlSeconds:60});const edges=mongo.db.collection('graph_edges');
+    assert.ok(mongo.events.calls.indexes.some(x=>x.keys['extra.source_event_id']===1 && x.keys.source===1));
+    assert.ok(edges.calls.indexes.some(x=>x.keys['data.source_event_id']===1));assert.ok(edges.calls.indexes.some(x=>x.opts.name==='graph_edges_ttl'));
+  }finally{connect.restore();db.restore();}
+});
+test('unavailable Atlas retries do not repeat partition storage setup or probe every write',async()=>{
+  const mongo=mongoFixture();const original=mongo.db.collection;let probes=0;
+  mongo.db.collection=function(name){const c=original.call(this,name);if(name.includes('__'))c.listSearchIndexes=()=>({toArray:async()=>{probes++;throw new Error('unsupported search');}});return c;};
+  await upsertMongoVectorDocuments(mongo,'hot',[entry('one')]);const c=[...mongo.collections.values()].find(c=>c.collectionName.includes('__'));const count=c.calls.indexes.length;
+  await upsertMongoVectorDocuments(mongo,'hot',[entry('two')]);assert.equal(c.calls.indexes.length,count);assert.equal(probes,1);assert.ok(c.rows.has('two'));
 });

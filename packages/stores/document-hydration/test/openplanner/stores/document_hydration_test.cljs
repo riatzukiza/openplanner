@@ -78,5 +78,11 @@
     (is (= iso (.-ts (hydration/row-to-document #js {:id "date" :ts (js/Date. iso)}))))
     (is (= iso (.-ts (hydration/row-to-document #js {:id "string" :ts iso}))))))
 
+(deftest hostname-only-documents-never-share-a-hydration-key
+  (let [a #js {:id "a" :project "lake" :text "" :extra #js {:hostname "same.example"}}
+        b #js {:id "b" :project "lake" :text "" :extra #js {:hostname "same.example"}}]
+    (is (not= (hydration/document-cache-key a) (hydration/document-cache-key b)))
+    (is (nil? (hydration/document-cache-key #js {:project "lake" :extra #js {:hostname "same.example"}})))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

@@ -201,3 +201,15 @@
     (doseq [row [#js {:_id "explicit" :target_node_id "b" :status "active"}
                  #js {:_id "explicit" :source_node_id "a" :target_node_id "a" :status "supported"}]]
       (is (empty? (array-seq (aget (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000}) "edges")))))))
+
+(deftest confidence-defaults-preserve-explicit-zero
+  (doseq [value [nil js/undefined]]
+    (is (= 0.5 (aget (boundary/normalize-edge-claim-input-js #js {:confidence value}) "confidence")))
+    (is (= 0.75 (:confidence (lifecycle/transition-plan "support" #js {:confidence value})))))
+  (is (= 0 (aget (boundary/normalize-edge-claim-input-js #js {:confidence 0}) "confidence"))))
+
+(deftest malformed-supplied-claim-expiration-is-never-unbounded
+  (doseq [value ["invalid-time" (js/Date. "invalid") js/Infinity]]
+    (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active" :validUntil value}]
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))
+      (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?"))))))

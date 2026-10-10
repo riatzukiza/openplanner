@@ -277,3 +277,12 @@
   spore: none
   receipt-refs: cephalon-bounded-codex-e3-006-native-green-20261010
   note: Owned hot-vector replacement, parent terminal reservations, duplicate-ID admission, versioned normalized hydration, Atlas labels, safe partial queries, immutable policy identity, visibility cap, graph source retention, projection validation and memory capacity repaired. Reservations are connection-local, not distributed fencing. Cache test definition placement, explicit TTL config and prepared TypeScript corrections are disclosed. An operator base-prefix probe failed because this base contains no journals; receipt append then failed without mutation, but shell continued and committed source/proof51e4a0a. This ordinary follow-up restores report and validated receipt; no fabricated base-prefix pass or history rewrite. Original56 manifest and current journal prefixes remain exact. Hosted CI and native approvals owed; no runtime, board, deployment, paid usage or spore.
+
+- ts: 2026-10-10T16:31:58.720Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-bdc-native-red-20261010
+  note: Seventeen actual native COMMENTED findings;no approval. FullCR completedall146/actual9findings;Codex8findings. All54/17rootIDs/rawRESTbytes preserved in one rawbundle to retain included150filescope. Original56manifest and full174receipt/reflectionprefix remain immutable. No runtime/clock/maker/board/social/paid/spore;newtests executedbeforeproduction.
