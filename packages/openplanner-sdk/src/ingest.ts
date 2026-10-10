@@ -10,7 +10,7 @@ import { createProtocols } from "./protocol-adapters.js";
 import { upsertEvent, upsertGraphEdges, upsertGraphNodeEmbeddings } from "./mongodb.js";
 import type { MongoConnection } from "./mongodb.js";
 import { prepareIndexDocument } from "./indexing.js";
-import { indexTextInMongoVectors } from "./mongo-vectors.js";
+import { indexTextInMongoVectors, replaceMongoVectorEntries } from "./mongo-vectors.js";
 import type { EventEnvelopeV1 } from "./types.js";
 import { splitSentences, deduplicateByHash, computeTextHash } from "./sentence-split.js";
 import { formatEmbeddingPassageText } from "./embedding-text.js";
@@ -117,7 +117,47 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
 
 const noopLogger: IngestLogger = { warn: () => {} };
 
+// SDK connection-local ownership. A replacement waits for earlier detached
+// writes to terminate; this is not a distributed writer or fencing protocol.
+const ingestTails = new WeakMap<MongoConnection, Map<string, Promise<void>>>();
+
 export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
+  const unique = new Map<string, EventEnvelopeV1>();
+  const payloads = new Map<string, string>();
+  for (const event of events) {
+    validateEvent(event);
+    const payload = JSON.stringify(event);
+    const previous = payloads.get(event.id);
+    if (previous !== undefined && previous !== payload) {
+      throw new Error(`conflicting event replacements in one batch: ${event.id}`);
+    }
+    payloads.set(event.id, payload);
+    unique.set(event.id, event);
+  }
+  const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
+  ingestTails.set(ctx.mongo, tails);
+  const predecessors = [...unique.keys()].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
+  let complete!: () => void;
+  const terminal = new Promise<void>(resolve => { complete = resolve; });
+  // Reserve the complete batch without yielding, avoiding overlapping-batch
+  // lock ordering. Unrelated parents remain independent.
+  for (const id of unique.keys()) tails.set(id, terminal);
+  const release = () => {
+    for (const id of unique.keys()) if (tails.get(id) === terminal) tails.delete(id);
+    complete();
+  };
+  try {
+    await Promise.all(predecessors);
+    const result = await ingestReservedEvents(ctx, [...unique.values()]);
+    void result.backgroundIndexing.then(release, release);
+    return result;
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
+async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
   const { mongo, embeddingRuntime } = ctx;
   const log = ctx.log ?? noopLogger;
   const protocols = createProtocols({ mongo });
@@ -153,7 +193,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
 
   const ids: string[] = [];
   const acceptedEvents: EventEnvelopeV1[] = [];
-  const eventVectorTasks: Array<Promise<void>> = [];
+  const eventVectorTasks: Array<() => Promise<void>> = [];
   const projectedGraphEdges: Array<{
     source_node_id: string;
     target_node_id: string;
@@ -170,8 +210,10 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     project?: string | null;
     text: string;
     source_text_hash_sha256: string;
+    expiresAt: Date | null;
     chunk_count: number;
   }>();
+  const sourceExpiries = new Map<string, Date | null>();
 
   const derivedGraphNodeOps = new Map<string, any>();
   const graphLabelNodeOps: any[] = [];
@@ -251,6 +293,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
       project: params.project ?? null,
       text: normalized,
       source_text_hash_sha256: createHash("sha256").update(params.sourceText ?? params.text, "utf8").digest("hex"),
+      expiresAt: sourceExpiries.get(params.sourceEventId) ?? null,
       chunk_count: params.chunkCount ?? 1,
     });
   };
@@ -289,6 +332,8 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     });
 
     ids.push(ev.id);
+    const admittedSource = await mongo.events.findOne({ _id: ev.id });
+    sourceExpiries.set(ev.id, admittedSource?.expiresAt instanceof Date ? admittedSource.expiresAt : null);
 
     const labels = eventLabels(extra);
     for (const label of labels) {
@@ -543,7 +588,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     }
 
     if (shouldIndexEventHotVectors(ev)) {
-      eventVectorTasks.push((async () => {
+      eventVectorTasks.push(async () => {
         try {
           const embeddingScope = {
             source: ev.source,
@@ -580,7 +625,11 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
         } catch (err) {
           log.warn({ err, eventId: ev.id }, "Failed to index event into MongoDB vectors; preserving base event without embeddings");
         }
-      })());
+      });
+    } else {
+      // An empty or structural replacement still owns deletion of its old
+      // hot vectors, including retention-exempt rows and model partitions.
+      await replaceMongoVectorEntries(mongo, "hot", ev.id, []);
     }
   }
 
@@ -632,6 +681,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             project?: string | null;
             text: string;
             source_text_hash_sha256: string;
+            expiresAt: Date | null;
             chunk_count: number;
           };
           const groupedByModel = new Map<string, GraphNodeEmbeddingInput[]>();
@@ -652,7 +702,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
             const nodeIds = rows.map((row) => row.node_id);
             const existing = await mongo.graphNodeEmbeddings
               .find({ node_id: { $in: nodeIds }, embedding_model: model })
-              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1 })
+              .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1, chunk_count: 1, expiresAt: 1 })
               .toArray();
             const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
 
@@ -665,13 +715,14 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
               const previous = existingById.get(row.node_id);
               if (previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
                   && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
-                      || previous.chunk_count !== row.chunk_count)) {
+                      || previous.chunk_count !== row.chunk_count
+                      || (previous.expiresAt?.getTime() ?? null) !== (row.expiresAt?.getTime() ?? null))) {
                 await mongo.graphNodeEmbeddings.updateMany({
                   node_id: row.node_id, embedding_model: model, text: row.text,
                   source_text_hash_sha256: row.source_text_hash_sha256,
                   source_event_id: previous.source_event_id, project: previous.project ?? null,
                 }, { $set: { source_event_id: row.source_event_id, project: row.project ?? null,
-                  chunk_count: row.chunk_count, updated_at: new Date(), updatedAt: new Date() } });
+                  chunk_count: row.chunk_count, expiresAt: row.expiresAt, updated_at: new Date(), updatedAt: new Date() } });
               }
             }
 
@@ -696,6 +747,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
                 chunk_count: row.chunk_count ?? 1,
                 text: row.text,
                 source_text_hash_sha256: row.source_text_hash_sha256,
+                expiresAt: row.expiresAt,
                 updated_at: new Date(),
               }];
             });
@@ -711,7 +763,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     : Promise.resolve();
 
   const eventVectorsTask = eventVectorTasks.length > 0
-    ? Promise.allSettled(eventVectorTasks).then((results) => {
+    ? Promise.allSettled(eventVectorTasks.map(task => task())).then((results) => {
         const rejected = results.filter((result) => result.status === "rejected").length;
         if (rejected > 0) {
           log.warn({ rejected, queued: eventVectorTasks.length }, "Detached event vector indexing completed with rejected tasks");
@@ -719,7 +771,9 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
       })
     : Promise.resolve();
 
-  const backgroundIndexing = Promise.all([graphNodeEmbeddingTask, eventVectorsTask]).then(() => undefined);
+  // All work must terminate even if a task's logger throws: a first rejection
+  // cannot release parent ownership while another task is still writing.
+  const backgroundIndexing = Promise.allSettled([graphNodeEmbeddingTask, eventVectorsTask]).then(() => undefined);
   // Detached by default, mirroring the original route behavior.
   void backgroundIndexing;
 

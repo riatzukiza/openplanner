@@ -35,15 +35,10 @@
 
 (defn valid-confidence?
   [value]
-  (and (number? value) (<= 0 value 1)))
+  (claims/valid-confidence? value))
 
-(defn valid-edge-claim?
-  [{:keys [claim-id status confidence scope] :as claim}]
-  (and (claims/nonblank-string? claim-id)
-       (claims/valid-claim-key? claim)
-       (contains? edge-claim-statuses status)
-       (valid-confidence? confidence)
-       (or (nil? scope) (map? scope))))
+(defn valid-edge-claim? [claim]
+  (claims/valid-edge-claim? claim))
 
 (defn edge-claim-errors
   [{:keys [claim-id source-node-id target-node-id relation-kind direction scope-json status confidence scope]}]

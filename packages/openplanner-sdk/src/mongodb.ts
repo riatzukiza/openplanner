@@ -187,6 +187,7 @@ export interface MongoVectorDocument {
   member_count: number | null;
   char_count: number | null;
   source_text_redacted?: boolean;
+  source_coordinate_space?: "raw" | "normalized" | null;
   source_ref?: Record<string, unknown> | null;
   text_hash_sha256?: string | null;
   chunk_text_hash_sha256?: string | null;
@@ -280,6 +281,7 @@ export interface GraphNodeEmbeddingDocument {
   chunk_count: number;
   text?: string;
   source_text_hash_sha256?: string;
+  expiresAt?: Date | null;
   updated_at: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -828,6 +830,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     await reconcileManagedTtl(events, "events_ttl", eventsTtl);
     await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
     await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
+    await reconcileManagedTtl(graphNodeEmbeddings, "graph_node_embeddings_ttl", eventsTtl);
     await reconcileManagedTtl(compactVectors, "compact_vectors_ttl", compactedTtl);
     // Disabled retention must also reconcile already materialized model partitions.
     for (const [tier, ttl, name] of [["hot", eventsTtl, "hot_vectors_ttl"], ["compact", compactedTtl, "compact_vectors_ttl"]] as const) {
@@ -1027,6 +1030,7 @@ export async function upsertGraphNodeEmbeddings(
     chunk_count: number;
     text?: string;
     source_text_hash_sha256?: string;
+    expiresAt?: Date | null;
     updated_at?: Date;
   }>,
 ): Promise<number> {
@@ -1051,6 +1055,7 @@ export async function upsertGraphNodeEmbeddings(
             chunk_count: row.chunk_count,
             ...(row.text != null ? { text: row.text } : {}),
             ...(row.source_text_hash_sha256 != null ? { source_text_hash_sha256: row.source_text_hash_sha256 } : {}),
+            ...(row.expiresAt !== undefined ? { expiresAt: row.expiresAt } : {}),
             updated_at: row.updated_at ?? now,
             updatedAt: now,
           },

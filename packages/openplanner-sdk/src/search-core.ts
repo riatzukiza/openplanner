@@ -5,7 +5,7 @@
  */
 import { ftsSearch, ilikeSearch } from "./mongodb.js";
 import type { MongoConnection } from "./mongodb.js";
-import { queryMongoVectorsByText } from "./mongo-vectors.js";
+import { queryMongoVectorsByText, VectorQueryUnavailableError } from "./mongo-vectors.js";
 import type { FtsSearchRequest, VectorSearchRequest } from "./types.js";
 import { extractTieredVectorHits, mergeTieredVectorHits } from "./vector-search.js";
 import type { EmbeddingRuntime } from "./embedding-runtime.js";
@@ -56,7 +56,10 @@ function mergeVectorPayloads(first: Record<string, unknown>, second: Record<stri
     distances.push(firstNestedArray<number | null>(second.distances)[index] ?? null);
   });
 
-  return { ids: [ids], documents: [documents], metadatas: [metadatas], distances: [distances], include: ["documents", "metadatas", "distances"] };
+  const unavailable = [...new Set([first, second].flatMap(result =>
+    Array.isArray(result.unavailable_partitions) ? result.unavailable_partitions as string[] : []))];
+  return { ids: [ids], documents: [documents], metadatas: [metadatas], distances: [distances], include: ["documents", "metadatas", "distances"],
+    ...(unavailable.length > 0 ? { partial: true, unavailable_partitions: unavailable } : {}) };
 }
 
 export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRequest) {
@@ -148,37 +151,43 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
 
   const embeddingRuntime = ctx.embeddingRuntime;
 
-  const runVector = async (quality: "good" | "not_bad" | "any", vectorLimit = limit) => {
+  const runVector = async (quality: "good" | "not_bad" | "any", vectorLimit = limit): Promise<Record<string, unknown>> => {
     const where: Record<string, unknown> = { ...mongoWhere };
     if (quality === "good") where.quality_label = "good";
     if (quality === "not_bad") where.quality_label = { $ne: "bad" };
     const tieredHits = [];
+    const unavailable = new Set<string>();
+    let queriedPartitions = 0;
+    const queryTier = async (rowTier: "hot" | "compact") => {
+      try {
+        const result = await queryMongoVectorsByText({
+          mongo: ctx.mongo, tier: rowTier, q, k: vectorLimit,
+          where: Object.keys(where).length > 0 ? where : undefined,
+          getEmbeddingFunctionForModel: model => embeddingRuntime[rowTier].getEmbeddingFunctionForModel(model),
+        });
+        for (const name of result.unavailable_partitions ?? []) unavailable.add(name);
+        queriedPartitions += result.queried_partition_count ?? 0;
+        return extractTieredVectorHits(result, rowTier);
+      } catch (error) {
+        if (!(error instanceof VectorQueryUnavailableError)) throw error;
+        for (const name of error.unavailablePartitions) unavailable.add(name);
+        return [];
+      }
+    };
 
     if (includeHot) {
-      const result = await queryMongoVectorsByText({
-        mongo: ctx.mongo,
-        tier: "hot",
-        q,
-        k: vectorLimit,
-        where: Object.keys(where).length > 0 ? where : undefined,
-        getEmbeddingFunctionForModel: (model: string) => embeddingRuntime.hot.getEmbeddingFunctionForModel(model),
-      });
-      tieredHits.push(extractTieredVectorHits(result, "hot"));
+      tieredHits.push(await queryTier("hot"));
     }
 
     if (includeCompact) {
-      const result = await queryMongoVectorsByText({
-        mongo: ctx.mongo,
-        tier: "compact",
-        q,
-        k: vectorLimit,
-        where: Object.keys(where).length > 0 ? where : undefined,
-        getEmbeddingFunctionForModel: (model: string) => embeddingRuntime.compact.getEmbeddingFunctionForModel(model),
-      });
-      tieredHits.push(extractTieredVectorHits(result, "compact"));
+      tieredHits.push(await queryTier("compact"));
     }
 
-    return mergeTieredVectorHits(tieredHits, vectorLimit);
+    if (queriedPartitions === 0 && unavailable.size > 0) {
+      throw new VectorQueryUnavailableError([...unavailable]);
+    }
+    return { ...mergeTieredVectorHits(tieredHits, vectorLimit),
+      ...(unavailable.size > 0 ? { partial: true, unavailable_partitions: [...unavailable] } : {}) };
   };
 
   if (mode === "good_then_not_bad") {

@@ -77,7 +77,6 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
     filter = body.filter as Record<string, unknown>;
   }
   assertSafeFilter(filter);
-  const collection = ctx.mongo.db.collection(collectionName);
 
   const rawLimit = Number(body.limit);
   const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 50 : rawLimit, 500));
@@ -101,8 +100,10 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
   let projection: Record<string, number> | undefined;
   if (body.projection && typeof body.projection === "object" && !Array.isArray(body.projection)) {
     projection = body.projection as Record<string, number>;
+    assertSafeFilter(projection);
   }
 
+  const collection = ctx.mongo.db.collection(collectionName);
   const total = await collection.countDocuments(filter, { maxTimeMS: QUERY_MAX_TIME_MS });
   const cursor = collection.find(filter, { projection, maxTimeMS: QUERY_MAX_TIME_MS }).sort(sort).skip(skip).limit(limit);
   const rows = await cursor.toArray();

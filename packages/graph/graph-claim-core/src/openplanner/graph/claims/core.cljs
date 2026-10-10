@@ -42,13 +42,15 @@
   (let [[left right] (canonical-endpoints claim-key)]
     (str left "\n" right "\n" relation-kind "\n" (name direction) "\n" (or scope-json "{}"))))
 
+(declare valid-edge-claim?)
+
 (defn projectable?
-  [{:keys [status valid-until-ms]} {:keys [statuses include-expired? now-ms]}]
+  [{:keys [status valid-until-ms] :as claim} {:keys [statuses include-expired? now-ms]}]
   (let [accepted-statuses (or statuses projectable-statuses)
         not-expired? (or include-expired?
                          (nil? valid-until-ms)
                          (> valid-until-ms now-ms))]
-    (and (contains? accepted-statuses status) not-expired?)))
+    (and (valid-edge-claim? claim) (contains? accepted-statuses status) not-expired?)))
 
 (defn claim->projected-edge
   [{:keys [claim-id source-node-id target-node-id relation-kind direction scope status confidence] :as claim}
@@ -84,3 +86,14 @@
        (nonblank-string? relation-kind)
        (contains? directions direction)
        (string? scope-json)))
+
+(defn valid-confidence? [value]
+  (and (number? value) (<= 0 value 1)))
+
+(defn valid-edge-claim?
+  [{:keys [claim-id status confidence scope] :as claim}]
+  (and (nonblank-string? claim-id)
+       (valid-claim-key? claim)
+       (contains? statuses status)
+       (valid-confidence? confidence)
+       (or (nil? scope) (map? scope))))

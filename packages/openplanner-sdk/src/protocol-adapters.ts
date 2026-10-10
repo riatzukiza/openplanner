@@ -205,6 +205,7 @@ class MongoTenantManagement implements TenantManagement {
       updated_at: now,
     };
     delete (doc as Record<string, unknown>).created_at;
+    delete (doc as Record<string, unknown>)._id;
     await this.policiesCollection().updateOne(
       { tenant_id: tenantId },
       { $set: doc, $setOnInsert: { created_at: now } },

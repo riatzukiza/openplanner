@@ -80,7 +80,7 @@ export async function getSessionResponse(
   if (mode === "visibility") {
     const rows = await protocols.sessionManagement.getSessionEvents(sessionId, {
       project,
-      limit: parsePositiveInt(query.limit, 32),
+      limit: Math.min(parsePositiveInt(query.limit, 32), 1000),
       projection: { _id: 0, extra: 1 },
     });
     return { ok: true, session: sessionId, rows: jsonSafe(rows), storageBackend: "mongodb" as const };

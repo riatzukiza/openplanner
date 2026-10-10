@@ -73,7 +73,10 @@
 (defn create-memory-lru-cache
   ([] (create-memory-lru-cache nil))
   ([opts]
-   (let [opts (core/opts-map opts)]
+   (let [opts (core/opts-map opts)
+         capacity (or (:maxEntries opts) (:max-entries opts) 512)]
+     (when-not (and (number? capacity) (js/Number.isSafeInteger capacity) (<= 0 capacity))
+       (throw (js/Error. "maxEntries must be a non-negative safe integer")))
      (MemoryLruCache. (atom {}) (atom 0)
-                      (long (or (:maxEntries opts) (:max-entries opts) 512))
+                      capacity
                       (long (or (:defaultTtlMs opts) (:default-ttl-ms opts) (* 5 60 60 1000)))))))

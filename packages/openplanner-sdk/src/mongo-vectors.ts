@@ -16,7 +16,17 @@ type RawQueryResult = {
   metadatas: Array<Array<Record<string, unknown> | null>>;
   distances: Array<Array<number | null>>;
   include: ["documents", "metadatas", "distances"];
+  partial?: boolean;
+  unavailable_partitions?: string[];
+  queried_partition_count?: number;
 };
+
+export class VectorQueryUnavailableError extends Error {
+  constructor(readonly unavailablePartitions: string[]) {
+    super("vector query embedding unavailable for all partitions");
+    this.name = "Error";
+  }
+}
 
 export type MongoVectorEntry = {
   id: string;
@@ -52,7 +62,7 @@ const VEXX_MIN_CANDIDATES = (() => {
 })();
 
 function emptyResult(): RawQueryResult {
-  return { ids: [[]], documents: [[]], metadatas: [[]], distances: [[]], include: ["documents", "metadatas", "distances"] };
+  return { ids: [[]], documents: [[]], metadatas: [[]], distances: [[]], include: ["documents", "metadatas", "distances"], queried_partition_count: 0 };
 }
 
 function getFlatCollection(mongo: MongoConnection, tier: MongoVectorTier): Collection<MongoVectorDocument> {
@@ -140,13 +150,20 @@ export async function hydrateVectorDocumentText(doc: MongoVectorDocument): Promi
       url: nonBlankString(ref.url),
       hostname: nonBlankString(ref.hostname),
       lake: nonBlankString(ref.lake) ?? doc.project,
-      content_hash: nonBlankString(ref.content_hash) ?? nonBlankString(ref.contentHash),
+      content_hash: nonBlankString(ref.content_hash) ?? nonBlankString(ref.contentHash) ?? nonBlankString(doc.text_hash_sha256),
     },
   });
   if (!sourceText) return "";
+  if (doc.text_hash_sha256 && /^[0-9a-f]{64}$/i.test(doc.text_hash_sha256)
+    && sha256Text(sourceText) !== doc.text_hash_sha256.toLowerCase()) return "";
   const start = typeof doc.char_start === "number" && doc.char_start >= 0 ? doc.char_start : null;
   const end = typeof doc.char_end === "number" && doc.char_end >= 0 ? doc.char_end : null;
   if (start !== null && end !== null && end >= start) {
+    if (doc.source_coordinate_space === "normalized") {
+      const normalized = prepareIndexDocument({ parentId: doc.parent_id ?? doc._id, text: sourceText }).normalizedText;
+      const chunk = normalized.slice(start, end);
+      return end <= normalized.length && doc.chunk_text_hash_sha256 && sha256Text(chunk) === doc.chunk_text_hash_sha256 ? chunk : "";
+    }
     const rawChunk = sourceText.slice(start, end);
     if (!doc.chunk_text_hash_sha256 || sha256Text(rawChunk) === doc.chunk_text_hash_sha256) return rawChunk;
     // Historical rows recorded offsets after normalization. Validate that candidate
@@ -171,12 +188,19 @@ function sourceRedactionMetadata(params: {
 }): Record<string, unknown> {
   const sourceRef = sourceRefFromExtra(params.extra);
   if (!sourceRef || typeof params.charStart !== "number" || typeof params.charEnd !== "number"
-    || params.charStart < 0 || params.charEnd < params.charStart || params.charEnd > params.rawText.length
-    || params.rawText.slice(params.charStart, params.charEnd) !== params.chunkText) return {};
+    || params.charStart < 0 || params.charEnd < params.charStart) return {};
+  const rawMatches = params.charEnd <= params.rawText.length
+    && params.rawText.slice(params.charStart, params.charEnd) === params.chunkText;
+  // Only redact normalized references that can be reconstructed from the saved
+  // source itself. Caller-supplied alternative HTML is not a hydration authority.
+  const normalized = rawMatches ? null : prepareIndexDocument({ parentId: "source-reference", text: params.rawText }).normalizedText;
+  if (!rawMatches && (!normalized || params.charEnd > normalized.length
+    || normalized.slice(params.charStart, params.charEnd) !== params.chunkText)) return {};
   return {
     source_text_redacted: true,
+    source_coordinate_space: rawMatches ? "raw" : "normalized",
     source_ref: sourceRef,
-    text_hash_sha256: sourceRef.content_hash ?? sha256Text(params.rawText),
+    text_hash_sha256: sha256Text(params.rawText),
     chunk_text_hash_sha256: sha256Text(params.chunkText),
     char_start: params.charStart ?? null,
     char_end: params.charEnd ?? null,
@@ -334,6 +358,7 @@ function toMetadata(doc: MongoVectorDocument): Record<string, unknown> {
     member_count: doc.member_count ?? null,
     char_count: doc.char_count ?? null,
     source_text_redacted: doc.source_text_redacted ?? false,
+    source_coordinate_space: doc.source_coordinate_space ?? null,
     source_ref: doc.source_ref ?? null,
     text_hash_sha256: doc.text_hash_sha256 ?? null,
     chunk_text_hash_sha256: doc.chunk_text_hash_sha256 ?? null,
@@ -645,6 +670,8 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
     member_count: toNumberOrNull(entry.metadata.member_count),
     char_count: toNumberOrNull(entry.metadata.char_count),
     source_text_redacted: sourceTextRedacted,
+    source_coordinate_space: entry.metadata.source_coordinate_space === "raw" || entry.metadata.source_coordinate_space === "normalized"
+      ? entry.metadata.source_coordinate_space : null,
     source_ref: sourceTextRedacted ? objectValue(entry.metadata.source_ref) : null,
     text_hash_sha256: toStringOrNull(entry.metadata.text_hash_sha256),
     chunk_text_hash_sha256: toStringOrNull(entry.metadata.chunk_text_hash_sha256),
@@ -989,6 +1016,7 @@ async function queryPartitionWithNativeVectorSearch(params: {
         model: 1,
         visibility: 1,
         quality_label: 1,
+        labels: 1,
         title: 1,
         embedding_model: 1,
         embedding_dimensions: 1,
@@ -1003,6 +1031,7 @@ async function queryPartitionWithNativeVectorSearch(params: {
         member_count: 1,
         char_count: 1,
         source_text_redacted: 1,
+        source_coordinate_space: 1,
         source_ref: 1,
         text_hash_sha256: 1,
         chunk_text_hash_sha256: 1,
@@ -1074,20 +1103,32 @@ export async function queryMongoVectorsByText(params: {
 
   const rows: Array<{ doc: MongoVectorDocument; score: number }> = [];
   const queryEmbeddingsByPartitionKey = new Map<string, number[]>();
+  const unavailablePartitions: string[] = [];
+  let availablePartitions = 0;
 
   for (const partition of partitions) {
     const collection = params.mongo.db.collection<MongoVectorDocument>(partition.collectionName);
     const cacheKey = `${partition.model}:${partition.dimensions}`;
     let queryEmbedding = queryEmbeddingsByPartitionKey.get(cacheKey);
     if (!queryEmbedding) {
-      const embeddingFunction = params.getEmbeddingFunctionForModel(partition.model);
-      const [generatedEmbedding] = await embeddingFunction.generate([queryText]);
-      queryEmbedding = Array.isArray(generatedEmbedding) && generatedEmbedding.length === partition.dimensions
-        ? generatedEmbedding
-        : undefined;
-      if (queryEmbedding) queryEmbeddingsByPartitionKey.set(cacheKey, queryEmbedding);
+      try {
+        const embeddingFunction = params.getEmbeddingFunctionForModel(partition.model);
+        const [generatedEmbedding] = await embeddingFunction.generate([queryText]);
+        if (!Array.isArray(generatedEmbedding) || generatedEmbedding.length !== partition.dimensions
+          || generatedEmbedding.length === 0 || generatedEmbedding.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+          throw new Error("invalid partition query embedding");
+        }
+        queryEmbedding = generatedEmbedding;
+        queryEmbeddingsByPartitionKey.set(cacheKey, queryEmbedding);
+      } catch {
+        // Historical model failures must not discard healthy partition results.
+        // Report storage identities only; provider diagnostics may contain secrets.
+        unavailablePartitions.push(partition.collectionName);
+        continue;
+      }
     }
     if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) continue;
+    availablePartitions++;
 
     let partitionRows: Array<{ doc: MongoVectorDocument; score: number }>;
     if (partition.searchIndexStatus === "ready") {
@@ -1119,6 +1160,10 @@ export async function queryMongoVectorsByText(params: {
     rows.push(...partitionRows);
   }
 
+  if (availablePartitions === 0 && unavailablePartitions.length > 0) {
+    throw new VectorQueryUnavailableError(unavailablePartitions);
+  }
+
   const sorted = rows
     .sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))
     .slice(0, Math.max(1, params.k));
@@ -1130,6 +1175,8 @@ export async function queryMongoVectorsByText(params: {
     metadatas: [sorted.map((entry) => toMetadata(entry.doc))],
     distances: [sorted.map((entry) => Number.isFinite(entry.score) ? 1 - entry.score : null)],
     include: ["documents", "metadatas", "distances"],
+    ...(unavailablePartitions.length > 0 ? { partial: true, unavailable_partitions: [...new Set(unavailablePartitions)] } : {}),
+    queried_partition_count: availablePartitions,
   };
 }
 
