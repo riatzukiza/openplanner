@@ -1122,7 +1122,8 @@ async function queryPartitionWithCosineScan(params: {
   excludeParentIds?: string[];
 }): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
   const filter = queryFilter(params.where, params.excludeParentIds);
-  const candidates = await params.collection.find(filter).sort({ ts: -1 }).limit(Math.max(params.k * 50, 1000)).toArray();
+  // Age is not a semantic candidate bound: score the complete filtered partition.
+  const candidates = await params.collection.find(filter).toArray();
   const vexxRows = await queryPartitionWithVexxTopK({
     candidates,
     queryEmbedding: params.queryEmbedding,

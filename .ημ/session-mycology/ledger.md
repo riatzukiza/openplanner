@@ -496,3 +496,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-dfa-five-native-boundaries-red-20261010
   note: Five native defects reproduced with publisheddfa production unchanged. Driver name classifier mistook compiled runner for compile gate; actual three command records independently validated, not relabeled GREEN. Current full CodeRabbit and MiMo keep reviewing publisheddfa while local fixes proceed. No source publication/approval, runtime, board, paid or spore; all194 ledger/reflection prefixes retained.
+
+- ts: 2026-10-10T22:21:46.212Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-187-five-native-boundaries-green-20261010
+  note: Five causal native defects fixed; existing assertions preserved. Initial host EAGAIN compiler failure retained; isolated childJVM cap2 fullretry PASS. Full cosine scan materializes filteredpartition, no boundedRAM/streaming claim. CurrentCR3 more findings remainopen; publishonlyafterbatch. Correction: previousdfaCI SUCCESS metadata/head and actual200/63test counts observed, but default PR checkout virtualmerge did not enforce exact HEAD; need new headguard workflow. No approval/merge/runtime/board/paid/spore;195 historicalprefixes preserved.

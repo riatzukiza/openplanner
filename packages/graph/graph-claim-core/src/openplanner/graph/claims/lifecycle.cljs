@@ -24,6 +24,15 @@
              (= "object" (goog/typeOf obj)))
     (aget obj k)))
 
+(defn- agreeing-evidence-ids
+  [body fields]
+  (let [aliases (when (and (some? body) (= "object" (goog/typeOf body)))
+                  (filter #(js/Object.hasOwn body %) fields))
+        values (mapv #(event-ids-from-js (jget body %)) aliases)]
+    (when (and (seq values) (not (apply = values)))
+      (throw (ex-info "Lifecycle evidence aliases must agree" {:fields (vec aliases)})))
+    (or (first values) [])))
+
 (defn- action-keyword
   [value]
   (let [action (some-> value str .trim .toLowerCase keyword)]
@@ -48,18 +57,14 @@
          :status next-status
          :confidence (clamp-confidence (jget body "confidence") 0.75)
          :event-field :support_event_ids
-         :event-ids (event-ids-from-js (or (jget body "event_ids")
-                                           (jget body "eventIds")
-                                           (jget body "support_event_ids")))})
+         :event-ids (agreeing-evidence-ids body ["event_ids" "eventIds" "support_event_ids"])})
 
       :refute
       {:action :refute
        :status :refuted
        :confidence (clamp-confidence (jget body "confidence") 0)
        :event-field :refute_event_ids
-       :event-ids (event-ids-from-js (or (jget body "event_ids")
-                                         (jget body "eventIds")
-                                         (jget body "refute_event_ids")))}
+       :event-ids (agreeing-evidence-ids body ["event_ids" "eventIds" "refute_event_ids"])}
 
       :withdraw
       {:action :withdraw

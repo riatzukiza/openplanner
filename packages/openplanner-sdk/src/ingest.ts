@@ -73,6 +73,12 @@ export function validateEvent(ev: EventEnvelopeV1) {
     }
   }
   if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
+  for (const field of ["project", "session", "message", "turn"] as const) {
+    const value = ev.source_ref?.[field];
+    if (value !== undefined && typeof value !== "string") {
+      throw new Error("source_ref identifier must be a string: " + field);
+    }
+  }
   // Use the writer's shared label admission before any batch event is persisted.
   eventRetentionExpiry(ev.extra, 0, new Date(0));
   const extra = ev.extra ?? {};

@@ -71,8 +71,19 @@ function mergeVectorPayloads(first: Record<string, unknown>, second: Record<stri
     ...(unavailable.length > 0 ? { partial: true, unavailable_partitions: unavailable } : {}) };
 }
 
+function validateExactSearchFilters(body: {
+  source?: unknown; kind?: unknown; project?: unknown; session?: unknown; visibility?: unknown;
+}): void {
+  for (const field of ["source", "kind", "project", "session", "visibility"] as const) {
+    if (body[field] !== undefined && typeof body[field] !== "string") {
+      throw new Error("search filter " + field + " must be a string");
+    }
+  }
+}
+
 export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRequest) {
   if (typeof body.q !== "string" || !body.q.trim()) throw new Error("q is required");
+  validateExactSearchFilters(body);
   const q = body.q.trim();
   const limit = body.limit ?? 20;
 
@@ -134,6 +145,7 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
 
 export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSearchRequest) {
   if (typeof body.q !== "string" || !body.q.trim()) throw new Error("q is required");
+  validateExactSearchFilters(body);
   const q = body.q.trim();
   const k = body.k ?? 20;
 

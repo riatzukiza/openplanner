@@ -108,6 +108,13 @@ class MongoSessionManagement implements SessionManagement {
           labels: mutable["extra.openplanner_labels.labels"] } };
       }
       const managedExpiry = eventRetentionExpiry(extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
+      if (["extra", "extra.openplanner_labels", "extra.openplanner_labels.labels"]
+        .some(key => Object.hasOwn(mutable, key))) {
+        // Persist one canonical parent path; Mongo refuses parent/child $set collisions.
+        mutable.extra = extra;
+        delete mutable["extra.openplanner_labels"];
+        delete mutable["extra.openplanner_labels.labels"];
+      }
       if (managedExpiry) mutable.expiresAt = managedExpiry;
       else retentionUpdate.$unset = { expiresAt: "" };
     }
