@@ -14,10 +14,20 @@
             (get m k)))
         ks))
 
+(defn- present-entry
+  "Retain alias presence separately from its value, including false and nil."
+  [doc fields]
+  (some (fn [field]
+          (when (contains? doc field)
+            {:value (get doc field)}))
+        fields))
+
 (defn- mongo-claim->js
   [doc]
-  #js {:claim_id (get-any doc [:claim-id :claim_id "claim_id" :_id "_id" :id "id"])
-       :source_node_id (get-any doc [:source-node-id :source_node_id :source "source_node_id" "source"])
+  (let [camel (present-entry doc [:claim-id :claimId "claimId"])
+        snake (present-entry doc [:claim_id "claim_id"])
+        storage (when-not (or camel snake) (present-entry doc [:_id "_id" :id "id"]))
+        row #js {:source_node_id (get-any doc [:source-node-id :source_node_id :source "source_node_id" "source"])
        :target_node_id (get-any doc [:target-node-id :target_node_id :target "target_node_id" "target"])
        :relation_kind (get-any doc [:relation-kind :relation_kind :kind "relation_kind" "kind"])
        :direction (get-any doc [:direction "direction"])
@@ -25,7 +35,11 @@
        :confidence (get-any doc [:confidence "confidence"])
        :valid_until (get-any doc [:valid-until :valid_until "valid_until"])
        :scope (clj->js (or (get-any doc [:scope "scope"])
-                           (select-keys doc [:tenant_id :org_id :project :lake :graph_version])))} )
+                           (select-keys doc [:tenant_id :org_id :project :lake :graph_version])))}]
+    (when camel (aset row "claimId" (:value camel)))
+    (when snake (aset row "claim_id" (:value snake)))
+    (when storage (aset row "claim_id" (:value storage)))
+    row))
 
 (defn edge-claim-from-mongo
   [doc]
