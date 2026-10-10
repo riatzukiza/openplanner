@@ -1,0 +1,25 @@
+{
+  "tier": "actual staged import hygiene; pure whitespace-only normalization",
+  "observed_at": "2026-10-10T04:28:56.162679+00:00",
+  "initial_result": "exit2: 26 inherited trailing-whitespace rows became visible when selected untracked imports were first staged. Earlier git diff --check only assessed tracked unstaged root change.",
+  "changes": [
+    {
+      "path": "packages/openplanner-sdk/src/mongo-vectors.ts",
+      "before_sha256": "74b76b3d68a9c6c788701fd09a6e33164c5d38eceef72529ce4ea6111ecd9637",
+      "after_sha256": "1e5184ec18a1fc6f4a5b7aace590cbba54416911da8d6a58a3b6c658d8eab5eb",
+      "only_trailing_horizontal_whitespace_removed": true
+    },
+    {
+      "path": "packages/openplanner-sdk/src/mongodb.ts",
+      "before_sha256": "728f1721a052d0ad83e2430760e5a3d49702ecc34a5b6443ed3c1f2fd36c935b",
+      "after_sha256": "ee02a6e0e54491bb3ee34557ad4950ff1173cddbdc457218d434ec5112503d99",
+      "only_trailing_horizontal_whitespace_removed": true
+    },
+    {
+      "path": "packages/openplanner-sdk/src/protocol-adapters.ts",
+      "before_sha256": "cdb100e142a1847238fbf7ce9c625338583fd9b0efa04f6d08e94395b9b8177c",
+      "after_sha256": "d9ee90c758caa444412f375bd369c3f4f5406e4a7f5908ce77e0f2707340e231",
+      "only_trailing_horizontal_whitespace_removed": true
+    }
+  ]
+}

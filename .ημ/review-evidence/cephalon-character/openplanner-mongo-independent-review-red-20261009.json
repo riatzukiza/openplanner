@@ -1,0 +1,99 @@
+{
+  "kind": "observed-command-output-transcription",
+  "observed_at": "2026-10-09T15:53:23.370929+00:00",
+  "reviewer": "Halley",
+  "agent_id": "01a12155-b39b-7832-b279-fbdc82093602",
+  "findings": [
+    {
+      "priority": "P1",
+      "finding": "Denied edge provenance can consume limit before exclusion."
+    },
+    {
+      "priority": "P2",
+      "finding": "Recall model scope differs from actual graph indexer."
+    },
+    {
+      "priority": "P2",
+      "finding": "Nullish rejection escapes bounded failure catch."
+    }
+  ],
+  "logs": [
+    {
+      "name": "openplanner-mongo-native-review-red-compile.log",
+      "exit_code": 0,
+      "bytes": 307,
+      "sha256": "08564c45476db3a7ee1ed92c0c32e06c234d01d39f9516dcf03b43a6d959da2d",
+      "utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:test] Compiling ...\n",
+        "[:test] Build completed. (84 files, 3 compiled, 0 warnings, 3.00s)\n"
+      ]
+    },
+    {
+      "name": "openplanner-mongo-native-review-red.log",
+      "exit_code": 1,
+      "bytes": 3880,
+      "sha256": "10a6f9bc011b2b784a2885e94017dec864f5fee79c95c7bc94cfa65e24df2a79",
+      "utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Testing openplanner.graph.recall.mongo-test\n",
+        "\n",
+        "FAIL in (denied-provenance-cannot-consume-the-admitted-edge-budget) (openplanner/graph/recall/mongo_test.cljs:208:11)\n",
+        "expected: (= before after)\n",
+        "  actual: (not (= {:version 1, :field-status \"not-loaded\", :selection {:feedback {:status \"not-requested\", :attempted 0, :completed 0}, :diagnostics {:denied-nodes 0, :authorized-nodes 2, :admitted-edges 1}, :hits [{:path [\"seed\"], :event-id \"seed\", :reason \"semantic-seed\", :id \"seed\", :score 1, :path-edge-ids [], :cost 0, :seed? true, :text \"outside harbor encounter\"} {:path [\"seed\" \"neighbor\"], :event-id \"neighbor\", :reason \"graph-neighbor\", :id \"neighbor\", :score 1, :path-edge-ids [\"edge:seed:neighbor\"], :cost 1, :seed? false, :text \"GRAPH ONLY: bells under the harbor\"}], :graph-revision \"scoped-snapshot:b7ab6cfcb94945d7bef69da92cff5beed4f6fd0bfe6f576583c33b2bf61f5916\", :recall-id \"turn:17:recall\", :field-revision \"not-loaded\", :status \"completed\", :visited-count 2, :policy-revision \"stored-policy:7\", :budget {:k 6, :fetch 18, :max-nodes 64, :max-cost 4}, :field-owner \"not-loaded\"}} {:version 1, :field-status \"not-loaded\", :selection {:status \"failed\", :hits [], :failure {:stage \"graph\", :code \"storage-limit-exceeded\"}, :feedback {:status \"not-requested\", :attempted 0, :completed 0}}}))\n",
+        "\n",
+        "FAIL in (denied-provenance-cannot-consume-the-admitted-edge-budget) (openplanner/graph/recall/mongo_test.cljs:209:11)\n",
+        "expected: (= {:$type \"array\", :$ne [], :$not {:$elemMatch {:$nin [\"seed\" \"neighbor\"]}}} (get-in (clojure.core/deref (:reads* state)) [3 :filter :data.scoped_recall.provenance_event_ids]))\n",
+        "  actual: (not (= {:$type \"array\", :$ne [], :$not {:$elemMatch {:$nin [\"seed\" \"neighbor\"]}}} nil))\n",
+        "\n",
+        "FAIL in (ready-graph-embeddings-use-the-indexers-model-scope) (openplanner/graph/recall/mongo_test.cljs:216:11)\n",
+        "expected: (= \"completed\" (get-in result [:selection :status]))\n",
+        "  actual: (not (= \"completed\" \"indexing-pending\"))\n",
+        "\n",
+        "FAIL in (ready-graph-embeddings-use-the-indexers-model-scope) (openplanner/graph/recall/mongo_test.cljs:217:11)\n",
+        "expected: (= [\"seed\" \"neighbor\"] (mapv :id (get-in result [:selection :hits])))\n",
+        "  actual: (not (= [\"seed\" \"neighbor\"] []))\n",
+        "\n",
+        "FAIL in (ready-graph-embeddings-use-the-indexers-model-scope) (openplanner/graph/recall/mongo_test.cljs:218:11)\n",
+        "expected: (= [{:source \"graph-event\", :kind \"graph.node\", :project \"creator-local\"}] (clojure.core/deref (:model-scopes* state)))\n",
+        "  actual: (not (= [{:source \"graph-event\", :kind \"graph.node\", :project \"creator-local\"}] [{:source \"knoxx\", :kind \"character.encounter\", :project \"creator-local\"}]))\n",
+        "\n",
+        "Ran 43 tests containing 201 assertions.\n",
+        "5 failures, 0 errors.\n",
+        "TypeError: Cannot read properties of null (reading 'code')\n",
+        "    at /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/.shadow-cljs/builds/test/dev/out/cljs-runtime/openplanner/graph/recall/mongo.cljs:168:48\n",
+        "    at /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/.shadow-cljs/builds/test/dev/out/cljs-runtime/openplanner.graph.recall.mongo.js:275:3\n",
+        "    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n",
+        "    at /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/.shadow-cljs/builds/test/dev/out/cljs-runtime/openplanner/graph/recall/mongo.cljs:152:11\n",
+        "    at Object.openplanner$graph$recall$mongo_test$recall_BANG_ [as recall_BANG_] (/home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/.shadow-cljs/builds/test/dev/out/cljs-runtime/openplanner/graph/recall/mongo_test.cljs:75:19)\n",
+        "    at /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/.shadow-cljs/builds/test/dev/out/cljs-runtime/openplanner/graph/recall/mongo_test.cljs:224:20\n"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/mongo.cljs",
+      "sha256": "aa6caf35169569e181526460f4d280d0eef7c64d8e5d93f4a74ccfa4fb4eb38b"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/mongo_contract.cljc",
+      "sha256": "54d7ea1ac1ee05dde96deb45ea54f52e02dbd3ec45f72066bce1b90ed9adfad0"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/ranking.cljc",
+      "sha256": "a24bfb3bbf3d6101553841241b50de988c7d8008a2e75089abca491526296f76"
+    }
+  ],
+  "limits": [
+    "Local independent review; no native GitHub approval, source integration or deployed guarantee.",
+    "RED runner prints43tests201assertions5fail0error, then actual uncaught TypeError and exit1. That summary is not evidence of a successfully completed async suite.",
+    "Held collection recognizes only selected query predicates, not Mongo compatibility proof."
+  ]
+}

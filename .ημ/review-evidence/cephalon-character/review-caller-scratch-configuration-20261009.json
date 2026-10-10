@@ -1,0 +1,61 @@
+{
+  "tier": "observed-command-output transcription; not native reviewer approval",
+  "observed_at": "2026-10-09T16:56:36.418222Z",
+  "previous_head": "137ba891a8d119716cfa603c6a3643d07acc30c3",
+  "native_review_failure": {
+    "run": 37961515823,
+    "head": "137ba891a8d119716cfa603c6a3643d07acc30c3",
+    "model_invocation": "not reached",
+    "messages": [
+      "Review-context setup left the working tree dirty before model execution.",
+      "Git quotes generated .review-context/agents/.\u03b7\u03bc paths; workflow textual allowlist misses those paths."
+    ],
+    "log_bytes": 229977,
+    "log_sha256": "9d41fcc3df2b3cd6416d2961f83768c64b7718073e6f96501d92991158a01211"
+  },
+  "repair": "Ignore only canonical generated review-context and review-evidence scratch roots. Tracked-source and unexpected-source guards remain. This is caller artifact configuration, not an alternate reviewer/classifier. Receiver source remains pinned.",
+  "git_guard_checks": {
+    "tier": "observed-command-output",
+    "observed_at": "2026-10-09T16:54:54.479735Z",
+    "scope": "Git ignore rules for generated review artifacts; no runtime or reviewer verdict",
+    "checks": [
+      {
+        "repository": "openplanner",
+        "generated_unicode_scratch_status": "",
+        "tracked_change_status": " M source.cljs\n",
+        "unexpected_source_status": "?? unexpected.cljs\n",
+        "gitignore_sha256": "66238de281125a7db7624582acb069674dd98a99791e072ac84fe60e2ab60ef7"
+      },
+      {
+        "repository": "knoxx",
+        "generated_unicode_scratch_status": "",
+        "tracked_change_status": " M source.cljs\n",
+        "unexpected_source_status": "?? unexpected.cljs\n",
+        "gitignore_sha256": "2cbd197daa5b703afd14b1a21fe96a85cff2aabb79a6534e33d6a8afde4a0603"
+      }
+    ]
+  },
+  "native_coderabbit": {
+    "summary": 6085082181,
+    "request": 6085254122,
+    "completion": 6085256133,
+    "head": "137ba891a8d119716cfa603c6a3643d07acc30c3",
+    "selected_inputs": 38,
+    "ignored_input": "pnpm-lock.yaml",
+    "scope": "Explicit positive path filter added; old-head default-excluded lockfile is not fabricated full-input review."
+  },
+  "verification": {
+    "hosted_functional": 37961515308,
+    "conclusion": "success",
+    "head": "137ba891a8d119716cfa603c6a3643d07acc30c3",
+    "independent_source_reviewer": "Halley 01a12155-b39b-7832-b279-fbdc82093602",
+    "review": "CLEAN at137, all39 current changed inputs; independent local review is not native approval",
+    "configuration": "actionlint0; real Git fixture proves both tracked edits and unexpected new source remain visible"
+  },
+  "limits": [
+    "No application, query, SDK, physical field or mood behavior changed by caller review config.",
+    "New head needs native review and hosted checks; G source synchronization remains independently unqualified.",
+    "No runtime, maker, board, social or deployment effects. No paid review credits.",
+    "Historical receipt148 remains invalid; no entire ledger pass."
+  ]
+}

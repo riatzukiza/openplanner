@@ -1,0 +1,79 @@
+{
+  "kind": "observed-command-output-transcription",
+  "recorded_at": "2026-10-09T16:33:06.327442Z",
+  "head_before": "40226c775e7d1b03c4660297f3f65a61099890a1",
+  "personal_base": "f95a53a4da8ed90588b0be320ba8e86c6a03668d",
+  "sync_base": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+  "actionlint": {
+    "command": [
+      "actionlint",
+      ".github/workflows/scoped-graph-recall.yml",
+      ".github/workflows/eta-mu-review.yml"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "inputs": {
+    ".github/workflows/scoped-graph-recall.yml": {
+      "sha256": "0c315fe73efe5a26167ca2852c8dbaa6739949cff6cbd61a99fbb4fff89ab64f",
+      "bytes": 2106,
+      "utf8": "# SPDX-License-Identifier: GPL-3.0-or-later\nname: Scoped graph recall verification\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n  workflow_dispatch:\n\npermissions:\n  contents: read\n\njobs:\n  verify:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n      - uses: actions/setup-java@v4\n        with:\n          distribution: temurin\n          java-version: \"21\"\n      - uses: DeLaGuardo/setup-clojure@13\n        with:\n          cli: latest\n          clj-kondo: latest\n      - uses: pnpm/action-setup@v4\n        with:\n          version: \"10.11.0\"\n      - uses: actions/setup-node@v4\n        with:\n          node-version: \"22.20.0\"\n      - name: Install the owning graph package\n        run: pnpm --filter @open-hax/openplanner-graph-claim-core... install --frozen-lockfile\n      - name: Portable recall laws\n        working-directory: packages/graph/graph-claim-core\n        run: clojure -M:recall-test\n      - name: Changed recall namespace lint\n        working-directory: packages/graph/graph-claim-core\n        run: clj-kondo --lint src/openplanner/graph/recall test/openplanner/graph/recall\n      - name: Actual Node suites and forced assertion failure\n        working-directory: packages/graph/graph-claim-core\n        run: |\n          set -euo pipefail\n          pnpm exec shadow-cljs compile test --force-spawn 2>&1 | tee \"$RUNNER_TEMP/scoped-recall-test-compile.log\"\n          grep -Eq 'Build completed\\..* 0 warnings[,)]' \"$RUNNER_TEMP/scoped-recall-test-compile.log\"\n          node scripts/verify-recall-test-exit.mjs\n      - name: Released ESM and runnable scoped recall demonstration\n        working-directory: packages/graph/graph-claim-core\n        run: |\n          set -euo pipefail\n          pnpm exec shadow-cljs release lib --force-spawn 2>&1 | tee \"$RUNNER_TEMP/scoped-recall-release.log\"\n          grep -Eq 'Build completed\\..* 0 warnings[,)]' \"$RUNNER_TEMP/scoped-recall-release.log\"\n          node scripts/verify-scoped-recall.mjs\n"
+    },
+    ".github/workflows/eta-mu-review.yml": {
+      "sha256": "7e901842a4b57ca93f4c4a98b2876cbbee9e1bcf8c0b73d56f176c675940366f",
+      "bytes": 1014,
+      "utf8": "# SPDX-License-Identifier: GPL-3.0-or-later\nname: eta-mu evidence review\n\non:\n  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  review:\n    name: Evidence-first review (eta-mu)\n    uses: open-hax/eta-mu/.github/workflows/opencode-code-review.yml@45ec644c2d15ed511e9bc1e797d1b4073b63dbfc\n    with:\n      pr_head_sha: ${{ github.event.pull_request.head.sha }}\n      model: opencode/mimo-v2.6-flash-free\n      muse_revision: 0b9a91492c8355e6933dc2164d35668cb76d9e60\n      agents_revision: 4b4f48dae1b804b2581974e604cca618ecedadf1\n      opencode_version: 1.18.31\n      node_version: \"22.20.0\"\n      setup_eta_mu_toolchain: false\n      evidence_gates_script: |\n        run_gate diff_stat git diff --stat \"${PR_BASE_SHA}...HEAD\"\n        run_gate diff_hygiene git diff --check \"${PR_BASE_SHA}...HEAD\"\n    secrets:\n      ETA_MU_APP_ID: ${{ secrets.ETA_MU_APP_ID }}\n      ETA_MU_APP_PRIVATE_KEY: ${{ secrets.ETA_MU_APP_PRIVATE_KEY }}\n"
+    },
+    "docs/verification/cephalon-scoped-graph-recall.md": {
+      "sha256": "187871e2319a35f7af48a83442e44b8eab7d14ef5595d9dc4022423583194977",
+      "bytes": 8936,
+      "utf8": "# Scoped graph selection for the character loop\n\nThis is the OpenPlanner selection and scoped storage portion of the accepted\nB3 milestone, task `a1e9d6af-0233-4dcb-9677-5c76fa9a2701`. The storage adapter is\ntested over held SDK collection ports; live identity/storage qualification and\nautomatic Knoxx prompt delivery remain unfinished. Passing this package does not complete\nB3, the full recall story, physical field persistence or the separate mood model.\n\n## Run the actual library\n\nFrom `packages/graph/graph-claim-core`:\n\n```sh\nclojure -M:recall-test\npnpm exec shadow-cljs --force-spawn compile test\nnode target/test.cjs\nnode scripts/verify-recall-test-exit.mjs\npnpm exec shadow-cljs --force-spawn release lib\nnode scripts/verify-scoped-recall.mjs\n```\n\nThe Node suite retains every existing edge-claim test. The final demonstration\nimports the released ESM export, creates one private temporary JSON fixture,\nchecks a graph-only neighbor and its complete path, exercises absent decisions,\nprints the actual result and deletes only its own fixture. It performs no database,\nREST, model, field write or social call. Fixture identity/revisions are explicit\nexamples; they do not establish current stored authority or deployed state.\n\nThe exit verifier forces a real existing assertion to fail by changing only a\nfunction value in an isolated process. It requires the child to report exactly\none assertion failure and exit1. That intentional failing child is a passing\nrunner-integrity check. Both Node entry points use the actual end-run report;\nthe return value of `run-tests` is not a result summary.\nThe verifier separates the ordinary and injected runs at its explicit marker,\nrequires their exact summaries and equal suite counts, and checks the actual\ninjected status assertion. It rejects mutated actual outputs reporting11/21\nfailures, missing/wrong injection, an ordinary failure or an extra summary.\nBoth runs await their actual asynchronous completion event before starting the\nnext suite; otherwise shared test counters could overlap and corrupt evidence.\n\n## Owning SDK/Mongo recall boundary\n\n`createScopedMongoRecall(sdk, resolveCurrentAuthority)` binds a trusted SDK\nhandle and a host callback. Its returned function accepts only the closed\nversion1 recall request. The callback supplies the exact current principal,\npolicy revision, project and admitted event IDs/text; neither tool JSON nor\nprevious admission receipts can supply a grant. Absence denies before index or\nembedding access. It refreshes the complete binding after index loading, query\nembedding and edge loading, refusing changed scope or text without stale hits.\nThese are checked observations across awaits, not atomic grant fencing.\n\nThe adapter uses existing `graphNodeEmbeddings` and `graphEdges` cursor methods,\nwith a five-second server query limit and finite row limits. It selects the\nsame `graph-event` / `graph.node` model scope as the SDK indexer. Index rows must\nbind `node_id` to `source_event_id` in Mongo **before** the row limit; edges must\nhave nonempty admitted provenance in Mongo before their limit. Excluded rows\ncannot consume the admitted storage budget. Missing admitted indices return\n`indexing-pending`; overflowing admitted rows fail without partial results.\nHeld cursor fixtures test these explicit predicates; they do not establish\ncompatibility with a live Mongo deployment.\n\nValidated cosine ranking chooses one strongest semantic seed; the existing\npure walker selects associative neighbors with their exact node/edge paths.\n`validScopedMongoRecallResult(result)` lets a consumer validate the owning wire\ncontract, including failure, feedback and path shapes, without copying those\nschemas. Storage/provider exceptions return bounded safe codes, including null\nor undefined rejections. Retrieval makes no database write and requests no\nreinforcement. `field-status: not-loaded` explicitly records the absent physical\nfield; graph snapshot hashes are not field persistence proof.\n\n## Contract and causal boundary\n\nThe named Malli registry is serializable Clojure data. Request version1 accepts\nquery and finite budgets; it accepts no actor/grant fields or feedback writer.\nThe host must obtain the snapshot and decisions from an actual trusted storage\nand identity adapter. A valid schema or an exported function cannot grant access.\nThe ESM boundary converts canonical kebab-case JSON and validates the result.\n\nSelection applies fresh revision/event-bound decisions before seed ordering or\nthe k/fetch cuts. A duplicate authority decision denies its node. A duplicate\ncurrently bound durable node fails storage integrity. Compacted nodes require\ntheir own decision and all transitive members; unknown members and cycles refuse\nadmission. Edges and force/trail/field influences require admitted endpoints and\nevery declared provenance node before changing a path or cost. Hidden malformed\ncontent is excluded before content validation, so it cannot induce a failure in\notherwise permitted recall. Denied IDs/text are absent from returned diagnostics.\nDuplicate storage detection runs after the complete compact/member admission;\ncopies of denied compact rows cannot veto permitted recall. Public selection\nchecks each retained compact row's members even if another row admits its ID;\ntwo independently admitted duplicates still fail storage integrity. Public\nselection states depend on admitted data and the safe denial count, never excluded seed\nflags. Binary64 influence reduction uses stable influence-ID order before cost\nand budget decisions; permutations of the same admitted facts give the same result.\n\nThe pure walker returns stable node and edge paths, reasons, graph/field/policy\nrevisions, inclusion and visit counts and budgets. Empty, denied, indexing-pending,\nbudget-exhausted and malformed-input outcomes remain distinct. Retrieval performs\nzero I/O and schedules zero reinforcement. Motion, field integration and deliberate\nfeedback persistence belong to their selected owning adapters and kernel; this\nmodule does not implement them or inherit the legacy REST route's implicit writes.\n\n## Source integration and remaining execution\n\nThe isolated implementation uses actual upstream\n`07085d6557b75834ce6f50e6c54b8ca47e1c7c08`; freshly fetched personal main remains\n`f95a53a4da8ed90588b0be320ba8e86c6a03668d`. The local branch\n`codex/sync-openplanner-origin-main` preserves that source history. This source\nintegration is independently unqualified. The much larger upstream history is\nnot approved by a review of the scoped delta, and cannot inherit another PR's\napprovals. The shared primary checkout and its unrelated lockfile dirt remain.\n\nBefore B3 delivery, the owning storage adapter must load bounded, scope-admitted\ndata using current stored actor/source/session authority before candidate caps,\nranking, traversal, aggregate/field influence and effects. It must verify actual\nprojection/index readiness and revisions, propagate distinct transport/timeout\nfailures, and enforce compatibility before reaching the legacy REST writer.\nThe actual automatic Knoxx turn and provider-session prompt require their own\npositive/negative tests and served-revision proof after qualified delivery.\n\nThe original RED stdout and counts remain in the committed evidence JSON.\nThe first registry setup error and later malformed-snapshot decoder failure are\nrecorded as separate observed attempts, not rewritten into a passing history.\nThe private npm configuration emits a missing-NPM_TOKEN warning; compiler and\nscoped lint warning counts are recorded independently. No credential is emitted.\n\nProcess documentation: GPL-3.0-or-later.\n# Hosted source verification and review route\n\nThe scoped source workflow runs the portable JVM laws, recall namespace lint,\nactual compiled Node suites and isolated assertion-failure proof, released ESM,\nand the runnable demonstration. Its compiler steps require the actual completed\nzero-warning summary. The existing broader Code Quality and Review Resolution\njobs retain their obligations. Local evidence does not establish hosted success.\n\nThe evidence review workflow uses the exact shared receiver\n`45ec644c2d15ed511e9bc1e797d1b4073b63dbfc` and canonical skill source\n`4b4f48dae1b804b2581974e604cca618ecedadf1`. Its own deterministic gates are\ndiff statistics and hygiene; the separate scoped verification workflow supplies\nfunctional execution. The existing operator App and personal installation are\nreused through named encrypted GitHub secrets. No credential contents appear in\nsource or evidence, and configured secrets do not prove a completed review.\n\nThe frozen upstream source `07085d6557b75834ce6f50e6c54b8ca47e1c7c08` is a\nseparate personal synchronization layer. Review of this bounded recall diff\ncannot qualify that larger synchronization diff. Both layers require their own\ncurrent native review, check and merge evidence before release or consumption.\n"
+    }
+  },
+  "publisher": {
+    "app_id": 3152464,
+    "slug": "eta-mu-ai",
+    "installation_id": 118318185,
+    "account": "riatzukiza",
+    "repository_selection": "all",
+    "suspended": false,
+    "authenticated_metadata_read": true,
+    "named_secrets": [
+      {
+        "name": "ETA_MU_APP_ID",
+        "updated_at": "2026-10-09T16:30:17Z"
+      },
+      {
+        "name": "ETA_MU_APP_PRIVATE_KEY",
+        "updated_at": "2026-10-09T16:30:18Z"
+      }
+    ],
+    "new_app_or_installation": false,
+    "credential_contents_recorded": false
+  },
+  "compiler_gate": {
+    "actual_zero_warning_logs_accepted": true,
+    "actual_logs_with_warning_count_mutated_to_one_rejected": true,
+    "initial_operator_regex_expected_close_parenthesis_after_warning_count": true,
+    "corrected_before_publication_to_accept_actual_comma_separator": true
+  },
+  "before": {
+    "receipts_bytes": 144411,
+    "receipts_sha256": "6256a24523713a0841dc525fc5f5ad663cc82d5f26719795fcc1451757b758af",
+    "reflection_bytes": 3250,
+    "reflection_sha256": "0bfcd1de4eac2bcbc1a7aac59231a4b3f9aa0a1b9b5507bfbd509f23d439b940"
+  },
+  "limits": [
+    "Hosted workflow and native review not yet executed",
+    "Existing Code Quality and Review Resolution obligations retained",
+    "Large upstream G source integration independently unqualified",
+    "Independent final review still pending",
+    "No whole-ledger validation claim; literal historical row148 remains invalid and149 preserves correction",
+    "No live graph or physical field or mood or maker or social or deployment operation"
+  ],
+  "operator_read_errors": [
+    "One raw-log read used unprefixed names and failed; corrected to actual openplanner-prefixed retained paths",
+    "One targeted instruction-file search included an absent src directory; no mutation or validation credit"
+  ]
+}

@@ -1,0 +1,298 @@
+{
+  "tier": "actual captured subprocess output; not hosted review or live runtime proof",
+  "base": "f95a53a4da8ed90588b0be320ba8e86c6a03668d",
+  "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+  "recall": "a09894c48760748b7fca7bf9e94f36471f599a47",
+  "commands": [
+    {
+      "name": "frozen scoped install",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@open-hax/openplanner-sdk...",
+        "--filter",
+        "@open-hax/openplanner-graph-claim-core...",
+        "install",
+        "--frozen-lockfile",
+        "--offline"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:25:30.286341+00:00",
+      "duration_seconds": 1.205,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "Scope: 4 of 5 workspace projects\nLockfile is up to date, resolution step is skipped\nDone in 868ms using pnpm v10.11.0\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "cache released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:25:31.492225+00:00",
+      "duration_seconds": 19.836,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "shadow-cljs - updating dependencies\nshadow-cljs - dependencies updated\n[:lib] Compiling ...\n[:lib] Build completed. (53 files, 9 compiled, 0 warnings, 7.78s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:25:51.328764+00:00",
+      "duration_seconds": 15.241,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (56 files, 55 compiled, 0 warnings, 10.35s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:26:06.569981+00:00",
+      "duration_seconds": 0.354,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.stores.cache-test\n\nRan 5 tests containing 21 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "document-hydration released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:26:06.924312+00:00",
+      "duration_seconds": 19.051,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "shadow-cljs - updating dependencies\nshadow-cljs - dependencies updated\n[:lib] Compiling ...\n[:lib] Build completed. (54 files, 10 compiled, 0 warnings, 10.37s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:26:25.975799+00:00",
+      "duration_seconds": 11.91,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (57 files, 56 compiled, 0 warnings, 6.91s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:26:37.886655+00:00",
+      "duration_seconds": 0.291,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.stores.document-hydration-test\n\nRan 4 tests containing 17 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "SDK TypeScript build",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@open-hax/openplanner-sdk",
+        "build"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:26:38.177789+00:00",
+      "duration_seconds": 1.855,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 build /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "SDK released import",
+      "argv": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import(\"./dist/index.js\").then(m => { if(typeof m.createOpenPlannerSdk !== \"function\")throw Error(\"missing SDK entry point\"); console.log(\"PASS released SDK entry point\"); })"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk",
+      "started_at": "2026-10-10T04:26:40.033182+00:00",
+      "duration_seconds": 0.158,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "PASS released SDK entry point\n",
+      "stderr": ""
+    },
+    {
+      "name": "portable recall laws",
+      "argv": [
+        "clojure",
+        "-M:recall-test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:26:40.192086+00:00",
+      "duration_seconds": 3.121,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.graph.recall.core-test\n\nRan 17 tests containing 100 assertions.\n0 failures, 0 errors.\n",
+      "stderr": ""
+    },
+    {
+      "name": "scoped recall lint",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "src/openplanner/graph/recall",
+        "test/openplanner/graph/recall"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:26:43.313880+00:00",
+      "duration_seconds": 0.147,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "linting took 137ms, errors: 0, warnings: 0\n",
+      "stderr": ""
+    },
+    {
+      "name": "graph compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:26:43.461121+00:00",
+      "duration_seconds": 13.718,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "shadow-cljs - updating dependencies\nshadow-cljs - dependencies updated\n[:test] Compiling ...\n[:test] Build completed. (84 files, 83 compiled, 0 warnings, 6.15s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+    },
+    {
+      "name": "graph real runner and injected failure",
+      "argv": [
+        "node",
+        "scripts/verify-recall-test-exit.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:26:57.179486+00:00",
+      "duration_seconds": 0.62,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 45 tests containing 217 assertions.\n0 failures, 0 errors.\nISOLATED_IN_MEMORY_ASSERTION_FAILURE\n\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nFAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:13:9)\nexpected: (= \"completed\" (aget result \"status\"))\n  actual: (not (= \"completed\" \"forced-review-failure\"))\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 45 tests containing 217 assertions.\n1 failures, 0 errors.\nObserved isolated runner exit=1\nPASS actual compiled Node runner exits 1 for the forced assertion failure\n",
+      "stderr": ""
+    },
+    {
+      "name": "graph released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:26:57.800508+00:00",
+      "duration_seconds": 21.907,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (70 files, 21 compiled, 0 warnings, 15.02s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+    },
+    {
+      "name": "graph released demonstration",
+      "argv": [
+        "node",
+        "scripts/verify-scoped-recall.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:27:19.708339+00:00",
+      "duration_seconds": 0.082,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n{\n  \"feedback\": {\n    \"status\": \"not-requested\",\n    \"attempted\": 0,\n    \"completed\": 0\n  },\n  \"diagnostics\": {\n    \"denied-nodes\": 0,\n    \"authorized-nodes\": 2,\n    \"admitted-edges\": 1\n  },\n  \"hits\": [\n    {\n      \"path\": [\n        \"outside-encounter\"\n      ],\n      \"event-id\": \"event:outside-encounter\",\n      \"reason\": \"semantic-seed\",\n      \"id\": \"outside-encounter\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [],\n      \"cost\": 0,\n      \"seed?\": true,\n      \"text\": \"memory:outside-encounter\"\n    },\n    {\n      \"path\": [\n        \"outside-encounter\",\n        \"graph-only-neighbor\"\n      ],\n      \"event-id\": \"event:graph-only-neighbor\",\n      \"reason\": \"graph-neighbor\",\n      \"id\": \"graph-only-neighbor\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [\n        \"edge:encounter:neighbor\"\n      ],\n      \"cost\": 1,\n      \"seed?\": false,\n      \"text\": \"memory:graph-only-neighbor\"\n    }\n  ],\n  \"graph-revision\": \"fixture-graph:23\",\n  \"recall-id\": \"fixture-turn:17\",\n  \"field-revision\": \"fixture-field:11\",\n  \"status\": \"completed\",\n  \"visited-count\": 2,\n  \"policy-revision\": \"fixture-policy:7\",\n  \"budget\": {\n    \"k\": 6,\n    \"fetch\": 18,\n    \"max-nodes\": 64,\n    \"max-cost\": 4\n  },\n  \"field-owner\": \"eros-eris-field\"\n}\nPASS missing decisions refuse recall; retrieval schedules zero feedback writes\nWARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\nCLEAN removed only this demonstration's dedicated temporary fixture\n",
+      "stderr": ""
+    },
+    {
+      "name": "actual SDK formatter integration",
+      "argv": [
+        "node",
+        "scripts/verify-sdk-query-format.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "started_at": "2026-10-10T04:27:19.791563+00:00",
+      "duration_seconds": 0.117,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "PASS actual SDK trim/prefix/template/escaped newline and invalid formatter refusals; no live model or Mongo proof\n",
+      "stderr": ""
+    },
+    {
+      "name": "workflow syntax",
+      "argv": [
+        "actionlint",
+        ".github/workflows/scoped-graph-recall.yml",
+        ".github/workflows/eta-mu-review.yml"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:27:19.908975+00:00",
+      "duration_seconds": 0.016,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "diff hygiene",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:27:19.924890+00:00",
+      "duration_seconds": 0.002,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

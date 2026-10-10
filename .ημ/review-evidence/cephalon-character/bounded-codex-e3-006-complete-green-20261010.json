@@ -1,0 +1,303 @@
+{
+  "tier": "actual captured subprocess output; no hosted approval/live runtime claim",
+  "red_parent": "253b41bb3a738037f904ad3c5624475523a7690e",
+  "commands": [
+    {
+      "name": "frozen scoped install",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "packages",
+        "--filter",
+        "@open-hax/openplanner-sdk...",
+        "--filter",
+        "@open-hax/openplanner-graph-claim-core...",
+        "install",
+        "--frozen-lockfile",
+        "--offline"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.706,
+      "stdout": "Scope: 4 of 5 workspace projects\nLockfile is up to date, resolution step is skipped\nDone in 453ms using pnpm v10.11.0\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "cache released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 9.147,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (53 files, 2 compiled, 0 warnings, 5.16s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 5.014,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (56 files, 0 compiled, 0 warnings, 1.35s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.152,
+      "stdout": "\nTesting openplanner.stores.cache-test\n\nRan 9 tests containing 39 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "document-hydration released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 15.958,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (54 files, 6 compiled, 0 warnings, 12.03s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 14.001,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (57 files, 7 compiled, 0 warnings, 3.07s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.149,
+      "stdout": "\nTesting openplanner.stores.document-hydration-test\n\nRan 5 tests containing 19 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "SDK TypeScript build",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "packages",
+        "--filter",
+        "@open-hax/openplanner-sdk",
+        "build"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 1.822,
+      "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 build /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "actual clean SDK package test rebuilds source and runs regressions",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "packages",
+        "--filter",
+        "@open-hax/openplanner-sdk",
+        "test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 3.252,
+      "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 pretest /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\n\n> @open-hax/openplanner-sdk@0.1.0 test /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> node --test --test-reporter=tap test/*.test.mjs\n\nTAP version 13\n# Subtest: event single admission is replay-safe and uses configured retention\nok 1 - event single admission is replay-safe and uses configured retention\n  ---\n  duration_ms: 1.657124\n  type: 'test'\n  ...\n# Subtest: event batch admission is replay-safe and uses configured retention\nok 2 - event batch admission is replay-safe and uses configured retention\n  ---\n  duration_ms: 0.288062\n  type: 'test'\n  ...\n# Subtest: tenant policy payload cannot replace the authoritative tenant ID\nok 3 - tenant policy payload cannot replace the authoritative tenant ID\n  ---\n  duration_ms: 0.184587\n  type: 'test'\n  ...\n# Subtest: policy updates preserve stored creation time even when the payload supplies it\nok 4 - policy updates preserve stored creation time even when the payload supplies it\n  ---\n  duration_ms: 0.150854\n  type: 'test'\n  ...\n# Subtest: all embedding-cache methods share entries and support invalidation\nok 5 - all embedding-cache methods share entries and support invalidation\n  ---\n  duration_ms: 1.108018\n  type: 'test'\n  ...\n# Subtest: an invalid later ingest event prevents every event write and embedding call\nok 6 - an invalid later ingest event prevents every event write and embedding call\n  ---\n  duration_ms: 0.504413\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 7 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.35663\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 8 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.114236\n  type: 'test'\n  ...\n# Subtest: raw browse refuses server-side JavaScript before accessing a collection\nok 9 - raw browse refuses server-side JavaScript before accessing a collection\n  ---\n  duration_ms: 0.204272\n  type: 'test'\n  ...\n# Subtest: permitted raw browse filters carry time limits to count and find\nok 10 - permitted raw browse filters carry time limits to count and find\n  ---\n  duration_ms: 0.453327\n  type: 'test'\n  ...\n# Subtest: embedding keys distinguish suffixes and models\nok 11 - embedding keys distinguish suffixes and models\n  ---\n  duration_ms: 0.414113\n  type: 'test'\n  ...\n# Subtest: same-prefix inputs reach the provider separately and retain their own cached vectors\nok 12 - same-prefix inputs reach the provider separately and retain their own cached vectors\n  ---\n  duration_ms: 25.686385\n  type: 'test'\n  ...\n# Embed provider error: Error: Embed provider failed: 400 \n# context window exceeded\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:211:32)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Embed provider error: Error: Embed provider failed: 401 \n# fixture unavailable\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveSingleEntry (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:233:37)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:223:30)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Subtest: overflow fallback propagates 401 and retries later\nok 13 - overflow fallback propagates 401 and retries later\n  ---\n  duration_ms: 4.119125\n  type: 'test'\n  ...\n# Embed provider error: Error: Embed provider failed: 400 \n# context window exceeded\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:211:32)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Embed provider error: Error: Embed provider failed: 503 \n# fixture unavailable\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveSingleEntry (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:233:37)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:223:30)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Subtest: overflow fallback propagates 503 and retries later\nok 14 - overflow fallback propagates 503 and retries later\n  ---\n  duration_ms: 5.125193\n  type: 'test'\n  ...\n# Embed provider error: Error: Embed provider returned an invalid or empty vector\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:95:23)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:211:32)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Subtest: invalid provider vectors fail without poisoning the cache\nok 15 - invalid provider vectors fail without poisoning the cache\n  ---\n  duration_ms: 2.555632\n  type: 'test'\n  ...\n# Subtest: embedding POST carries a timeout cancellation signal\nok 16 - embedding POST carries a timeout cancellation signal\n  ---\n  duration_ms: 1.704912\n  type: 'test'\n  ...\n# Subtest: template substitution preserves dollar sequences literally\nok 17 - template substitution preserves dollar sequences literally\n  ---\n  duration_ms: 0.215802\n  type: 'test'\n  ...\n# Subtest: hot vector expiry uses connection configuration instead of process env\nok 18 - hot vector expiry uses connection configuration instead of process env\n  ---\n  duration_ms: 1.547948\n  type: 'test'\n  ...\n# Subtest: compact vector expiry uses connection configuration instead of process env\nok 19 - compact vector expiry uses connection configuration instead of process env\n  ---\n  duration_ms: 0.327989\n  type: 'test'\n  ...\n# Subtest: configured Mongo retention and partial graph-version index survive opening the connection\nok 20 - configured Mongo retention and partial graph-version index survive opening the connection\n  ---\n  duration_ms: 6.079875\n  type: 'test'\n  ...\n# Subtest: substring fallback escapes all regular-expression metacharacters\nok 21 - substring fallback escapes all regular-expression metacharacters\n  ---\n  duration_ms: 0.251158\n  type: 'test'\n  ...\n# Subtest: full-text search respects hot tier, labels rows, and merges within limit\nok 22 - full-text search respects hot tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.495083\n  type: 'test'\n  ...\n# Subtest: full-text search respects compact tier, labels rows, and merges within limit\nok 23 - full-text search respects compact tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.101289\n  type: 'test'\n  ...\n# Subtest: full-text search respects both tier, labels rows, and merges within limit\nok 24 - full-text search respects both tier, labels rows, and merges within limit\n  ---\n  duration_ms: 0.110284\n  type: 'test'\n  ...\n# Subtest: full-text fallback handles compact tier and preserves good-first ordering across both tiers\nok 25 - full-text fallback handles compact tier and preserves good-first ordering across both tiers\n  ---\n  duration_ms: 0.331642\n  type: 'test'\n  ...\n# Subtest: total embedding failure reports parent without replacing any of its vectors\nok 26 - total embedding failure reports parent without replacing any of its vectors\n  ---\n  duration_ms: 1.302779\n  type: 'test'\n  ...\n# Subtest: partial embedding failure reports parent without replacing any of its vectors\nok 27 - partial embedding failure reports parent without replacing any of its vectors\n  ---\n  duration_ms: 29.063743\n  type: 'test'\n  ...\n# Subtest: thrown embedding batch errors report each affected parent\nok 28 - thrown embedding batch errors report each affected parent\n  ---\n  duration_ms: 0.470762\n  type: 'test'\n  ...\n# Subtest: normalized source chunks remain references and hydrate exactly\nok 29 - normalized source chunks remain references and hydrate exactly\n  ---\n  duration_ms: 7.039855\n  type: 'test'\n  ...\n# Subtest: normalized source chunks remain references and hydrate exactly\nok 30 - normalized source chunks remain references and hydrate exactly\n  ---\n  duration_ms: 5.739752\n  type: 'test'\n  ...\n# Subtest: legacy normalized coordinates hydrate the matching chunk rather than a shifted raw slice\nok 31 - legacy normalized coordinates hydrate the matching chunk rather than a shifted raw slice\n  ---\n  duration_ms: 1.132487\n  type: 'test'\n  ...\n# Subtest: partition setup is reused per connection and failed setup can be retried\nok 32 - partition setup is reused per connection and failed setup can be retried\n  ---\n  duration_ms: 0.793783\n  type: 'test'\n  ...\n# Subtest: hydration-cache initialization can retry after an actual LMDB path failure\nok 33 - hydration-cache initialization can retry after an actual LMDB path failure\n  ---\n  duration_ms: 70.389264\n  type: 'test'\n  ...\n# Embed provider error: Error: Embed provider failed: 400 \n# context window exceeded\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:211:32)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Embed provider error: Error: Embed provider failed: 400 \n# context window exceeded\n#     at EmbedProviderFunction.fetchBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:86:23)\n#     at async EmbedProviderFunction.resolveSingleEntry (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:233:37)\n#     at async EmbedProviderFunction.resolveBatch (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:223:30)\n#     at async EmbedProviderFunction.flushPending (file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:187:40)\n#     at async file:///home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk/dist/embeddings.js:157:21\n# Subtest: one-character overflow fails terminally instead of recursively retrying unchanged input\nok 34 - one-character overflow fails terminally instead of recursively retrying unchanged input\n  ---\n  duration_ms: 1.134403\n  type: 'test'\n  ...\n# Subtest: removing the last vector label uses the same configured retention and timestamp\nok 35 - removing the last vector label uses the same configured retention and timestamp\n  ---\n  duration_ms: 0.398214\n  type: 'test'\n  ...\n# Subtest: disabled retention removes managed flat and existing partition TTLs without dropping unrelated indexes\nok 36 - disabled retention removes managed flat and existing partition TTLs without dropping unrelated indexes\n  ---\n  duration_ms: 1.434206\n  type: 'test'\n  ...\n# Subtest: opening the SDK preserves customized default tenant and policy settings\nok 37 - opening the SDK preserves customized default tenant and policy settings\n  ---\n  duration_ms: 1.557097\n  type: 'test'\n  ...\n# Subtest: tenant updates cannot change storage identity, tenant ID or creation time\nok 38 - tenant updates cannot change storage identity, tenant ID or creation time\n  ---\n  duration_ms: 0.350944\n  type: 'test'\n  ...\n# Subtest: invalid later timestamp prevents all ingest effects including graph projections\nok 39 - invalid later timestamp prevents all ingest effects including graph projections\n  ---\n  duration_ms: 0.240586\n  type: 'test'\n  ...\n# Subtest: label nodes distinguish punctuation, Unicode and long common prefixes and keep replay IDs\nok 40 - label nodes distinguish punctuation, Unicode and long common prefixes and keep replay IDs\n  ---\n  duration_ms: 2.1731\n  type: 'test'\n  ...\n# Subtest: embedding cache flush is durable and invalidations survive a new process\nok 41 - embedding cache flush is durable and invalidations survive a new process\n  ---\n  duration_ms: 89.932244\n  type: 'test'\n  ...\n# Subtest: absolute in-root hydration paths remain absolute while escape paths are rejected\nok 42 - absolute in-root hydration paths remain absolute while escape paths are rejected\n  ---\n  duration_ms: 0.265591\n  type: 'test'\n  ...\n# Subtest: URL-only sources keep vector text inline\nok 43 - URL-only sources keep vector text inline\n  ---\n  duration_ms: 0.58715\n  type: 'test'\n  ...\n# Subtest: URL-only sources keep vector text inline\nok 44 - URL-only sources keep vector text inline\n  ---\n  duration_ms: 0.313558\n  type: 'test'\n  ...\n# Subtest: single vector indexing formats provider passages but keeps stored chunk text\nok 45 - single vector indexing formats provider passages but keeps stored chunk text\n  ---\n  duration_ms: 1.399447\n  type: 'test'\n  ...\n# Subtest: batch vector indexing formats provider passages but keeps stored chunk text\nok 46 - batch vector indexing formats provider passages but keeps stored chunk text\n  ---\n  duration_ms: 0.289724\n  type: 'test'\n  ...\n# Subtest: background indexing cannot settle after a timeout while its underlying task can still write\nok 47 - background indexing cannot settle after a timeout while its underlying task can still write\n  ---\n  duration_ms: 25.939756\n  type: 'test'\n  ...\n# Subtest: ordinary graph embedding persistence binds the exact untrimmed Unicode source text\nok 48 - ordinary graph embedding persistence binds the exact untrimmed Unicode source text\n  ---\n  duration_ms: 2.424866\n  type: 'test'\n  ...\n# Subtest: explicit graph-node embeddings bind the authoritative raw event text\nok 49 - explicit graph-node embeddings bind the authoritative raw event text\n  ---\n  duration_ms: 2.346347\n  type: 'test'\n  ...\n# Subtest: session updates retain immutable identity and creation time\nok 50 - session updates retain immutable identity and creation time\n  ---\n  duration_ms: 0.260042\n  type: 'test'\n  ...\n# Subtest: event replacement removes only its previously projected edges\nok 51 - event replacement removes only its previously projected edges\n  ---\n  duration_ms: 0.643377\n  type: 'test'\n  ...\n# Subtest: two source events with equal endpoints retain independent projection ownership\nok 52 - two source events with equal endpoints retain independent projection ownership\n  ---\n  duration_ms: 0.444685\n  type: 'test'\n  ...\n# Subtest: replacement refuses unattributed legacy edge ownership before event mutation\nok 53 - replacement refuses unattributed legacy edge ownership before event mutation\n  ---\n  duration_ms: 0.313829\n  type: 'test'\n  ...\n# Subtest: conflicting replacements for one event in a batch refuse before any effects\nok 54 - conflicting replacements for one event in a batch refuse before any effects\n  ---\n  duration_ms: 0.172557\n  type: 'test'\n  ...\n# Subtest: embedding uniqueness admits separate chunks and replaces only the obsolete owned index\nok 55 - embedding uniqueness admits separate chunks and replaces only the obsolete owned index\n  ---\n  duration_ms: 1.287138\n  type: 'test'\n  ...\n# Subtest: unknown session detail modes refuse before reading history\nok 56 - unknown session detail modes refuse before reading history\n  ---\n  duration_ms: 0.337278\n  type: 'test'\n  ...\n# Subtest: derived graph-node event content follows resolved retention and label exemptions\nok 57 - derived graph-node event content follows resolved retention and label exemptions\n  ---\n  duration_ms: 1.023132\n  type: 'test'\n  ...\n# Subtest: RRF contributes one vote per parent per tier while retaining its best displayed chunk\nok 58 - RRF contributes one vote per parent per tier while retaining its best displayed chunk\n  ---\n  duration_ms: 0.294953\n  type: 'test'\n  ...\n# Subtest: derived sentence and chunk events inherit the owning source retention labels\nok 59 - derived sentence and chunk events inherit the owning source retention labels\n  ---\n  duration_ms: 273.322997\n  type: 'test'\n  ...\n# Subtest: explicit graph-node chunk and sentence embeddings bind their authoritative raw source\nok 60 - explicit graph-node chunk and sentence embeddings bind their authoritative raw source\n  ---\n  duration_ms: 251.624331\n  type: 'test'\n  ...\n# Subtest: malformed graph-node text refuses the complete batch before admission\nok 61 - malformed graph-node text refuses the complete batch before admission\n  ---\n  duration_ms: 0.475539\n  type: 'test'\n  ...\n# Subtest: empty replacement removes owned derived content and embeddings without TTL\nok 62 - empty replacement removes owned derived content and embeddings without TTL\n  ---\n  duration_ms: 0.874671\n  type: 'test'\n  ...\n# Subtest: changed graph-node text reconciles obsolete owned chunks and sentences\nok 63 - changed graph-node text reconciles obsolete owned chunks and sentences\n  ---\n  duration_ms: 249.190984\n  type: 'test'\n  ...\n# Subtest: equal graph-node text refreshes source and project without regenerating vectors\nok 64 - equal graph-node text refreshes source and project without regenerating vectors\n  ---\n  duration_ms: 0.703321\n  type: 'test'\n  ...\n# Subtest: edge uniqueness includes source ownership and migrates only the exact legacy SDK index\nok 65 - edge uniqueness includes source ownership and migrates only the exact legacy SDK index\n  ---\n  duration_ms: 1.197963\n  type: 'test'\n  ...\n# Subtest: arbitrary source metadata cannot replace derived identity or content\nok 66 - arbitrary source metadata cannot replace derived identity or content\n  ---\n  duration_ms: 0.505694\n  type: 'test'\n  ...\n# Subtest: equal sentences from different sources keep independent retention and provenance in either order\nok 67 - equal sentences from different sources keep independent retention and provenance in either order\n  ---\n  duration_ms: 0.995083\n  type: 'test'\n  ...\n# Subtest: Atlas setup errors remain retryable on the same connection\nok 68 - Atlas setup errors remain retryable on the same connection\n  ---\n  duration_ms: 0.785884\n  type: 'test'\n  ...\n# Subtest: invalid embedding batch sizes refuse before provider or database work\nok 69 - invalid embedding batch sizes refuse before provider or database work\n  ---\n  duration_ms: 165.031464\n  type: 'test'\n  ...\n# Subtest: embedding flush scheduling drains every queued completion under saturation\nok 70 - embedding flush scheduling drains every queued completion under saturation\n  ---\n  duration_ms: 1.023369\n  type: 'test'\n  ...\n# Subtest: hydration refuses file and directory symlinks escaping the configured root\nok 71 - hydration refuses file and directory symlinks escaping the configured root\n  ---\n  duration_ms: 2.040879\n  type: 'test'\n  ...\n# Subtest: owning hydration cache exposes idempotent LMDB close and can reopen persisted entries\nok 72 - owning hydration cache exposes idempotent LMDB close and can reopen persisted entries\n  ---\n  duration_ms: 79.457333\n  type: 'test'\n  ...\n# Subtest: failed Mongo initialization closes its owned client and preserves the original error\nok 73 - failed Mongo initialization closes its owned client and preserves the original error\n  ---\n  duration_ms: 1.07871\n  type: 'test'\n  ...\n# Subtest: non-indexable source replacements remove all owned hot-vector copies without TTL\nok 74 - non-indexable source replacements remove all owned hot-vector copies without TTL\n  ---\n  duration_ms: 1.570163\n  type: 'test'\n  ...\n# Subtest: successive parent ingests cannot let an older detached embedding overwrite the current text\nok 75 - successive parent ingests cannot let an older detached embedding overwrite the current text\n  ---\n  duration_ms: 20.679525\n  type: 'test'\n  ...\n# Subtest: same path reindexing uses the computed source hash to avoid stale hydration cache entries\nok 76 - same path reindexing uses the computed source hash to avoid stale hydration cache entries\n  ---\n  duration_ms: 1.935435\n  type: 'test'\n  ...\n# Subtest: identical event payloads fan out once while conflicting IDs still refuse\nok 77 - identical event payloads fan out once while conflicting IDs still refuse\n  ---\n  duration_ms: 0.24295\n  type: 'test'\n  ...\n# Subtest: native Atlas vector projection preserves retention labels in returned metadata\nok 78 - native Atlas vector projection preserves retention labels in returned metadata\n  ---\n  duration_ms: 0.683338\n  type: 'test'\n  ...\n# Subtest: round-trip policy update excludes immutable Mongo storage identity\nok 79 - round-trip policy update excludes immutable Mongo storage identity\n  ---\n  duration_ms: 0.125693\n  type: 'test'\n  ...\n# Subtest: an unavailable historical model preserves healthy results and reports incomplete partition coverage\nok 80 - an unavailable historical model preserves healthy results and reports incomplete partition coverage\n  ---\n  duration_ms: 0.226555\n  type: 'test'\n  ...\n# Subtest: visibility detail mode cannot exceed the bounded session row limit\nok 81 - visibility detail mode cannot exceed the bounded session row limit\n  ---\n  duration_ms: 0.183691\n  type: 'test'\n  ...\n# Subtest: when every query model is unavailable, search reports a named failure\nok 82 - when every query model is unavailable, search reports a named failure\n  ---\n  duration_ms: 0.159896\n  type: 'test'\n  ...\n# Subtest: failed base projection starts no detached provider work\nok 83 - failed base projection starts no detached provider work\n  ---\n  duration_ms: 0.24363\n  type: 'test'\n  ...\n# Subtest: source expiry and exemption propagate to graph node embeddings and their owned TTL index\nok 84 - source expiry and exemption propagate to graph node embeddings and their owned TTL index\n  ---\n  duration_ms: 1.510994\n  type: 'test'\n  ...\n# Subtest: browse projections reject recursive server Javascript before collection access\nok 85 - browse projections reject recursive server Javascript before collection access\n  ---\n  duration_ms: 0.182197\n  type: 'test'\n  ...\n# Subtest: tier and quality fusion retain incomplete vector partition coverage\nok 86 - tier and quality fusion retain incomplete vector partition coverage\n  ---\n  duration_ms: 0.890224\n  type: 'test'\n  ...\n# Subtest: an empty second tier cannot turn all unavailable query models into success\nok 87 - an empty second tier cannot turn all unavailable query models into success\n  ---\n  duration_ms: 0.176789\n  type: 'test'\n  ...\n1..87\n# tests 87\n# suites 0\n# pass 87\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1551.401892\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "SDK released import",
+      "argv": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import(\"./dist/index.js\").then(m => { if(typeof m.createOpenPlannerSdk !== \"function\")throw Error(\"missing SDK entry point\"); console.log(\"PASS released SDK entry point\"); })"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.152,
+      "stdout": "PASS released SDK entry point\n",
+      "stderr": ""
+    },
+    {
+      "name": "portable recall laws",
+      "argv": [
+        "clojure",
+        "-M:recall-test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 1.784,
+      "stdout": "\nTesting openplanner.graph.recall.core-test\n\nRan 17 tests containing 100 assertions.\n0 failures, 0 errors.\n",
+      "stderr": ""
+    },
+    {
+      "name": "all bounded CLJS namespace lint",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "packages/stores/cache/src",
+        "packages/stores/cache/test",
+        "packages/stores/document-hydration/src",
+        "packages/stores/document-hydration/test",
+        "packages/graph/graph-claim-core/src",
+        "packages/graph/graph-claim-core/test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.263,
+      "stdout": "linting took 250ms, errors: 0, warnings: 0\n",
+      "stderr": ""
+    },
+    {
+      "name": "graph compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 6.685,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (84 files, 0 compiled, 0 warnings, 2.58s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+    },
+    {
+      "name": "graph real runner and injected failure",
+      "argv": [
+        "node",
+        "scripts/verify-recall-test-exit.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.619,
+      "stdout": "\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 52 tests containing 244 assertions.\n0 failures, 0 errors.\nISOLATED_IN_MEMORY_ASSERTION_FAILURE\n\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nFAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:13:9)\nexpected: (= \"completed\" (aget result \"status\"))\n  actual: (not (= \"completed\" \"forced-review-failure\"))\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 52 tests containing 244 assertions.\n1 failures, 0 errors.\nObserved isolated runner exit=1\nPASS actual compiled Node runner exits 1 for the forced assertion failure\n",
+      "stderr": ""
+    },
+    {
+      "name": "graph released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 13.423,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (70 files, 6 compiled, 0 warnings, 8.88s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n"
+    },
+    {
+      "name": "graph released demonstration",
+      "argv": [
+        "node",
+        "scripts/verify-scoped-recall.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.059,
+      "stdout": "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n{\n  \"feedback\": {\n    \"status\": \"not-requested\",\n    \"attempted\": 0,\n    \"completed\": 0\n  },\n  \"diagnostics\": {\n    \"denied-nodes\": 0,\n    \"authorized-nodes\": 2,\n    \"admitted-edges\": 1\n  },\n  \"hits\": [\n    {\n      \"path\": [\n        \"outside-encounter\"\n      ],\n      \"event-id\": \"event:outside-encounter\",\n      \"reason\": \"semantic-seed\",\n      \"id\": \"outside-encounter\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [],\n      \"cost\": 0,\n      \"seed?\": true,\n      \"text\": \"memory:outside-encounter\"\n    },\n    {\n      \"path\": [\n        \"outside-encounter\",\n        \"graph-only-neighbor\"\n      ],\n      \"event-id\": \"event:graph-only-neighbor\",\n      \"reason\": \"graph-neighbor\",\n      \"id\": \"graph-only-neighbor\",\n      \"score\": 0.8,\n      \"path-edge-ids\": [\n        \"edge:encounter:neighbor\"\n      ],\n      \"cost\": 1,\n      \"seed?\": false,\n      \"text\": \"memory:graph-only-neighbor\"\n    }\n  ],\n  \"graph-revision\": \"fixture-graph:23\",\n  \"recall-id\": \"fixture-turn:17\",\n  \"field-revision\": \"fixture-field:11\",\n  \"status\": \"completed\",\n  \"visited-count\": 2,\n  \"policy-revision\": \"fixture-policy:7\",\n  \"budget\": {\n    \"k\": 6,\n    \"fetch\": 18,\n    \"max-nodes\": 64,\n    \"max-cost\": 4\n  },\n  \"field-owner\": \"eros-eris-field\"\n}\nPASS missing decisions refuse recall; retrieval schedules zero feedback writes\nWARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\nCLEAN removed only this demonstration's dedicated temporary fixture\n",
+      "stderr": ""
+    },
+    {
+      "name": "actual SDK formatter integration",
+      "argv": [
+        "node",
+        "scripts/verify-sdk-query-format.mjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/graph/graph-claim-core",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.098,
+      "stdout": "PASS actual SDK trim/prefix/template/escaped newline and invalid formatter refusals; no live model or Mongo proof\n",
+      "stderr": ""
+    },
+    {
+      "name": "workflow syntax",
+      "argv": [
+        "actionlint",
+        ".github/workflows/scoped-graph-recall.yml",
+        ".github/workflows/eta-mu-review.yml"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.017,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "diff hygiene",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.006,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}
