@@ -379,3 +379,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-sdk-close-causal-red-20261010
   note: The new tests fail because SDK close omits the persistent cache flush. Readable corrections for historical ledger lines 288, 306, and 333 preserve every original byte and reference. Current CodeRabbit incremental 26-file review is not whole-input approval. Original 56-file manifest and all 181 historical receipts and reflection bytes remain immutable. No live runtime, board, paid usage, or spore action.
+
+- ts: 2026-10-10T17:50:08.602Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-sdk-close-complete-green-20261010
+  note: SDK close flushes recent cache entries and deletions before Mongo shutdown; failed flush warns without private details and still closes Mongo. The readable correction append preserves original ledger lines 288, 306, and 333. Original 56-file manifest and all 182 earlier receipts and reflection bytes remain immutable. Full 149 changed inputs and full 183 receipts still require current hosted and whole-scope native review. No live runtime, board, paid usage, or spore action.

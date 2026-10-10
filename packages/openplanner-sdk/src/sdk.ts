@@ -74,6 +74,10 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
       const collections = await mongo.db.listCollections().toArray();
       return collections.map((c: { name: string }) => c.name).sort();
     },
-    close: () => closeMongoDB(mongo),
+    close: async () => {
+      try { await embeddingRuntime.flushCaches(); }
+      catch { console.warn("Embedding cache persistence failed"); }
+      await closeMongoDB(mongo);
+    },
   };
 }

@@ -4,6 +4,7 @@ import { resolveEmbeddingModel } from "./embedding-models.js";
 import { EmbedProviderFunction, ParallelEmbeddingPool } from "./embeddings.js";
 
 export type EmbeddingRuntime = {
+  flushCaches: () => Promise<void>;
   hot: {
     getModel: (scope: { source?: string; kind?: string; project?: string }) => string;
     getEmbeddingFunction: (scope: { source?: string; kind?: string; project?: string }) => EmbedProviderFunction;
@@ -74,6 +75,7 @@ export function createEmbeddingRuntime(cfg: OpenPlannerConfig): EmbeddingRuntime
     resolveEmbeddingModel(cfg.embeddingModels, scope);
 
   return {
+    flushCaches: () => persistentCache.flush(),
     hot: {
       getModel: getHotModel,
       getEmbeddingFunction: (scope) => getEmbeddingFunctionForModel(getHotModel(scope)),
