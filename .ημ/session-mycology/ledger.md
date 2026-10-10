@@ -523,3 +523,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-4f6-eight-native-findings-green-20261010
   note: All eight verified findings fixed with causal RED retained; independent raw-source memoization preserves alternative-HTML boundary. Terminal index failure stops immediately. New CI selects/verifies actual intended SHA, but hosted proof pending. Correction: olddfaCI virtualmerge did not enforce exact HEAD despite successful metadata/testcounts. MiMo olddfa omitted review_submit twice/FAILURE, no verdict credit. Existing197prefixes and original56manifest preserved;149inputs. Consumer refresh, push, settlement and exacthead approvals pending; no live/runtime/board/paid/spore.
+
+- ts: 2026-10-10T22:47:28.408Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-62d9fa7-four-native-boundaries-red-20261010
+  note: Four actual Codex findings reproduced with30newSDKcases andonegraphlaw; complete Vexx controls pass. Initial operator print31 corrected by actual30count; no historical edit. No production repair yet;198immutableprefixes preserved; old62proof bound only to62; no runtime/board/paid/spore.

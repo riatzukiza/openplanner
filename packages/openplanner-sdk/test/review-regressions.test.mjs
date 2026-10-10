@@ -1277,3 +1277,67 @@ for(const event of ['pull_request','workflow_dispatch'])test(`scoped workflow bi
     await assert.rejects(execFile('bash',['-e','-c',guard.run],{cwd:dir,env:{...env,EXPECTED_HEAD:event==='pull_request'?different:selected}}),error=>error.code===1);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+
+// Native Codex5481067260 exact62d9fa7: derived-ID ownership and available vector candidates.
+for(const reverse of [false,true])test(`derived event collision refuses complete source batch before IO reverse=${reverse}`,async()=>{
+  const mongo=mongoFixture();let calls=0;const provider={generate:async texts=>{calls++;return texts.map(()=>[1,0]);}};
+  const first=ordinaryEvent('collision-owner','Owned outside encounter.');const second=ordinaryEvent('graph.node:derive:collision-owner','Caller owned source must survive.');
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},reverse?[second,first]:[first,second]),/derived.*collision|ownership/i);
+  assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(calls,0);
+});
+for(const generatedFirst of [false,true])test(`derived event collision with persisted source or projection refuses replacement generatedFirst=${generatedFirst}`,async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,0])};const ctx={mongo,embeddingRuntime:eventRuntime(provider)};
+  const ordinary=ordinaryEvent('persisted-owner','Outside encounter creates its projection.');const caller=ordinaryEvent('graph.node:derive:persisted-owner','Caller supplied source identity.');
+  const before=await ingestEvents(ctx,[generatedFirst?ordinary:caller]);await before.backgroundIndexing;
+  const saved=structuredClone([...mongo.events.rows.values()]);const writes=mongo.events.calls.writes.length;
+  await assert.rejects(ingestEvents(ctx,[generatedFirst?caller:ordinary]),/derived.*collision|ownership/i);
+  assert.equal(mongo.events.calls.writes.length,writes);assert.deepEqual([...mongo.events.rows.values()],saved);
+});
+test('connection-local derived ID reservation serializes colliding concurrent source identities',async()=>{
+  const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,0])};const ctx={mongo,embeddingRuntime:eventRuntime(provider)};
+  const results=await Promise.allSettled([ingestEvents(ctx,[ordinaryEvent('parallel-owner','First source owns the projection.')]),ingestEvents(ctx,[ordinaryEvent('graph.node:derive:parallel-owner','Second caller-owned source.')])]);
+  for(const result of results)if(result.status==='fulfilled')await result.value.backgroundIndexing;
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);
+  assert.equal(mongo.events.rows.get('graph.node:derive:parallel-owner').source,'openplanner-derive');
+  assert.equal(mongo.events.rows.get('graph.node:derive:parallel-owner').extra.source_event_id,'parallel-owner');
+});
+for(const mode of ['native','cosine'])for(const failure of ['missing','escape','changed-hash'])test(`vector ${mode} backfills usable documents after ${failure} hydration`,async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-query-hydration-'));
+  try{await writeFile(join(dir,'source.txt'),'Changed source payload');await withEnv({OPENPLANNER_ROOT:dir},async()=>{
+    const unavailable={...vectorRow('unavailable','unavailable-parent',1),text:'',source_text_redacted:true,source_ref:{source_path:failure==='missing'?'absent.txt':failure==='escape'?'../escape.txt':'source.txt'},text_hash_sha256:createHash('sha256').update('Original source payload').digest('hex')};
+    const accessible={...vectorRow('accessible','accessible-parent',.9),text:'Accessible independent encounter.'};
+    const rows=[unavailable,accessible];const result=await queryMongoVectorsByText({mongo:parentQueryFixture(mode,rows),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+    assert.deepEqual(result.ids,[['accessible']]);assert.deepEqual(result.documents,[['Accessible independent encounter.']]);assert.equal(result.metadatas[0][0].parent_id,'accessible-parent');
+  });}finally{await rm(dir,{recursive:true,force:true});}
+});
+test('native hydration exhaustion backfills beyond initial native candidate window',async()=>{
+  const rows=Array.from({length:101},(_,i)=>({...vectorRow('unavailable-'+i,'missing-'+i,1),text:'',source_text_redacted:true,source_ref:{source_path:'/path-not-admitted/missing-'+i},text_hash_sha256:'0'.repeat(64)}));rows.push({...vectorRow('backfilled','accessible-parent',.9),text:'Accessible beyond native candidates.'});
+  const result=await queryMongoVectorsByText({mongo:parentQueryFixture('native',rows),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});assert.deepEqual(result.ids,[['backfilled']]);assert.deepEqual(result.documents,[['Accessible beyond native candidates.']]);
+});
+for(const mode of ['native','cosine'])for(const malformed of ['empty','truncated','duplicate','unknown','nonfinite','null-match','non-array'])test(`optional Vexx ${mode} ${malformed} response falls back to complete cosine ranking`,async()=>{
+  const rows=[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)];let calls=0;
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'false'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?'+mode+'-'+malformed,import.meta.url).href);
+    await withFetch(async(_url,init)=>{calls++;const request=JSON.parse(init.body);assert.equal(request.candidates.length,2);
+      const matches=malformed==='empty'?[]:malformed==='truncated'?[{id:'second',score:1}]:malformed==='duplicate'?[{id:'second',score:1},{id:'second',score:.9}]:malformed==='unknown'?[{id:'best',score:.1},{id:'not-submitted',score:1}]:malformed==='nonfinite'?[{id:'best',score:Infinity},{id:'second',score:1}]:malformed==='null-match'?[null,{id:'second',score:1}]:{};
+      return {ok:true,json:async()=>({matches})};
+    },async()=>{
+      const result=await vectors.queryMongoVectorsByText({mongo:parentQueryFixture(mode,rows),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});assert.deepEqual(result.ids,[['best']]);assert.equal(result.distances[0][0],0);
+    });
+  });assert.ok(calls>0);
+});
+for(const mode of ['native','cosine'])test(`enforced Vexx ${mode} incomplete response fails explicitly`,async()=>{
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'true'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?enforced-'+mode,import.meta.url).href);
+    await withFetch(async()=>({ok:true,json:async()=>({matches:[]})}),async()=>assert.rejects(vectors.queryMongoVectorsByText({mongo:parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})}),/unavailable/i));
+  });
+});
+for(const mode of ['native','cosine'])test(`complete Vexx ${mode} matches remain eligible`,async()=>{
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'false'},async()=>{
+    const vectors=await import(new URL('../dist/mongo-vectors.js?complete-'+mode,import.meta.url).href);
+    await withFetch(async()=>({ok:true,json:async()=>({matches:[{id:'best',score:.25},{id:'second',score:.75}]})}),async()=>{
+      const result=await vectors.queryMongoVectorsByText({mongo:parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});assert.deepEqual(result.ids,[['second']]);assert.equal(result.distances[0][0],.25);
+    });
+  });
+});

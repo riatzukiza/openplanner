@@ -332,3 +332,19 @@
       (is (thrown-with-msg? js/Error #"evidence.*aliases|aliases.*evidence"
             (lifecycle/transition-plan-js action bad)))
       (is (= ["event:1"] (js->clj (aget (lifecycle/transition-plan-js action good) "eventIds")))))))
+
+
+(deftest mongo-camel-expiration-matches-direct-projection
+  (doseq [status ["supported" "active"]]
+    (let [row #js {:claimId "edge_claim:camel-expiry" :sourceNodeId "node:a"
+                   :targetNodeId "node:b" :relationKind "supports" :direction "directed"
+                   :status status :confidence 0.8 :validUntil "2025-01-01T00:00:00.000Z"}
+          opts #js {:now "2026-01-01T00:00:00.000Z"}
+          direct (boundary/project-edge-claims-js #js [row] opts)
+          from-mongo (mongo/project-mongo-edge-claims-js #js [row] opts)]
+      (is (= 0 (alength (aget direct "edges"))))
+      (is (= 0 (alength (aget from-mongo "edges"))))
+      (is (= (aget (aget direct "stats") "edges")
+             (aget (aget from-mongo "stats") "edges")))
+      (aset row "validUntil" "2099-01-01T00:00:00.000Z")
+      (is (= 1 (alength (aget (mongo/project-mongo-edge-claims-js #js [row] opts) "edges")))))))
