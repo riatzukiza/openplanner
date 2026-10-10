@@ -50,7 +50,7 @@ export type NormalizedEdgeClaimInput = {
   scope: Record<string, unknown>;
   status: EdgeClaimStatus;
   confidence: number;
-  valid_until_ms?: number;
+  valid_until_ms?: number | null;
 };
 
 export type EdgeClaimProjectionOptions = {

@@ -1065,7 +1065,10 @@ export async function upsertGraphNodeEmbeddings(
     rows.map((row) => ({
       updateOne: {
         filter: {
-          _id: `${row.node_id}::${row.embedding_model ?? ""}::${row.embedding_dimensions}::${row.chunk_index ?? 0}`,
+          node_id: row.node_id,
+          embedding_model: row.embedding_model ?? null,
+          embedding_dimensions: row.embedding_dimensions,
+          chunk_index: row.chunk_index ?? 0,
         },
         update: {
           $set: {
@@ -1084,6 +1087,10 @@ export async function upsertGraphNodeEmbeddings(
             updatedAt: now,
           },
           $setOnInsert: {
+            // Select by the unique typed tuple to preserve existing legacy _ids.
+            _id: "graph-embedding:v2:" + createHash("sha256")
+              .update(JSON.stringify([row.node_id, row.embedding_model ?? null, row.embedding_dimensions, row.chunk_index ?? 0]))
+              .digest("hex"),
             createdAt: now,
           },
         },

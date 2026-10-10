@@ -148,20 +148,33 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         throw new EmbedProviderError(`Embed provider failed: HTTP ${res.status}${overflow ? " context window exceeded" : ""}`);
       }
 
-      const data = (await res.json()) as { data?: Array<{ embedding?: number[] }>; embeddings?: number[][] };
-      const out = Array.isArray(data.embeddings)
-        ? data.embeddings
-        : Array.isArray(data.data)
-          ? data.data.map((d) => d.embedding ?? []).filter((e) => e.length > 0)
-          : [];
+      const data = (await res.json()) as { data?: Array<{ index?: unknown; embedding?: number[] }>; embeddings?: number[][] };
+      let out: number[][] = [];
+      if (Array.isArray(data.embeddings)) out = data.embeddings;
+      else if (Array.isArray(data.data)) {
+        if (data.data.length !== texts.length) {
+          throw new EmbedProviderError(`Embed provider returned ${data.data.length} embeddings for ${texts.length} inputs`);
+        }
+        out = new Array(texts.length);
+        const indices = new Set<number>();
+        for (const row of data.data) {
+          const index = row?.index;
+          if (typeof index !== "number" || !Number.isSafeInteger(index) || index < 0 || index >= texts.length || indices.has(index)) {
+            throw new EmbedProviderError("Embed provider returned an invalid or duplicate response index");
+          }
+          indices.add(index);
+          out[index] = row.embedding ?? [];
+        }
+      }
       if (out.some(vector => !Array.isArray(vector) || vector.length === 0 || vector.some(value => typeof value !== "number" || !Number.isFinite(value)))) {
         throw new EmbedProviderError("Embed provider returned an invalid or empty vector");
       }
       if (out.length !== texts.length) {
         throw new EmbedProviderError(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
       }
-      if (this.expectedDimensions !== undefined && out.some(vector => vector.length !== this.expectedDimensions)) {
-        throw new EmbedProviderError("Embed provider vector violates declared model dimensions");
+      const dimensions = this.expectedDimensions ?? out[0]?.length;
+      if (out.some(vector => vector.length !== dimensions)) {
+        throw new EmbedProviderError("Embed provider returned inconsistent or undeclared vector dimensions");
       }
       return out;
     } catch (err) {

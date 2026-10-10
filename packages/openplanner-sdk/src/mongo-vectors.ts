@@ -152,7 +152,8 @@ export async function hydrateVectorDocumentText(doc: MongoVectorDocument): Promi
       url: nonBlankString(ref.url),
       hostname: nonBlankString(ref.hostname),
       lake: nonBlankString(ref.lake) ?? doc.project,
-      content_hash: nonBlankString(ref.content_hash) ?? nonBlankString(ref.contentHash) ?? nonBlankString(doc.text_hash_sha256),
+      // Indexing computed this source hash; caller metadata must not alias two files.
+      content_hash: nonBlankString(doc.text_hash_sha256) ?? nonBlankString(ref.content_hash) ?? nonBlankString(ref.contentHash),
     },
   });
   if (!sourceText) return "";

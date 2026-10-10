@@ -42,7 +42,11 @@ function collection(name, initial = []) {
     async updateOne(filter, update) {
       if (this.failSetup) { this.failSetup = false; throw new Error('temporary partition failure'); }
       calls.writes.push({filter, update});
-      const key = filter._id ?? filter.tenant_id ?? filter.label_id;
+      const tupleFields = ['node_id','embedding_model','embedding_dimensions','chunk_index'];
+      const key = filter._id ?? filter.tenant_id ?? filter.label_id ??
+        (tupleFields.every(field=>Object.hasOwn(filter,field))
+          ? [...rows.entries()].find(([,row])=>tupleFields.every(field=>row[field]===filter[field]))?.[0] ?? update.$setOnInsert?._id
+          : undefined);
       const old = rows.get(key);
       const next = {...(!old ? update.$setOnInsert : {}), ...old, ...filter, ...update.$set};
       for (const field of Object.keys(update.$unset ?? {})) delete next[field];

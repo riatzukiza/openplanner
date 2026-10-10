@@ -46,6 +46,18 @@ export interface TenantManagement {
 
 const PROTOCOL_IMPL = process.env.PROTOCOL_IMPL ?? "mongo";
 
+function assertOptionalSessionString(value: unknown, field: string): void {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(`${field} session filter must be a string`);
+  }
+}
+
+function sessionPageInteger(value: unknown, fallback: number): number {
+  if (value === undefined) return fallback;
+  if (!Number.isSafeInteger(value)) throw new Error("session pagination values must be finite safe integers");
+  return value as number;
+}
+
 // ── MongoDB Implementations ─────────────────────────────────────────
 
 class MongoEventAdmission implements EventAdmission {
@@ -130,6 +142,10 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async listSessions(opts: { project?: string; limit: number; offset: number }): Promise<{ rows: any[]; total: number }> {
+    assertOptionalSessionString(opts.project, "project");
+    const requestedLimit = sessionPageInteger(opts.limit, 50);
+    const limit = Math.min(requestedLimit > 0 ? requestedLimit : 50, 500);
+    const offset = Math.max(0, sessionPageInteger(opts.offset, 0));
     const match: Record<string, unknown> = { session: { $type: "string", $ne: "" } };
     if (opts.project) match.project = opts.project;
 
@@ -155,7 +171,7 @@ class MongoSessionManagement implements SessionManagement {
     ];
 
     const [rawRows, totalRows] = await Promise.all([
-      this.ctx.mongo.events.aggregate([...groupedStages, { $skip: opts.offset }, { $limit: opts.limit }]).toArray(),
+      this.ctx.mongo.events.aggregate([...groupedStages, { $skip: offset }, { $limit: limit }]).toArray(),
       this.ctx.mongo.events.aggregate([...groupedStages, { $count: "total" }]).toArray(),
     ]);
 
@@ -171,6 +187,8 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async getSessionEvents(sessionId: string, opts: any): Promise<any[]> {
+    assertOptionalSessionString(opts.project, "project");
+    assertOptionalSessionString(opts.kind, "kind");
     const filter: Record<string, unknown> = { session: sessionId };
     if (opts.project) filter.project = opts.project;
     if (opts.kind) filter.kind = opts.kind;
@@ -204,6 +222,9 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async createTenant(tenant: any): Promise<any> {
+    if (typeof tenant?.tenant_id !== "string" || !tenant.tenant_id.trim()) {
+      throw new Error("tenant_id must be a nonblank string");
+    }
     const now = new Date().toISOString();
     const doc = {
       ...tenant,
