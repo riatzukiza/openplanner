@@ -2,6 +2,8 @@
   (:require [cljs.test :as t :refer [async deftest is run-tests]]
             [openplanner.stores.cache.boundary :as boundary]
             [openplanner.stores.cache.schema :as schema]
+            [openplanner.stores.cache.layered :as layered]
+            [openplanner.stores.cache.protocol :as protocol]
             [openplanner.stores.cache.core :as core]))
 
 (defmethod t/report [:cljs.test/default :summary] [m]
@@ -68,6 +70,36 @@
           (.catch (fn [err]
                     (is false (str "layered cache failed: " err))
                     (done)))))))
+
+(deftest lower-cache-hits-survive-sync-and-async-promotion-failures
+  (async done
+    (-> (js/Promise.all
+         (clj->js
+          (for [asynchronous? [false true]]
+            (let [broken (reify
+                           protocol/CacheEntryStore
+                           (cache-get-entry [_ _] nil)
+                           protocol/CacheStore
+                           (cache-get [_ _] nil)
+                           (cache-put! [_ _ _ _]
+                             (if asynchronous?
+                               (js/Promise.reject (js/Error. "closed cache"))
+                               (throw (js/Error. "full cache"))))
+                           (cache-evict! [_ _] nil)
+                           (cache-touch! [_ _ _] nil)
+                           (cache-cleanup! [_] 0)
+                           (cache-stats [_] {}))
+                  hot (boundary/create-memory-lru-cache #js {})
+                  warm (boundary/create-memory-lru-cache #js {:defaultTtlMs 5000})
+                  cache (layered/create-layered-cache [broken hot warm])]
+              (boundary/cache-put-js warm "key" "found")
+              (-> (protocol/cache-get-entry cache "key")
+                  (p-> (fn [entry]
+                         (is (= "found" (:value entry)))
+                         (is (= "found" (boundary/cache-get-js hot "key")))
+                         (is (number? (:expires-at-ms entry)))))
+                  (.catch (fn [error] (is false (str "promotion lost lower hit: " error)))))))))
+        (.finally done))))
 
 (deftest lmdb-cache-adapter-expires-and-touches-test
   (let [store (atom {})

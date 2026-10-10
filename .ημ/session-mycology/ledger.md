@@ -322,3 +322,12 @@
   spore: none
   receipt-refs: cephalon-bounded-376f-native-final-green-20261010
   note: Actual causal RED preserved before repairs; first Vexx missing cursor and spec-versus-TAP capture predicate failures retained and corrected truthfully. v2 hydration intentionally makes legacy entries misses, exact key assertion updated rather than removed. Retained legacy TTL writer remains independent; no guessed data migration or distributed fencing. Immutable56manifest and178journal/reflection prefix exact;149changedinputs awaiting fresh hosted/full-head reviews. No approval/live runtime/board/deployment/paid/spore.
+
+- ts: 2026-10-10T17:28:03.359Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-a8-native-causal-red-20261010
+  note: Original56 immutablemanifest and journal prefixes preserved. Actual currenta8 hostedCI and isolated consumer pass are historical after this new finding-bearing review; no passing approval/round is claimed. Stale376 MiMo force-cancel accepted then independently terminalcancelled, currenta8 started. No live runtime, board, paid, or spore.

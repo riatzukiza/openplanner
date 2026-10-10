@@ -213,3 +213,14 @@
     (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active" :validUntil value}]
       (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))
       (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?"))))))
+
+(deftest graph-key-boundary-refuses-nonstring-identifiers
+  (doseq [field ["source_node_id" "target_node_id" "relation_kind"]
+          value [42 #js {:id "malformed"} true false #js ["malformed"]]]
+    (let [claim #js {:claim_id "explicit" :source_node_id "a" :target_node_id "b"
+                     :relation_kind "related" :status "active"}]
+      (aset claim field value)
+      (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now 1000})))))
+  (is (= "related_to" (aget (boundary/normalize-edge-claim-input-js
+                            #js {:source_node_id " a " :target_node_id " b "}) "relation_kind"))))

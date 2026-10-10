@@ -22,6 +22,7 @@ import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
 import { getSessionResponse } from '../dist/sessions-core.js';
 import { mergeTieredVectorHits } from '../dist/vector-search.js';
+import { loadConfig } from '../dist/config.js';
 
 function collection(name, initial = []) {
   const rows = new Map(initial.map(r => [r._id ?? r.id, r]));
@@ -839,4 +840,47 @@ for(const name of ['events_ttl','compacted_ttl'])test(`fresh SDK retention leave
   const c=collection('fresh-retention');await reconcileManagedTtl(c,name,60);
   assert.ok(c.calls.indexes.some(i=>i.opts.name===`${name}_absolute`&&i.keys.expiresAt===1));
   assert.ok(!c.calls.indexes.some(i=>i.opts.name===name));
+});
+
+// Native Codex review 5480078194 on a8: failure isolation and boundary admission.
+for(const failure of ['embedding','storage'])test(`failed ${failure} replacement removes obsolete hot vectors across partitions`,async()=>{
+  const mongo=vectorDeletionFixture();mongo.retention.eventsTtlSeconds=0;
+  const provider={generate:async texts=>texts.map(()=>[1,2])};
+  const first=await ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[ordinaryEvent('failed-replacement','Obsolete outside information.')]);await first.backgroundIndexing;
+  assert.ok(mongo.hotVectors.rows.size>0);
+  const unrelated={_id:'unrelated',parent_id:'other-parent',text:'Keep this information',embedding:[1,2]};
+  mongo.hotVectors.rows.set(unrelated._id,unrelated);
+  if(failure==='embedding')provider.generate=async()=>{throw new Error('fixture provider unavailable');};
+  else {
+    mongo.client.startSession=()=>({withTransaction:async f=>{
+      const saved=new Map([...mongo.collections].map(([name,c])=>[name,new Map(c.rows)]));
+      try{return await f();}catch(error){for(const [name,rows]of saved){const c=mongo.collections.get(name);c.rows.clear();for(const [id,row]of rows)c.rows.set(id,row);}throw error;}
+    },endSession:async()=>{}});
+    const original=mongo.hotVectors.bulkWrite;let fail=true;mongo.hotVectors.bulkWrite=async ops=>{if(fail){fail=false;throw new Error('fixture vector write failed');}return original.call(mongo.hotVectors,ops);};
+  }
+  const changed=await ingestEvents({mongo,embeddingRuntime:eventRuntime(provider)},[ordinaryEvent('failed-replacement','Replacement outside information.')]);await changed.backgroundIndexing;
+  assert.equal(mongo.events.rows.get('failed-replacement').text,'Replacement outside information.');
+  assert.deepEqual([...mongo.hotVectors.rows.keys()],['unrelated']);
+  for(const c of mongo.collections.values())if(c.collectionName.includes('__'))assert.ok([...c.rows.values()].every(row=>row.parent_id!=='failed-replacement'));
+});
+
+for(const ready of [false,true])test(`failed ${ready?'native and fallback':'pending scan'} partition preserves healthy vector hits`,async()=>{
+  const mongo=queryFixture();
+  mongo.vectorPartitions.rows.set('broken',{_id:'broken',tier:'hot',model:'healthy-model',dimensions:2,collectionName:'broken_vectors',searchIndexStatus:ready?'ready':'pending',searchIndexCheckedAt:new Date()});
+  const broken=mongo.db.collection('broken_vectors');broken.aggregate=()=>{throw new Error('PRIVATE native failure');};broken.find=()=>{throw new Error('PRIVATE scan failure');};
+  const result=await queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+  assert.deepEqual(result.ids,[['healthy-chunk']]);assert.deepEqual(result.unavailable_partitions,['broken_vectors']);assert.equal(result.partial,true);assert.equal(result.queried_partition_count,1);assert.ok(!JSON.stringify(result).includes('PRIVATE'));
+});
+test('all failed partition executions produce a named unavailable error without provider diagnostics',async()=>{
+  const mongo=queryFixture();const c=mongo.db.collection('healthy_vectors');c.aggregate=()=>{throw new Error('PRIVATE native');};c.find=()=>{throw new Error('PRIVATE scan');};
+  await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:2,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})}),error=>error.unavailablePartitions?.includes('healthy_vectors')&&!error.message.includes('PRIVATE'));
+});
+test('fractional environment batch limits never normalize to zero',async()=>{
+  await withEnv({EMBED_PROVIDER_MAX_BATCH_ITEMS:'0.5',EMBED_PROVIDER_BATCH_WINDOW_MS:'0.5'},async()=>{
+    const config=loadConfig();assert.ok(Number.isInteger(config.embedProviderMaxBatchItems)&&config.embedProviderMaxBatchItems>0);assert.ok(Number.isInteger(config.embedProviderBatchWindowMs)&&config.embedProviderBatchWindowMs>0);
+  });
+});
+for(const field of ['maxBatchItems','maxConcurrentBatches'])test(`fractional ${field} cannot stall the provider drain`,async()=>{
+  const script=`import assert from 'node:assert/strict';const {EmbedProviderFunction}=await import(process.argv[1]);globalThis.fetch=async(_,options)=>new Response(JSON.stringify({embeddings:JSON.parse(options.body).input.map(()=>[1,2])}),{status:200});const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{[process.argv[2]]:0.5,batchWindowMs:1});assert.deepEqual(await provider.generate(['outside information']),[[1,2]]);`;
+  await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/embeddings.js',import.meta.url).href,field],{timeout:2000});
 });
