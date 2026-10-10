@@ -586,3 +586,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-6d90f6b-streaming-partition-red-20261010
   note: Current CodeRabbit5481190788 P1 confirmed. Faithful async cursor methods added; assertions retained. Streaming laws require late-best complete scan, accessible unique-parent/tie ranking,256-candidate batches, whole local rescan after optional later failure, enforced failure and cursor closure. Exact source204 journal/reflection prefixes retained; no runtime/board/deploy/paid/spore.
+
+- ts: 2026-10-10T23:41:58.731Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-6d90f6b-streaming-partition-final-green-20261010
+  note: Driver batches256 and at most k retained parents; no full-partition candidate array. Optional late accelerator failure discards every accelerator score and rescans entire filtered partition locally; enforced failure closes cursor and refuses. Five causal tests RED5/GREEN0;all existing320 assertions retained. O(k+256) candidate rows does not establish byte/latency/concurrency bounds or live Mongo/provider behavior. Source205 prefixes retained; no runtime/board/deploy/paid/spore.

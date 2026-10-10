@@ -62,6 +62,7 @@ const VEXX_MIN_CANDIDATES = (() => {
   const parsed = Number(process.env.VEXX_MIN_CANDIDATES ?? "256");
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 256;
 })();
+const VECTOR_SCAN_BATCH_SIZE = 256;
 
 function emptyResult(): RawQueryResult {
   return { ids: [[]], documents: [[]], metadatas: [[]], distances: [[]], include: ["documents", "metadatas", "distances"], queried_partition_count: 0 };
@@ -288,13 +289,15 @@ async function queryPartitionWithVexxTopK(params: {
   candidates: MongoVectorDocument[];
   queryEmbedding: number[];
   k: number;
+  minimumAlreadySatisfied?: boolean;
 }): Promise<Array<{ doc: MongoVectorDocument; score: number }> | null> {
   if (!VEXX_BASE_URL) return null;
   const validCandidates = params.candidates.filter(
     (doc) => Array.isArray(doc.embedding) && doc.embedding.length === params.queryEmbedding.length,
   );
   if (validCandidates.length === 0) return [];
-  if (!VEXX_ENFORCE && validCandidates.length < Math.max(params.k, VEXX_MIN_CANDIDATES)) return null;
+  if (!VEXX_ENFORCE && !params.minimumAlreadySatisfied
+    && validCandidates.length < Math.max(params.k, VEXX_MIN_CANDIDATES)) return null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), VEXX_TIMEOUT_MS);
@@ -1157,22 +1160,75 @@ async function queryPartitionWithCosineScan(params: {
   excludeParentIds?: string[];
 }): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
   const filter = queryFilter(params.where, params.excludeParentIds);
-  // Age is not a semantic candidate bound: score the complete filtered partition.
-  const candidates = await params.collection.find(filter).toArray();
-  const vexxRows = await queryPartitionWithVexxTopK({
-    candidates,
-    queryEmbedding: params.queryEmbedding,
-    k: candidates.length,
-  }).catch((error) => {
-    if (VEXX_ENFORCE) throw error;
-    return null;
-  });
-  if (!vexxRows && VEXX_ENFORCE) {
+  const limit = Math.max(1, params.k);
+  type ScoredRow = { doc: MongoVectorDocument; score: number };
+  const compare = (left: ScoredRow, right: ScoredRow) =>
+    right.score - left.score || left.doc._id.localeCompare(right.doc._id);
+
+  const scan = async (accelerated: boolean): Promise<ScoredRow[] | null> => {
+    const retained = new Map<string, ScoredRow>();
+    const admit = async (entry: ScoredRow) => {
+      if (!Number.isFinite(entry.score)) return;
+      const parent = entry.doc.parent_id ?? entry.doc._id;
+      const current = retained.get(parent);
+      if (current && compare(entry, current) >= 0) return;
+      if (!current && retained.size >= limit) {
+        const worst = [...retained.values()].sort(compare).at(-1)!;
+        if (compare(entry, worst) >= 0) return;
+      }
+      let text: string;
+      try { text = await hydrateVectorDocumentText(entry.doc); } catch { return; }
+      if (!text) return;
+      retained.set(parent, { doc: { ...entry.doc, text }, score: entry.score });
+      if (retained.size > limit) {
+        const worst = [...retained.values()].sort(compare).at(-1)!;
+        retained.delete(worst.doc.parent_id ?? worst.doc._id);
+      }
+    };
+    let batch: MongoVectorDocument[] = [];
+    let minimumAlreadySatisfied = false;
+    const consumeBatch = async (): Promise<boolean> => {
+      const scored = await queryPartitionWithVexxTopK({
+        candidates: batch, queryEmbedding: params.queryEmbedding, k: batch.length,
+        minimumAlreadySatisfied,
+      }).catch((error) => {
+        if (VEXX_ENFORCE) throw error;
+        return null;
+      });
+      if (!scored) {
+        if (VEXX_ENFORCE) throw vexxRequiredError(`cosine_scan:${params.collection.collectionName}`);
+        return false;
+      }
+      minimumAlreadySatisfied = true;
+      for (const entry of scored) await admit(entry);
+      batch = [];
+      return true;
+    };
+
+    // Score the entire filtered partition without retaining it. The driver
+    // buffer and accelerator payload are bounded; only k usable parents survive.
+    // Returning/throwing from this loop closes its async Mongo cursor.
+    for await (const doc of params.collection.find(filter).batchSize(VECTOR_SCAN_BATCH_SIZE)) {
+      if (accelerated) {
+        batch.push(doc);
+        if (batch.length === VECTOR_SCAN_BATCH_SIZE && !await consumeBatch()) return null;
+      } else {
+        await admit({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) });
+      }
+    }
+    if (batch.length > 0 && !await consumeBatch()) return null;
+    return [...retained.values()].sort(compare);
+  };
+
+  if (VEXX_BASE_URL) {
+    const accelerated = await scan(true);
+    if (accelerated) return accelerated;
+    // A later optional batch failure must discard all accelerator scores and
+    // rescan with one local score scale, including candidates already visited.
+  } else if (VEXX_ENFORCE) {
     throw vexxRequiredError(`cosine_scan:${params.collection.collectionName}`);
   }
-  return hydratedParentRows(vexxRows ?? candidates
-    .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
-    .filter((entry) => Number.isFinite(entry.score)), params.k);
+  return (await scan(false))!;
 }
 
 export async function queryMongoVectorsByText(params: {
