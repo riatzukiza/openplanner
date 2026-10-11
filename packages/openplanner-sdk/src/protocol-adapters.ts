@@ -74,7 +74,11 @@ class MongoEventAdmission implements EventAdmission {
   }
 
   async appendEvents(events: any[]): Promise<any[]> {
-    for (const event of events) assertNonblankIdentifier(event?.id, "event.id");
+    const now = new Date();
+    for (const event of events) {
+      assertNonblankIdentifier(event?.id, "event.id");
+      eventRetentionExpiry(event.extra, this.ctx.mongo.retention?.eventsTtlSeconds, now);
+    }
     for (const event of events) await this.appendEvent(event);
     return events;
   }

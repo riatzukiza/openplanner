@@ -153,7 +153,8 @@ export function prepareIndexDocument(params: {
   overlapChars?: number;
   overflowThresholdTokens?: number;
 }): PreparedIndexDocument {
-  const rawText = normalizeWhitespace(String(params.text || ""));
+  if (typeof params.text !== "string") throw new Error("index document text must be a string");
+  const rawText = normalizeWhitespace(params.text);
   const htmlCandidate = extractHtmlCandidate(rawText, params.extra);
   const normalizedText = htmlCandidate ? htmlToMarkdown(htmlCandidate) : stripMarkdownHtmlArtifacts(rawText);
   const normalizedFormat = htmlCandidate ? "markdown" : "text";

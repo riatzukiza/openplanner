@@ -82,6 +82,9 @@ function getFlatCollection(mongo: MongoConnection, tier: MongoVectorTier): Colle
 
 function asDate(value: unknown): Date {
   if (value === undefined) return new Date();
+  if (typeof value === "string" && !validIsoTimestamp(value)) {
+    throw new Error("vector metadata.ts must be a valid ISO timestamp when supplied");
+  }
   if (!(value instanceof Date) && typeof value !== "string" && typeof value !== "number") {
     throw new Error("vector metadata.ts must be a valid timestamp when supplied");
   }
@@ -1339,6 +1342,8 @@ export async function queryMongoVectorsByText(params: {
   // Match the high-level search range before Atlas multiplication or fallback
   // retention, preserving the existing minimum-one behavior for zero/negative k.
   const k = Math.max(1, Math.min(200, params.k));
+  // Client input errors must not become empty results or partition outages.
+  queryFilter(params.where, params.excludeParentIds);
   const queryText = formatEmbeddingQueryText(params.q);
   const partitions = await listMongoVectorPartitions(params.mongo, params.tier);
   if (partitions.length === 0) {
@@ -1481,6 +1486,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   const seenParentIds = new Set<string>();
   for (const item of items) {
     assertNonblankIdentifier(item.id, "vector parent ID");
+    if (typeof item.text !== "string") throw new Error("index document text must be a string");
     validateVectorMetadata(item.metadata);
     if (seenParentIds.has(item.id)) throw new Error(`Duplicate vector parent ID: ${item.id}`);
     seenParentIds.add(item.id);

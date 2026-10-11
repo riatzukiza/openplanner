@@ -154,7 +154,9 @@ function collection(name, initial = []) {
     async deleteMany(filter) { calls.deletes.push(filter); },
     async updateMany(filter, update) { calls.writes.push({filter,update}); },
     async bulkWrite(ops) { for (const op of ops) await this.updateOne(op.updateOne.filter, op.updateOne.update); },
-    listSearchIndexes() { calls.setups++; return cursor([{status:'READY',queryable:true}]); },
+    searchDefinition: {fields:[{type:'vector',path:'embedding',numDimensions:1024,similarity:'cosine'}]},
+    async updateSearchIndex(_name,definition) { this.searchDefinition=definition; },
+    listSearchIndexes() { calls.setups++; return cursor([{status:'READY',queryable:true,latestDefinition:this.searchDefinition}]); },
   };
 }
 function mongoFixture() {
@@ -810,7 +812,7 @@ test('SDK runtime construction failures occur before opening Mongo',async()=>{
 });
 test('SDK protocol setup rejection closes the newly connected client',async()=>{
   const script=`import assert from 'node:assert/strict';const {MongoClient}=await import('mongodb');
-    const module=await import(process.argv[1]);const collections=new Map();const collection=()=>({createIndex:async()=>'',indexes:async()=>[],dropIndex:async()=>{},updateMany:async()=>{},updateOne:async()=>{},findOne:async()=>null,find:()=>({sort(){return this;},toArray:async()=>[]}),listSearchIndexes:()=>({toArray:async()=>[{status:'READY',queryable:true}]})});
+    const module=await import(process.argv[1]);const collections=new Map();const collection=()=>({createIndex:async()=>'',indexes:async()=>[],dropIndex:async()=>{},updateMany:async()=>{},updateOne:async()=>{},findOne:async()=>null,find:()=>({sort(){return this;},toArray:async()=>[]}),listSearchIndexes:()=>({toArray:async()=>[{status:'READY',queryable:true,latestDefinition:{fields:[{type:'vector',path:'embedding',numDimensions:1024}]}}]})});
     let closed=0;MongoClient.prototype.connect=async function(){return this;};MongoClient.prototype.db=()=>({collection:n=>{if(!collections.has(n))collections.set(n,collection());return collections.get(n);}});MongoClient.prototype.close=async()=>{closed++;};
     await assert.rejects(module.createOpenPlannerSdk({config:{embedProviderCachePath:undefined}}),/REST protocol/);assert.equal(closed,1);`;
   await promisify(execFileCallback)(process.execPath,['--input-type=module','-e',script,new URL('../dist/sdk.js',import.meta.url).href],{cwd:new URL('..',import.meta.url),env:{...process.env,PROTOCOL_IMPL:'rest',EMBED_PROVIDER_CACHE_PATH:'/fixture-cache-unused'},timeout:5000});
@@ -2372,7 +2374,7 @@ test('Codex0b: graph edge ownership/project/direction remain distinct identities
 for(const text of [17,true,{},null,undefined])for(const op of ['prepare','single','batch'])test(`Codex0b: ${op} rejects non-string text before normalization/provider ${String(text)}`,async()=>{
  const mongo=mongoFixture();let providers=0;const embeddingFunction={generate:async texts=>{providers++;return texts.map(()=>[1,2]);}};
  if(op==='prepare')assert.throws(()=>prepareIndexDocument({parentId:'parent',text}),/text.*string|string.*text/i);
- else await assert.rejects(op==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text,metadata:{embedding_model:'fixture'},embeddingFunction}):batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[{...item('parent'),text}],embeddingFunction}),/text.*string|string.*text/i);
+ else await assert.rejects(op==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text,metadata:{embedding_model:'fixture'},embeddingFunction}):batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('valid-first'),{...item('parent'),text}],embeddingFunction}),/text.*string|string.*text/i);
  assert.equal(providers,0);for(const c of mongo.collections.values())assert.equal(c.calls.writes.length,0);
 });
 for(const labels of [null,'keep',[null],['']])for(const ttl of [0,60])test(`Codex0b: appendEvents preflights all retention labels ttl=${ttl} ${JSON.stringify(labels)}`,async()=>{
@@ -2409,4 +2411,13 @@ test('CodeRabbit0b: configured trimmed root hydrates only its actual owned file'
  try{await writeFile(join(dir,'outside.txt'),'outside encounter');await withEnv({OPENPLANNER_SOURCE_ROOT:'  '+dir+'  '},async()=>{
   assert.equal(sourceRoot(),dir);const row={id:'configured',extra:{source_path:'outside.txt'}};assert.equal(safeSourceFilePath(row),join(dir,'outside.txt'));assert.equal(await loadHydrationSourceText(row),'outside encounter');
  });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+
+for(const key of ['latestDefinition','definition'])test(`Codex0b: graph index readiness waits for updated dimensions in ${key}`,async(t)=>{
+ const mongo=mongoFixture(),c=mongo.graphNodeEmbeddings;let polls=0,updates=0,sleeps=0,clock=0;
+ c.listSearchIndexes=()=>({toArray:async()=>{polls++;return [{name:'embedding_vector',status:'READY',queryable:true,[key]:{fields:[{type:'vector',path:'embedding',numDimensions:polls<3?3:2}]}}];}});
+ c.updateSearchIndex=async()=>{updates++;};
+ t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);
+ t.mock.method(Date,'now',()=>{clock+=1000;return clock;});t.mock.method(globalThis,'setTimeout',resolve=>{sleeps++;queueMicrotask(resolve);return {unref(){},ref(){}};});
+ await withEnv({EMBED_PROVIDER_DIMENSIONS:'2'},async()=>openMongoDB(openingConfig));assert.equal(updates,1);assert.equal(polls,3);assert.equal(sleeps,1);
 });

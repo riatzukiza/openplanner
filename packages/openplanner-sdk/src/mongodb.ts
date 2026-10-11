@@ -116,9 +116,15 @@ export async function reconcileManagedTtl(collection: Collection<any>, name: str
   }
 }
 
+function graphIndexDimensions(index: Record<string, any> | undefined): unknown {
+  const definition = index?.latestDefinition ?? index?.definition;
+  return definition?.fields?.find((field: { type?: string; path?: string }) => field.type === "vector" && field.path === "embedding")?.numDimensions;
+}
+
 async function waitForQueryableSearchIndex(
   collection: Collection<any>,
   indexName: string,
+  dimensions: number,
   timeoutMs = 60_000,
   pollMs = 1_000,
 ): Promise<void> {
@@ -128,7 +134,7 @@ async function waitForQueryableSearchIndex(
     const rows = await collection.listSearchIndexes(indexName).toArray() as Array<{ status?: string; queryable?: boolean }>;
     const current = rows[0];
     const status = current?.status;
-    if (status === "READY" && current?.queryable === true) {
+    if (status === "READY" && current?.queryable === true && graphIndexDimensions(current) === dimensions) {
       return;
     }
     if (status === "FAILED" || status === "DOES_NOT_EXIST") {
@@ -145,30 +151,26 @@ async function ensureGraphNodeEmbeddingVectorSearchIndex(
 ): Promise<void> {
   const indexName = "embedding_vector";
   const dimensions = Number(process.env.EMBED_PROVIDER_DIMENSIONS ?? DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS);
+  if (!Number.isSafeInteger(dimensions) || dimensions <= 0) {
+    throw new Error("graph embedding dimensions must be a positive safe integer");
+  }
   const existing = await collection.listSearchIndexes(indexName).toArray();
-
+  const definition = {
+    fields: [
+      { type: "vector", path: "embedding", numDimensions: dimensions, similarity: "cosine" },
+      { type: "filter", path: "project" },
+      { type: "filter", path: "node_id" },
+      { type: "filter", path: "embedding_model" },
+      { type: "filter", path: "embedding_dimensions" },
+    ],
+  };
   if (existing.length === 0) {
-    await collection.createSearchIndex({
-      name: indexName,
-      type: "vectorSearch",
-      definition: {
-        fields: [
-          {
-            type: "vector",
-            path: "embedding",
-            numDimensions: dimensions,
-            similarity: "cosine",
-          },
-          { type: "filter", path: "project" },
-          { type: "filter", path: "node_id" },
-          { type: "filter", path: "embedding_model" },
-          { type: "filter", path: "embedding_dimensions" },
-        ],
-      },
-    });
+    await collection.createSearchIndex({ name: indexName, type: "vectorSearch", definition });
+  } else {
+    if (graphIndexDimensions(existing[0]) !== dimensions) await collection.updateSearchIndex(indexName, definition);
   }
 
-  await waitForQueryableSearchIndex(collection, indexName);
+  await waitForQueryableSearchIndex(collection, indexName, dimensions);
 }
 
 export interface MongoConfig {
@@ -1317,6 +1319,7 @@ export async function upsertGraphEdges(
 ): Promise<number> {
   if (rows.length === 0) return 0;
   const now = new Date();
+  const identities = new Set<string>();
 
   await collection.bulkWrite(
     rows.map((row) => {
@@ -1332,6 +1335,8 @@ export async function upsertGraphEdges(
       const edgeId = owned
         ? `event-edge:${createHash("sha256").update(JSON.stringify([owner, row.project ?? null, row.source_node_id, row.target_node_id, row.edge_kind])).digest("hex")}`
         : `graph-edge:${createHash("sha256").update(JSON.stringify([row.project ?? null, row.source_node_id, row.target_node_id, row.edge_kind])).digest("hex")}`;
+      if (identities.has(edgeId)) throw new Error("duplicate graph edge identity in batch");
+      identities.add(edgeId);
 
       return {
         updateOne: {

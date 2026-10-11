@@ -111,8 +111,8 @@ function labelSlug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96) || "label";
 }
 
-function graphLabelId(tenantId: string, label: string): string {
-  return `label:${tenantId}:${labelSlug(label)}:${createHash("sha256").update(label, "utf8").digest("hex")}`;
+function graphLabelId(tenantId: string, project: string | null, label: string): string {
+  return `label:${labelSlug(label)}:${createHash("sha256").update(JSON.stringify([tenantId, project, label]), "utf8").digest("hex")}`;
 }
 
 function eventLabels(extra: Record<string, unknown>): string[] {
@@ -463,7 +463,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
     const labels = eventLabels(extra);
     for (const label of labels) {
       const tenantId = ((extra.openplanner_labels as any)?.tenant_id ?? extra.tenant_id ?? "default").trim();
-      const labelId = graphLabelId(tenantId, label);
+      const labelId = graphLabelId(tenantId, project, label);
       if (!queuedGraphLabelIds.has(labelId)) {
         queuedGraphLabelIds.add(labelId);
         graphLabelNodeOps.push({

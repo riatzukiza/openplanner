@@ -85,8 +85,9 @@ export function acquireHydrationCacheOwner(): () => Promise<void> {
   };
 }
 
-export function sourceRoot(): string {
-  return process.env.OPENPLANNER_SOURCE_ROOT ?? "/home/err/devel";
+export function sourceRoot(): string | undefined {
+  const root = process.env.OPENPLANNER_SOURCE_ROOT?.trim();
+  return root ? root : undefined;
 }
 
 export function sourcePathFromRow(row: Record<string, unknown>): string | undefined {
@@ -100,23 +101,30 @@ export function sourcePathFromRow(row: Record<string, unknown>): string | undefi
     ?? nonBlankString(migration2.source_path);
 }
 
-export function safeSourceFilePath(row: Record<string, unknown>): string | undefined {
+function sourceFilePathWithinRoot(row: Record<string, unknown>, configuredRoot: string): string | undefined {
   const rawPath = sourcePathFromRow(row);
   if (!rawPath) return undefined;
 
-  const root = path.resolve(sourceRoot());
+  const root = path.resolve(configuredRoot);
   const candidate = path.isAbsolute(rawPath) ? path.resolve(rawPath) : path.resolve(root, rawPath);
   return candidate.startsWith(`${root}${path.sep}`) || candidate === root ? candidate : undefined;
 }
 
+export function safeSourceFilePath(row: Record<string, unknown>): string | undefined {
+  const root = sourceRoot();
+  return root ? sourceFilePathWithinRoot(row, root) : undefined;
+}
+
 export async function loadHydrationSourceText(row: Record<string, unknown>): Promise<string | null> {
+  const configuredRoot = sourceRoot();
+  if (!configuredRoot) return null;
   const cacheKey = documentCacheKey(row);
   if (!cacheKey) return null;
 
-  const candidate = safeSourceFilePath(row);
+  const candidate = sourceFilePathWithinRoot(row, configuredRoot);
   if (!candidate) return null;
   try {
-    const [root, filePath] = await Promise.all([realpath(sourceRoot()), realpath(candidate)]);
+    const [root, filePath] = await Promise.all([realpath(configuredRoot), realpath(candidate)]);
     if (!(filePath === root || filePath.startsWith(`${root}${path.sep}`))) return null;
     // Caller hashes are not physical file identity; aliases share the resolved path.
     const fileCacheKey = "openplanner:hydration-file:v3:" + JSON.stringify([cacheKey, filePath]);
