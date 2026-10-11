@@ -865,3 +865,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex949-seven-findings-green-20261011
   note: GREEN rawSHAc62555e13e04d99d5048e48532f30c15c1dc1b27de40512cd5a25a2b53273350. Canonical force duplicate/dimension batch guards; graph embedding owner collision preflight; recursive finiteJSON/cycle refusal and structured claim ID tuple; quality/tier diagnostics and shared strictISOlegacy admission. Correction: initial two query fixtures used outer instead of actual response.result; stronger corrected SDK verified21 causal failures on all7 frozen949production hashes before restoring GREEN. Initial RED/intermediate885/887 failure retained, no weakening. Missing defn delimiter caught before affected graph gates; both source hash epochs retained. Original56manifest and235prefixes immutable. New candidate consumer/hostedCI/currentreviews/native settlement/authorizedmerge owed; no current approval/round/liveB1B2B3/board/runtime/deploy/paid/spore claim.
+
+- ts: 2026-10-11T05:01:46.325Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-current-canonical-pr-pack-face300-20261011
+  note: Canonical fetch observed actualnewmergedface300; six PRpackdirectories43files installed from exact Git blobs after proving prior40files4b4byteidentical and privately backingup. Device branch/history/otherpaths preserved; no reset/full divergent pull. Current skill adds narrowly bound native positiveLGTM Handled disposition and explicit skipped-input rejection; no approval/cohort/required-check/identity waiver. Existing reviewer caller global_skills_ref advances4b4toface300; free model,120minute/twoattempt bounds, merged eta/Muse pins, fullinput/head/grants remain unchanged. Superseded0freview38109600298 actualcancelled04:40:15;949review38112003356 running with seven Codex findings now repaired54. No source approval transferred; currentconsumer/hostedCI/newheadreview/merge owed. Original236journal prefixes preserved; no broad source/runtime/board/social/deploy/paid/spore mutation.
