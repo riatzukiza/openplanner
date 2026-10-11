@@ -1113,3 +1113,23 @@ commit is local preparation while the native PR remains on ed91509. Eight
 current native conversations therefore remain unresolved until publication
 and verified settlement. No current-head review approval, merge, deployment,
 physical field transition, consumed mood or live B3 proof is asserted.
+
+## P1 default SDK seed: authorized package component RED
+
+The root two-file topology scope choice remains pending. The SDK's default URI
+component is inside the already authorized imported package and can be repaired
+independently. Unchanged bb32bd4 passes all962 prior SDK tests but fails the new
+default-seed contract:963 tests/962 passing/1 failing.
+
+A real uniquely owned Mongo7 replica fixture advertises the reserved hostname
+`cephalon-owned-seed.invalid:27017`. The actual `loadConfig()` default URI is
+used, adapting only its port to the isolated published port. The unchanged
+`mongodb://localhost:27017` default follows replica discovery and fails with
+actual `MongoServerSelectionError: getaddrinfo ENOTFOUND
+cephalon-owned-seed.invalid`. The reserved hostname prevents discovery from
+reaching another real database. The two full captures append to the existing
+bundle without changing its prior34 records. The owned container is removed.
+The proposed SDK change targets only the default localhost seed; explicit
+multi-host, SRV and explicitly non-direct URI overrides retain their exact
+provided values. This component alone does not fix or settle the documented
+standalone server's transaction failure; the root scope decision is outstanding.

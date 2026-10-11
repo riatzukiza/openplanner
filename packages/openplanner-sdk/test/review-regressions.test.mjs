@@ -2523,3 +2523,16 @@ test('Codexed: tenant deletion removes ingested graph labels and their reference
  assert.deepEqual([...mongo.graphLabelNodes.rows.values()],retainedLabels);assert.deepEqual([...mongo.graphEdges.rows.values()],retainedEdges);assert.ok(tenants.rows.has('tenant-b'));assert.ok(policies.rows.has('tenant-b'));assert.equal(policies.rows.has('tenant-a'),false);
  assert.equal(await createProtocols({mongo}).tenantManagement.deleteTenant('tenant-a'),false);
 });
+
+test('Codexed: default local Mongo seed uses direct discovery while explicit cluster URIs stay intact',async()=>{
+ const saved=process.env.MONGODB_URI;
+ try{
+  delete process.env.MONGODB_URI;
+  const uri=new URL(loadConfig().mongodb.uri);
+  assert.equal(uri.hostname,'localhost');assert.equal(uri.port,'27017');
+  assert.equal(uri.searchParams.get('directConnection'),'true');
+  for(const explicit of ['mongodb://one.example:27017,two.example:27017/?replicaSet=cluster','mongodb+srv://cluster.example/encounters','mongodb://localhost:39017/?directConnection=false']){
+   process.env.MONGODB_URI=explicit;assert.equal(loadConfig().mongodb.uri,explicit);
+  }
+ }finally{if(saved===undefined)delete process.env.MONGODB_URI;else process.env.MONGODB_URI=saved;}
+});
