@@ -1948,3 +1948,30 @@ for(const field of ['eventsTtlSeconds','compactedTtlSeconds'])for(const ttl of [
   try{await assert.rejects(openMongoDB({...openingConfig,[field]:ttl}),/TTL|retention/i);assert.equal(connections,0);assert.ok([...mongo.collections.values()].every(c=>c.calls.indexes.length===0&&c.calls.writes.length===0&&c.calls.drops.length===0));}
   finally{connect.mock.restore();db.mock.restore();close.mock.restore();}
 });
+
+// Native Codex5481523582 on1e7f755: whole-batch identity and provider contracts.
+for(const id of [{$ne:'victim'},null,17,'',' '])test(`Codex1e: direct compacted writer refuses malformed ID ${JSON.stringify(id)}`,async()=>{
+  const c=collection('direct-compacted',[{_id:'victim',id:'victim',text:'retained'}]);await assert.rejects(upsertCompactedMemory(c,{...ordinaryEvent('valid','outside'),id},60),/memory.*id|id.*memory/i);assert.equal(c.calls.writes.length,0);assert.equal(c.rows.get('victim').text,'retained');
+});
+for(const [field,value]of [['node_id',{$ne:'victim'}],['node_id',''],['embedding_model',{$ne:null}],['embedding_dimensions',{$gt:0}],['embedding_dimensions',NaN],['chunk_index',{$gte:0}],['chunk_index',-1]])test(`Codex1e: graph embedding refuses malformed tuple ${field}=${JSON.stringify(value)} before whole batch writes`,async()=>{
+  const c=collection('embeddings');const valid={node_id:'owned',source_event_id:'event',embedding_model:'fixture',embedding_dimensions:2,embedding:[1,0],chunk_index:0,chunk_count:1};await assert.rejects(upsertGraphNodeEmbeddings(c,[valid,{...valid,[field]:value}]),/graph.*embedding|embedding.*identity|embedding.*tuple/i);assert.equal(c.calls.writes.length,0);
+});
+for(const field of ['source','kind','project','session','visibility'])test(`Codex1e: FTS preserves explicit empty exact ${field}`,async()=>{
+  const mongo=mongoFixture();await ftsSearchWithQuality({mongo,embeddingRuntime:{}},{q:'outside',quality:'any',tier:'hot',[field]:''});assert.equal(mongo.events.calls.searches[0][field==='visibility'?'extra.visibility':field],'');
+});
+for(const search of ['fts','vector'])for(const quality of ['goodd',null,{},17])test(`Codex1e: ${search} rejects unsupported explicit quality ${JSON.stringify(quality)}`,async()=>{
+  const mongo=parentQueryFixture('cosine',[vectorRow('outside','parent',1)]);let effects=0;mongo.events.find=()=>{effects++;throw new Error('unexpected IO');};mongo.compacted.find=mongo.events.find;const runtime={hot:{getEmbeddingFunctionForModel:()=>({generate:async()=>{effects++;return [[1,0]];}})}};
+  await assert.rejects((search==='fts'?ftsSearchWithQuality:vectorSearchWithQuality)({mongo,embeddingRuntime:runtime},{q:'outside',tier:'hot',quality}),/quality.*mode|unsupported.*quality/i);assert.equal(effects,0);
+});
+for(const write of ['upsert','replace'])test(`Codex1e: ${write} rejects duplicate vector IDs before partitions or writes`,async()=>{
+  const mongo=mongoFixture();const entries=[{...entry('shared'),embedding:[1,0],metadata:{embedding_model:'model-a'}},{...entry('shared'),embedding:[1,0,0],metadata:{embedding_model:'model-b'}}];let effects=0;mongo.db.collection=()=>{effects++;throw new Error('unexpected storage');};
+  await assert.rejects(write==='upsert'?upsertMongoVectorDocuments(mongo,'hot',entries):replaceMongoVectorEntries(mongo,'hot','parent',entries),/duplicate.*id|id.*duplicate/i);assert.equal(effects,0);assert.equal(mongo.vectorPartitions.calls.writes.length,0);
+});
+for(const raw of ['{"scope":','{"scope":17}','{"scope":"fixture","other":null}','scope=fixture;broken','scope=','["fixture"]'])test(`Codex1e: embedding routing rejects entire malformed declaration ${raw}`,async()=>{
+  const {parseModelMap}=await import('../dist/embedding-models.js');assert.throws(()=>parseModelMap(raw),/model.*routing|routing.*model|model.*map/i);
+});
+test('Codex1e: overflow fragments must have equal dimensions and cannot poison the original cache',async()=>{
+  let failing=true,requests=0;await withFetch(async(_url,opts)=>{requests++;const text=JSON.parse(opts.body).input[0];if(!failing)return response([[0,0,1]]);if(text.length>1)return new Response('context window exceeded',{status:400});return response([text==='a'?[1,0]:[0,1,2]]);},async()=>{
+    const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});await assert.rejects(provider.generate(['ab']),/dimension/i);failing=false;assert.deepEqual(await provider.generate(['ab']),[[0,0,1]]);assert.ok(requests>=5);
+  });
+});

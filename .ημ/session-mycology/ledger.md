@@ -703,3 +703,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-eleven-data-boundaries-green-20261011
   note: 11 real native2b findings repaired with directevent ID,plainwhere/projection,trackedlistingdrain,sessionquerytype,actualsliceoffsets,agreeingexpirationaliases,explicitstatuses,tieradmission,labelsarray andpre-effectvalidTTLs. FirstGREEN SDK600PASS butgraph2oldercamelonlyassertionsFAIL because Mongo adapter manufactured missing alias asnull;productionadapter correctedactualpresence without weakeningtests. Failedrawretained. Source217prefix/original56manifest unchanged;newcandidateunapproved/consumerhostednotyetexecuted;no live/board/model/social/deploy/paid/spore.
+
+- ts: 2026-10-11T01:53:46.748Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-1e7f755-ten-guards-red-20261011
+  note: 10native5481523582COMMENTEDfindings,notapproval. Initialnewcachetestafterlexicalrun-tests macro ranonlyexisting11/47PASS;ownednewtest movedbeforeunchangedmain,actual12/73/24fail0error;oldassertionsretained. DirectcompactedID/graphtuple,emptyexactFTS,quality,duplicatevectors,lifecycleevidence,projectiontime,TTLroutingandfragmentdimensionsreproduced. Source218prefix/56manifestpreserved. CurrentCodeRabbitfull6104333850 pending;old2bMiMoactuallycancelled after434secgrace,current1eMiMoinprogress;no live/board/deploy/paid/spore.

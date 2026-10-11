@@ -380,3 +380,23 @@
     (is (nil? (boundary/project-edge-claim-js claim #js {:statuses #js [] :now 1000})))
     (is (nil? (boundary/project-edge-claim-js claim #js {:statuses #js ["active"] :now 1000})))
     (is (some? (boundary/project-edge-claim-js claim #js {:now 1000})))))
+
+;; Actual native Codex5481523582 lifecycle evidence and projection clock contracts.
+(deftest every-explicit-lifecycle-evidence-value-is-admitted-completely
+  (doseq [[action fields] [["support" ["event_ids" "eventIds" "support_event_ids"]]
+                           ["refute" ["event_ids" "eventIds" "refute_event_ids"]]]
+          field fields
+          value ["event:1" nil #js ["event:1" 17] #js ["event:1" " "]]]
+    (let [body #js {}]
+      (aset body field value)
+      (is (thrown-with-msg? js/Error #"evidence" (lifecycle/transition-plan-js action body)))))
+  (is (= [] (js->clj (aget (lifecycle/transition-plan-js "support" #js {}) "eventIds")))))
+
+(deftest explicit-projection-time-never-falls-back-to-the-clock
+  (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "active"}]
+    (doseq [now ["not-a-date" nil false js/NaN js/Infinity]]
+      (let [opts #js {:now now}]
+        (is (thrown-with-msg? js/Error #"projection.*time|time.*projection" (boundary/project-edge-claim-js claim opts)))
+        (is (thrown-with-msg? js/Error #"projection.*time|time.*projection" (mongo/project-mongo-edge-claims-js #js [claim] opts)))))
+    (is (some? (boundary/project-edge-claim-js claim #js {:now 0})))
+    (is (some? (boundary/project-edge-claim-js claim #js {})))))

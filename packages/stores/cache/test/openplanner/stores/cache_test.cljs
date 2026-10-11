@@ -188,5 +188,28 @@
         (is (= "value" (boundary/cache-get-js cache "k"))))
       (finally (set! core/now-ms original)))))
 
+
+
+;; Actual native Codex5481523582/4239897032: TTL never becomes immortal by coercion.
+(deftest cache-rejects-malformed-write-and-default-ttls
+  (let [store (atom {})
+        db #js {:get (fn [key] (get @store key))
+                :put (fn [key value] (swap! store assoc key value))
+                :remove (fn [key] (swap! store dissoc key))}]
+    (doseq [ttl [-1 js/NaN js/Infinity js/-Infinity]]
+      (is (thrown-with-msg? js/Error #"TTL|ttl"
+            (boundary/create-memory-lru-cache #js {:defaultTtlMs ttl})))
+      (is (thrown-with-msg? js/Error #"TTL|ttl"
+            (boundary/create-lmdb-cache #js {:db db :defaultTtlMs ttl})))
+      (doseq [cache [(boundary/create-memory-lru-cache #js {})
+                    (boundary/create-lmdb-cache #js {:db db})]]
+        (is (thrown-with-msg? js/Error #"TTL|ttl"
+              (boundary/cache-put-js cache "invalid" "value" #js {:ttlMs ttl})))
+        (is (nil? (boundary/cache-get-js cache "invalid")))))
+    (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 0})
+                  (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 0})]]
+      (boundary/cache-put-js cache "zero" "retained" #js {:ttlMs 0})
+      (is (= "retained" (boundary/cache-get-js cache "zero"))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))
