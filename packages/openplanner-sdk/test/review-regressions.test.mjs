@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, enqueueMigrationJob } from '../dist/mongodb.js';
+import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
 import { EmbedProviderFunction, ParallelEmbeddingPool } from '../dist/embeddings.js';
@@ -18,7 +18,7 @@ import { cacheGet, cachePut } from '@open-hax/openplanner-document-hydration';
 import { splitSentences, deduplicateByHash } from '../dist/sentence-split.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
-import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries, deleteMongoVectorEntriesByFilter } from '../dist/mongo-vectors.js';
+import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, addMongoVectorParentLabel, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries, deleteMongoVectorEntriesByFilter } from '../dist/mongo-vectors.js';
 import { createOpenPlannerSdk } from '../dist/sdk.js';
 import { createEmbeddingRuntime } from '../dist/embedding-runtime.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
@@ -129,6 +129,14 @@ function collection(name, initial = []) {
       if(Object.hasOwn(filter,'parent_id'))return [...rows.values()].find(row=>
         Array.isArray(filter.parent_id?.$in)?filter.parent_id.$in.includes(row.parent_id):row.parent_id===filter.parent_id)??null;
       return rows.get(filter._id ?? filter.tenant_id ?? filter.label_id) ?? null;
+    },
+    aggregate(pipeline) {
+      // Native bounded session-scope discovery groups absent/null projects.
+      assert.deepEqual(pipeline[1],{$group:{_id:{$ifNull:['$project',null]}}});
+      assert.deepEqual(pipeline[2],{$limit:2});
+      const session=pipeline[0].$match.session;
+      const projects=[...new Set([...rows.values()].filter(row=>row.session===session).map(row=>row.project??null))];
+      return {toArray:async()=>projects.slice(0,2).map(project=>({_id:project}))};
     },
     find(filter) {
       calls.searches.push(filter);
@@ -1800,4 +1808,68 @@ test('full history signals actual rows beyond its compatible cap using one extra
   assert.equal(result.rows.length,100000);assert.equal(result.has_more,true);assert.equal(result.limit,100000);assert.equal(observedLimit,100001);
   mongo.events.find=()=>({sort(){return this;},limit(){return this;},toArray:async()=>Array(100000).fill(row)});
   const complete=await getSessionResponse({mongo},'history',{mode:'full'});assert.equal(complete.has_more,false);assert.equal(complete.rows.length,100000);
+});
+
+
+// Actual Codex5481432710 on64d5b84: eight scoped read/write boundaries.
+function scopedHistoryFixture(rows){
+  const mongo=mongoFixture();for(const row of rows)mongo.events.rows.set(row._id,row);
+  let invocation=0;mongo.events.find=filter=>{
+    let values=[...rows].filter(row=>row.session===filter.session&&(!Object.hasOwn(filter,'project')||(filter.project===null?row.project==null:row.project===filter.project))&&(!filter.kind||row.kind===filter.kind));
+    if(invocation++%2)values.reverse();
+    return {project(){return this;},sort(spec){values.sort((a,b)=>{for(const [key,direction]of Object.entries(spec)){const x=a[key],y=b[key];const compare=x instanceof Date?x-y:String(x).localeCompare(String(y));if(compare)return compare*direction;}return 0;});return this;},limit(n){values=values.slice(0,n);return this;},toArray:async()=>values};
+  };return mongo;
+}
+const historyRows=()=>[['lake','a'],['forest','b'],[null,'c'],['','d']].map(([project,_id])=>({_id,session:'shared',project,ts:new Date(0),kind:'knoxx.message',text:_id}));
+for(const mode of ['full','resume','visibility'])test(`Codex64d: ${mode} refuses ambiguous unscoped history`,async()=>{
+  const mongo=scopedHistoryFixture(historyRows());await assert.rejects(getSessionResponse({mongo},'shared',{mode}),/ambiguous.*project/i);
+});
+test('Codex64d: direct history refuses cross-project mixing and exact null/empty selectors isolate rows',async()=>{
+  const mongo=scopedHistoryFixture(historyRows()),sessions=createProtocols({mongo}).sessionManagement;
+  await assert.rejects(sessions.getSessionEvents('shared',{}),/ambiguous.*project/i);
+  for(const [project,id]of [['lake','a'],['forest','b'],[null,'c'],['','d']]){
+    assert.deepEqual((await sessions.getSessionEvents('shared',{project})).map(x=>x._id),[id]);
+    assert.deepEqual((await getSessionResponse({mongo},'shared',{mode:'full',project})).rows.map(x=>x._id),[id]);
+  }
+});
+test('Codex64d: unscoped history with one actual project remains usable without session markers',async()=>{
+  const mongo=scopedHistoryFixture(historyRows().filter(row=>row.project==='lake'));
+  assert.deepEqual((await getSessionResponse({mongo},'shared',{mode:'resume'})).rows.map(x=>x._id),['a']);
+});
+for(const direction of ['asc','desc'])test(`Codex64d: ${direction} history ties retain the same bounded rows on repeated reads`,async()=>{
+  const rows=['z','a','m','b'].map(_id=>({_id,session:'ties',project:'lake',ts:new Date(0)}));const mongo=scopedHistoryFixture(rows),sessions=createProtocols({mongo}).sessionManagement;
+  const expected=direction==='asc'?['a','b']:['z','m'];
+  for(let i=0;i<3;i++)assert.deepEqual((await sessions.getSessionEvents('ties',{project:'lake',limit:2,sort:direction})).map(x=>x._id),expected);
+});
+test('Codex64d: ownerless graph edges preserve complete project and delimiter identities',async()=>{
+  const mongo=mongoFixture(),rows=[{source_node_id:'a',target_node_id:'b',edge_kind:'related',project:'lake'},{source_node_id:'a',target_node_id:'b',edge_kind:'related',project:'forest'},{source_node_id:'a',target_node_id:'b',edge_kind:'related',project:null},{source_node_id:'a',target_node_id:'b',edge_kind:'related',project:''},{source_node_id:'a||b',target_node_id:'c',edge_kind:'related',project:'lake'},{source_node_id:'a',target_node_id:'b||c',edge_kind:'related',project:'lake'}];
+  const c=mongo.graphEdges;c.bulkWrite=async ops=>{for(const {updateOne:{filter,update}} of ops){c.calls.writes.push({filter,update});let old;
+    if(filter._id)old=c.rows.get(filter._id);else old=[...c.rows.values()].find(row=>['source_node_id','target_node_id','edge_kind','project'].every(key=>(row[key]??null)===(filter[key]??null))&&(row.data?.source_event_id??null)===filter['data.source_event_id']);
+    const next={...(!old?update.$setOnInsert:{}),...old,...update.$set};next._id=old?._id??filter._id??next._id;c.rows.set(next._id,next);
+  }};
+  await upsertGraphEdges(c,rows);assert.equal(c.rows.size,6);assert.equal(new Set([...c.rows.values()].map(row=>JSON.stringify([row.project,row.source_node_id,row.target_node_id,row.edge_kind]))).size,6);
+  const saved=[...c.rows.values()].find(row=>row.project==='lake'&&row.source_node_id==='a'&&row.target_node_id==='b');c.rows.delete(saved._id);saved._id='existing-ownerless-legacy';c.rows.set(saved._id,saved);
+  await upsertGraphEdges(c,[{...rows[0],source:'refreshed'}]);assert.equal(c.rows.size,6);assert.equal(c.rows.get('existing-ownerless-legacy').source,'refreshed');
+});
+for(const filter of ['scope',[],null,undefined,42,false,new Date(0),new Map(),/scope/])test(`Codex64d: browse rejects explicitly malformed filter ${String(filter)}`,async()=>{
+  let accessed=0;const cursor={sort(){return this;},skip(){return this;},limit(){return this;},toArray:async()=>[]};const mongo={db:{collection(){accessed++;return {countDocuments:async()=>0,find:()=>cursor};}}};
+  await assert.rejects(queryCollectionResponse({mongo},{collection:'events',filter}),/filter.*plain object|plain object.*filter/i);assert.equal(accessed,0);
+});
+for(const embedding of [[],[NaN],[Infinity],[-Infinity],[1,'2'],Array(2)])for(const tier of ['hot','compact'])test(`Codex64d: ${tier} direct vector admission rejects nonfinite/empty/sparse embedding ${JSON.stringify(embedding)}`,async()=>{
+  const mongo=mongoFixture();await assert.rejects(upsertMongoVectorDocuments(mongo,tier,[entry('good'),{...entry('bad'),embedding}]),/embedding.*finite|embedding.*nonempty/i);
+  assert.equal(mongo.vectorPartitions.calls.writes.length,0);assert.equal(mongo.hotVectors.calls.writes.length,0);assert.equal(mongo.compactVectors.calls.writes.length,0);assert.equal(mongo.vectorPartitions.calls.searches.length,0);
+});
+test('Codex64d: mismatched replacement parent cannot delete its victim or set up foreign partitions',async()=>{
+  const mongo=mongoFixture();let started=0;mongo.hotVectors.rows.set('protected',{_id:'protected',parent_id:'victim'});mongo.client.startSession=()=>{started++;return {withTransaction:async f=>f(),endSession:async()=>{}};};
+  await assert.rejects(replaceMongoVectorEntries(mongo,'hot','victim',[{...entry('own'),parentId:'victim'},{...entry('foreign'),parentId:'other'}]),/parent/i);
+  assert.equal(started,0);assert.equal(mongo.vectorPartitions.calls.writes.length,0);assert.equal(mongo.hotVectors.calls.deletes.length,0);assert.equal(mongo.hotVectors.rows.get('protected').parent_id,'victim');
+});
+for(const parentId of [{$ne:'victim'},[],42,false,null,' '])for(const operation of [addMongoVectorParentLabel,removeMongoVectorParentLabel])test(`Codex64d: ${operation.name} rejects malformed parent before any storage access ${JSON.stringify(parentId)}`,async()=>{
+  const mongo=mongoFixture();let accessed=0;const hot=mongo.hotVectors;Object.defineProperty(mongo,'hotVectors',{get(){accessed++;return hot;}});
+  await assert.rejects(operation(mongo,parentId,'keep'),/parent.*nonblank string|nonblank string.*parent/i);assert.equal(accessed,0);assert.equal(hot.calls.writes.length,0);assert.equal(mongo.compactVectors.calls.writes.length,0);assert.equal(mongo.vectorPartitions.calls.searches.length,0);
+});
+for(const tenant of [{},[],42,false,null,' '])for(const field of ['nested','fallback'])test(`Codex64d: batch label projection rejects malformed ${field} tenant before writes ${JSON.stringify(tenant)}`,async()=>{
+  const mongo=mongoFixture();let provider=0;const bad=ordinaryEvent('bad-tenant','');if(field==='nested')bad.extra.openplanner_labels.tenant_id=tenant;else bad.extra.tenant_id=tenant;
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{provider++;return texts.map(()=>[1,0]);}})},[ordinaryEvent('preceding-valid',''),bad]),/tenant.*nonblank string|nonblank string.*tenant/i);
+  assert.equal(provider,0);assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(mongo.graphLabelNodes.calls.writes.length,0);
 });
