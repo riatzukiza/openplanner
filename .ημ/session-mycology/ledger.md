@@ -613,3 +613,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-00f8546-retention-k-final-green-20261011
   note: Six causal invalid-input failures now pass with zero partition/provider/scan effects; all prior325 assertions and three safe-integer legacy controls retained. No arbitrary k cap or legacy zero/negative behavior change. Completes same streaming-memory repair within originalfour-package scope. Entire prior64423byte native description archived exactly before preparing current scope/count compaction; no sourcejournal/nativeapproval rewrite. Source207prefixes intact;no live/board/deploy/paid/spore.
+
+- ts: 2026-10-11T00:21:57.456Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-938daf5-sixteen-boundaries-red-20261011
+  note: All sixteen findings have causal RED fixtures within imported four packages; no original assertions deleted/weakened. Capture actual outputs including runtime notices. Source208prefixes immutable; no live/board/deploy/paid/spore.

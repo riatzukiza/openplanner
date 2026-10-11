@@ -94,5 +94,13 @@
         b #js {:project "lake" :extra #js {:url "same"}}]
     (is (not= (hydration/document-cache-key a) (hydration/document-cache-key b)))))
 
+(deftest mongo-document-identities-retain-storage-id-fallback
+  (let [a (hydration/row-to-document #js {:_id "mongo-a"})
+        b (hydration/row-to-document #js {:_id "mongo-b"})
+        explicit (hydration/row-to-document #js {:id "public" :_id "storage"})]
+    (is (= "mongo-a" (.-id a)))
+    (is (= "mongo-b" (.-id b)))
+    (is (= "public" (.-id explicit)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))
