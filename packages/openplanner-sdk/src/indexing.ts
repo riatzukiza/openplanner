@@ -12,7 +12,6 @@ const DEFAULT_TARGET_CHUNK_CHARS = 16_000;
 const DEFAULT_OVERLAP_CHARS = 400;
 const DEFAULT_BATCH_TOKEN_BUDGET = 40_000;
 const DEFAULT_BATCH_ITEM_LIMIT = 256;
-const HARD_MIN_CHUNK_CHARS = 3_000;
 
 const turndown = new TurndownService({
   headingStyle: "atx",
@@ -114,74 +113,32 @@ function estimateTokens(input: string): number {
   return Math.max(Math.ceil(chars / 4), Math.ceil(words * 1.35));
 }
 
-function hardSplitBlock(block: string, maxChars: number): string[] {
-  const normalized = normalizeWhitespace(block);
-  if (!normalized) return [];
-  if (normalized.length <= maxChars) return [normalized];
-
-  const lines = normalized.split(/\n/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length > 1) {
-    return lines.flatMap((line) => hardSplitBlock(line, maxChars));
-  }
-
-  const sentences = normalized
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-  if (sentences.length > 1) {
-    const out: string[] = [];
-    let current = "";
-    for (const sentence of sentences) {
-      const next = current ? `${current} ${sentence}` : sentence;
-      if (current && next.length > maxChars) {
-        out.push(current);
-        current = sentence;
-      } else {
-        current = next;
-      }
-    }
-    if (current) out.push(current);
-    return out.flatMap((part) => hardSplitBlock(part, maxChars));
-  }
-
-  const out: string[] = [];
-  const step = Math.max(HARD_MIN_CHUNK_CHARS, maxChars);
-  for (let start = 0; start < normalized.length; start += step) {
-    out.push(normalized.slice(start, start + step).trim());
-  }
-  return out.filter(Boolean);
-}
-
 function chunkText(input: string, targetTokens: number, targetChars: number, overlapChars: number): string[] {
   const text = normalizeWhitespace(input);
-  if (!text) return [];
-  if (estimateTokens(text) <= targetTokens && text.length <= targetChars) {
-    return [text];
-  }
-
-  const blocks = text
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .flatMap((block) => hardSplitBlock(block, targetChars));
-
   const out: string[] = [];
-  let current = "";
-
-  for (const block of blocks) {
-    const next = current ? `${current}\n\n${block}` : block;
-    if (current && (estimateTokens(next) > targetTokens || next.length > targetChars)) {
-      out.push(current.trim());
-      const maxOverlapChars = Math.max(0, Math.min(overlapChars, targetChars - block.length - 2));
-      const overlap = maxOverlapChars > 0 ? current.slice(-maxOverlapChars).trim() : "";
-      current = overlap ? `${overlap}\n\n${block}` : block;
-      continue;
+  let start = 0;
+  while (start < text.length) {
+    let low = 0, high = Math.min(targetChars, text.length - start);
+    // Bound both estimates on actual contiguous source slices, preserving offsets.
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (estimateTokens(text.slice(start, start + mid)) <= targetTokens) low = mid;
+      else high = mid - 1;
     }
-    current = next;
+    if (!low) throw new Error("index chunk token budget cannot fit a nonempty prefix");
+    let end = start + low;
+    if (end < text.length) {
+      const boundary = Math.max(text.lastIndexOf(" ", end - 1), text.lastIndexOf("\n", end - 1));
+      if (boundary > start) end = boundary;
+    }
+    const chunk = text.slice(start, end).trim();
+    if (chunk) out.push(chunk);
+    if (end === text.length) break;
+    // Overlap also consumes the next chunk's budgets; always advance forward.
+    const overlap = Math.min(overlapChars, Math.floor((end - start) / 2));
+    start = Math.max(start + 1, end - overlap);
   }
-
-  if (current.trim()) out.push(current.trim());
-  return out.filter(Boolean);
+  return out;
 }
 
 function locateChunkOffsets(text: string, chunks: string[]): Array<{ charStart: number | null; charEnd: number | null }> {
@@ -217,6 +174,10 @@ export function prepareIndexDocument(params: {
   const targetChunkTokens = params.targetChunkTokens ?? DEFAULT_TARGET_CHUNK_TOKENS;
   const targetChunkChars = params.targetChunkChars ?? DEFAULT_TARGET_CHUNK_CHARS;
   const overlapChars = params.overlapChars ?? DEFAULT_OVERLAP_CHARS;
+  for (const [name, value] of Object.entries({ targetChunkTokens, targetChunkChars, overflowThresholdTokens })) {
+    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${name} must be a positive safe integer`);
+  }
+  if (!Number.isSafeInteger(overlapChars) || overlapChars < 0) throw new Error("overlapChars must be a nonnegative safe integer");
   const shouldChunk = params.forceChunking === true
     || normalizedEstimatedTokens > targetChunkTokens
     || normalizedText.length > targetChunkChars

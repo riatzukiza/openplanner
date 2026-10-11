@@ -25,11 +25,13 @@ export interface EventAdmission {
   queryEvents(filter: any): Promise<any[]>;
 }
 
+export interface SessionScope { project?: string; }
+
 export interface SessionManagement {
   createSession(opts: any): Promise<any>;
-  getSession(sessionId: string): Promise<any>;
-  updateSession(sessionId: string, updates: any): Promise<any>;
-  closeSession(sessionId: string): Promise<void>;
+  getSession(sessionId: string, opts?: SessionScope): Promise<any>;
+  updateSession(sessionId: string, updates: any, opts?: SessionScope): Promise<any>;
+  closeSession(sessionId: string, opts?: SessionScope): Promise<void>;
   listSessions(opts: { project?: string; limit: number; offset: number }): Promise<{ rows: any[]; total: number }>;
   getSessionEvents(sessionId: string, opts: any): Promise<any[]>;
 }
@@ -83,34 +85,43 @@ class MongoSessionManagement implements SessionManagement {
 
   async createSession(opts: any): Promise<any> {
     if (typeof opts?.session !== "string" || !opts.session.trim()) throw new Error("session must be a nonblank string");
+    assertOptionalSessionString(opts.project, "project");
     const { expiresAt: _callerExpiry, _id: _callerId, ...content } = opts;
     const now = new Date();
     const expiresAt = eventRetentionExpiry(content.extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
-    const existing = await this.getSession(content.session);
+    const existing = await this.ctx.mongo.events.findOne({ session: content.session, kind: "session", project: content.project ?? null });
     if (existing) return existing; // Preserve an already stored legacy marker on retry.
-    const markerId = "session-marker:" + createHash("sha256").update(JSON.stringify(["session", content.session])).digest("hex");
+    const markerId = "session-marker:" + createHash("sha256").update(JSON.stringify(["session", content.project ?? null, content.session])).digest("hex");
     const doc = { ...content, _id: markerId, kind: "session", createdAt: now, updatedAt: now,
       ...(expiresAt ? { expiresAt } : {}) };
     // Mongo's unique _id makes concurrent new marker creation converge atomically.
     await this.ctx.mongo.events.updateOne({ _id: markerId }, { $setOnInsert: doc }, { upsert: true });
     const stored = await this.ctx.mongo.events.findOne({ _id: markerId });
-    if (!stored || stored.kind !== "session" || stored.session !== content.session) {
+    if (!stored || stored.kind !== "session" || stored.session !== content.session || (stored.project ?? null) !== (content.project ?? null)) {
       throw new Error("session marker identity conflicts with stored document");
     }
     return stored;
   }
 
-  async getSession(sessionId: string): Promise<any> {
-    return this.ctx.mongo.events.findOne({ session: sessionId, kind: "session" });
+  async getSession(sessionId: string, opts: SessionScope = {}): Promise<any> {
+    assertOptionalSessionString(opts.project, "project");
+    const filter = { session: sessionId, kind: "session", ...(opts.project === undefined ? {} : { project: opts.project }) };
+    const first = await this.ctx.mongo.events.findOne(filter);
+    if (first && opts.project === undefined) {
+      const matches = await this.ctx.mongo.events.find(filter).limit(2).toArray();
+      if (matches.length > 1) throw new Error("ambiguous session identity; specify project");
+    }
+    return first;
   }
 
-  async updateSession(sessionId: string, updates: any): Promise<any> {
-    const { _id, session, kind, createdAt, expiresAt: _callerExpiry, ...mutable } = updates;
+  async updateSession(sessionId: string, updates: any, opts: SessionScope = {}): Promise<any> {
+    const stored = await this.getSession(sessionId, opts);
+    if (!stored) return null;
+    const { _id, session, project: _project, kind, createdAt, expiresAt: _callerExpiry, ...mutable } = updates;
     const now = new Date();
     const retentionUpdate: Record<string, unknown> = {};
     if (["extra", "extra.openplanner_labels", "extra.openplanner_labels.labels", "expiresAt"]
       .some(key => Object.hasOwn(updates, key))) {
-      const stored = await this.getSession(sessionId);
       let extra = Object.hasOwn(mutable, "extra") ? mutable.extra : stored?.extra;
       if (Object.hasOwn(mutable, "extra.openplanner_labels")) {
         extra = { ...extra, openplanner_labels: mutable["extra.openplanner_labels"] };
@@ -131,14 +142,15 @@ class MongoSessionManagement implements SessionManagement {
       else retentionUpdate.$unset = { expiresAt: "" };
     }
     await this.ctx.mongo.events.updateOne(
-      { session: sessionId, kind: "session" },
+      { _id: stored._id },
       { $set: { ...mutable, session: sessionId, kind: "session", updatedAt: now }, ...retentionUpdate }
     );
-    return this.getSession(sessionId);
+    return this.getSession(sessionId, stored.project === undefined || stored.project === null ? opts : { project: stored.project });
   }
 
-  async closeSession(sessionId: string): Promise<void> {
-    await this.ctx.mongo.events.deleteMany({ session: sessionId, kind: "session" });
+  async closeSession(sessionId: string, opts: SessionScope = {}): Promise<void> {
+    const stored = await this.getSession(sessionId, opts);
+    if (stored) await this.ctx.mongo.events.deleteMany({ _id: stored._id });
   }
 
   async listSessions(opts: { project?: string; limit: number; offset: number }): Promise<{ rows: any[]; total: number }> {
@@ -189,6 +201,8 @@ class MongoSessionManagement implements SessionManagement {
   async getSessionEvents(sessionId: string, opts: any): Promise<any[]> {
     assertOptionalSessionString(opts.project, "project");
     assertOptionalSessionString(opts.kind, "kind");
+    const requestedLimit = sessionPageInteger(opts.limit, 1000);
+    const limit = Math.min(requestedLimit > 0 ? requestedLimit : 1000, 1000);
     const filter: Record<string, unknown> = { session: sessionId };
     if (opts.project) filter.project = opts.project;
     if (opts.kind) filter.kind = opts.kind;
@@ -197,7 +211,7 @@ class MongoSessionManagement implements SessionManagement {
     if (opts.projection) cursor = cursor.project(opts.projection);
     return cursor
       .sort({ ts: opts.sort === "asc" ? 1 : -1 })
-      .limit(opts.limit ?? 1000)
+      .limit(limit)
       .toArray();
   }
 }

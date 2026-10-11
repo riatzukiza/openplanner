@@ -373,6 +373,7 @@ export class ParallelEmbeddingPool {
     } = {}
   ) {
     const workerCount = opts.workerCount ?? 4;
+    if (!Number.isSafeInteger(workerCount) || workerCount <= 0) throw new Error("workerCount must be a positive safe integer");
     this.workers = Array.from({ length: workerCount }, () =>
       new EmbedProviderFunction(model, url, {
         ...opts,

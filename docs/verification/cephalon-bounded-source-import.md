@@ -782,3 +782,33 @@ Native description maintenance is prepared because its64423bytes of accumulated 
 Actual native Codex reviews5481241594 (00f) and5481299578 (938) add sixteen concrete findings in the four imported packages; original import manifest is retained. SDK415tests337PASS78FAIL/exit1; all334prior testsPASS, failures are new causal fixtures. Hydration8tests27assertions2FAIL0errors; existing7/24 retained. Tests cover generated chunk/sentence event ownership, requested real-file cache binding, semantic tuple identities/legacy preservation, bounded session event limits, vector filter scope admission, retention labels/scope types, cross-batch dimensions, unsupported transaction refusal, TTL configuration, project-scoped session CRUD, token-budget chunking, idempotent expiry, shared SDK cache ownership and embedding worker count.
 
 Actual captured subprocess output: /home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-938daf5-sixteen-boundaries-causal-red-20261011.json; 172425bytes/SHA256d762fcaf704f1cbd495edf02ba18becfead92b38cf5d1a802c6215c9dbb5ac4e. Hermetic Mongo/provider fixtures and owned temporary LMDB, no live runtime/deployment/approval. RED fixtures are committed before production changes; existing208 receipt/reflection prefixes remain exact.
+
+
+## Sixteen imported-boundary repairs — October11 GREEN
+
+All19 bounded gates pass: SDK415/415; graph66tests396assertions; cache11/47; hydration8/27; JVM17/100; released ESM/formatter, 0compiler/lint warnings, real forced graph assertion exit1, workflow/diff hygiene. Seven unchanged cache/hydration prerequisite gates are reused from actual successful same-source executions with byte-hash checks; remaining twelve executed on the repaired source. Source209 prefixes and original56import manifest remain byte-identical.
+
+Native findings are repaired as follows:
+
+| Native root | Repair / actual regression |
+| --- | --- |
+|4239638042|Plan generated derive/chunk/sentence identities once; reserve all together; preflight batch and persisted owners before the first write; production consumes the same plan.|
+|4239638044|Generic cache identity includes canonical real file path; two files sharing an untrusted hash retain their actual distinct text.|
+|4239638047|Semantic edge/force typed tuple lookup preserves legacy storage IDs; newly inserted IDs hash the typed tuple; delimiter/null-empty collisions remain distinct.|
+|4239638048|Public event limits reject non-safe-integers before cursor creation; default/nonpositive normalize1000, cap1000.|
+|4239638050|Reject unsupported vector filter fields/forms before IO; retain validated scalar/$eq/$ne/$in forms and explicit session scope.|
+|4239638051|Validate retention labels as nonblank string arrays before embedding or storage.|
+|4239638054|Retain one embedding dimension across indexing batches; a parent with a mismatched batch cannot be partially replaced.|
+|4239638056|No untransactional replay of destructive replacement; unsupported Mongo transaction errors propagate, prior rows preserved, session closes. A deployment must provide transaction support; this does not establish served compatibility.|
+|4239638059|Hydration TTL must be positive finite safe integer before either cache is created.|
+|4239689204|Marker hash includes project; creation looks up the exact project/session; unscoped ambiguous CRUD refuses; updates/close bind stored_id and cannot move project.|
+|4239689206|Scope/string metadata validation precedes provider calls and storage.|
+|4239689209|Chunks and overlap obey both token/character budgets on contiguous source slices; saved offsets continue to match actual content.|
+|4239689212|Native array-match restricts label removal to rows actually retaining that label; repeated/no-op removal preserves original expiry.|
+|4239689216|Mongo document_id falls back to storage_id; explicit public ID retains precedence.|
+|4239689219|SDK instances hold a shared cache lease; cache-using operations/ingests drain on close; only last SDK release closes the process cache/LMDB handle.|
+|4239689222|Embedding pool count requires positive safe integer; default/valid rotation retained.|
+
+The original SDK session fixture already had stored_id but asserted the old session-only filter; its exact mutation-filter assertion is strengthened to that existing stored identity. No assertion was removed. Initial GREEN415/411PASS4FAIL is retained as bounded-sixteen-boundaries-first-green-four-fail-20261011.json; the intermediate415/414PASS1FAIL operator expectation typo is retained in bounded-sixteen-sdk-iteration-20261011.log, then corrected to its existing stored_id. Preparation TS7053 exposed the absent explicit session request type; the declared optional string now matches validated behavior. These failures are not hidden or credited as passing production verification.
+
+Final actual captured output: /home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/bounded-sixteen-boundaries-final-green-20261011.json; 111074bytes/SHA2560a6291028ed022ee98ec32662804613744ff4e2e0ba992a4620f4a9b7cc3b134. Same imported four-package inventory; no distributed writer/fencing, absolute memory/latency bound, live maker, deployed source, board, approval or completed milestone claim. B1/B2/liveB3 remain unfinished.

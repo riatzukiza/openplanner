@@ -1127,11 +1127,11 @@ export async function upsertGraphSemanticEdges(
       const [sourceNodeId, targetNodeId] = row.source_node_id < row.target_node_id
         ? [row.source_node_id, row.target_node_id]
         : [row.target_node_id, row.source_node_id];
-      const edgeId = `${sourceNodeId}||${targetNodeId}`;
+      const edgeId = "semantic-edge:" + createHash("sha256").update(JSON.stringify([sourceNodeId, targetNodeId])).digest("hex");
 
       return {
         updateOne: {
-          filter: { _id: edgeId },
+          filter: { source_node_id: sourceNodeId, target_node_id: targetNodeId },
           update: {
             $set: {
               source_node_id: sourceNodeId,
@@ -1147,6 +1147,7 @@ export async function upsertGraphSemanticEdges(
               updatedAt: now,
             },
             $setOnInsert: {
+              _id: edgeId,
               createdAt: now,
             },
           },
@@ -1186,11 +1187,11 @@ export async function upsertGraphSemanticForceSamples(
         : [row.target_node_id, row.source_node_id];
       const fieldProfile = row.field_profile ?? "layout.v1";
       const embeddingModel = row.embedding_model ?? null;
-      const edgeId = `${sourceNodeId}||${targetNodeId}||${fieldProfile}||${embeddingModel ?? ""}`;
+      const edgeId = "semantic-force:" + createHash("sha256").update(JSON.stringify([sourceNodeId, targetNodeId, fieldProfile, embeddingModel])).digest("hex");
 
       return {
         updateOne: {
-          filter: { _id: edgeId },
+          filter: { source_node_id: sourceNodeId, target_node_id: targetNodeId, field_profile: fieldProfile, embedding_model: embeddingModel },
           update: {
             $set: {
               source_node_id: sourceNodeId,
@@ -1207,6 +1208,7 @@ export async function upsertGraphSemanticForceSamples(
               updatedAt: now,
             },
             $setOnInsert: {
+              _id: edgeId,
               createdAt: now,
             },
           },

@@ -80,7 +80,8 @@ function asDate(value: unknown): Date {
 
 function toStringOrNull(value: unknown): string | null {
   if (value === undefined || value === null) return null;
-  const next = String(value);
+  if (typeof value !== "string") throw new Error("vector metadata fields must be strings or null");
+  const next = value;
   return next.length > 0 ? next : null;
 }
 
@@ -94,8 +95,18 @@ function toNumberOrNull(value: unknown): number | null {
 }
 
 function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.map((entry) => String(entry ?? "").trim()).filter(Boolean))];
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.some(entry => typeof entry !== "string" || !entry.trim())) {
+    throw new Error("vector labels must be an array of nonblank strings");
+  }
+  return [...new Set(value.map(entry => entry.trim()))];
+}
+
+function validateVectorMetadata(metadata: Record<string, unknown>): void {
+  for (const field of ["source", "kind", "project", "session", "visibility", "author", "role", "model", "quality_label", "embedding_model", "title", "seed_id"]) {
+    toStringOrNull(metadata[field]);
+  }
+  toStringArray(metadata.labels);
 }
 
 function parsePositiveIntEnv(name: string): number {
@@ -577,11 +588,6 @@ async function refreshPartitionReadiness(mongo: MongoConnection, partition: Mong
   return { ...partition, searchIndexStatus: state.status };
 }
 
-function isTransactionUnsupported(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /Transaction numbers are only allowed|transactions are not supported|replica set member|mongos/i.test(message);
-}
-
 async function withMongoTransaction<T>(
   mongo: MongoConnection,
   work: (session: ClientSession | undefined) => Promise<T>,
@@ -589,11 +595,6 @@ async function withMongoTransaction<T>(
   const session = mongo.client.startSession();
   try {
     return await session.withTransaction(async () => work(session));
-  } catch (error) {
-    if (isTransactionUnsupported(error)) {
-      return await work(undefined);
-    }
-    throw error;
   } finally {
     await session.endSession();
   }
@@ -650,6 +651,7 @@ export async function listMongoVectorPartitions(
 }
 
 function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, now: Date, ttlSeconds: number): MongoVectorDocument {
+  validateVectorMetadata(entry.metadata);
   const ts = asDate(entry.metadata.ts);
   const sourceTextRedacted = entry.metadata.source_text_redacted === true;
   const labels = toStringArray(entry.metadata.labels);
@@ -814,10 +816,11 @@ async function updatePartitionVectorLabels(
   tier: MongoVectorTier,
   parentId: string,
   update: Record<string, unknown> | Record<string, unknown>[],
+  requiredLabel?: string,
 ): Promise<void> {
   const partitions = await listMongoVectorPartitions(mongo, tier);
   await Promise.all(partitions.map((partition) => (
-    mongo.db.collection<MongoVectorDocument>(partition.collectionName).updateMany({ parent_id: parentId }, update)
+    mongo.db.collection<MongoVectorDocument>(partition.collectionName).updateMany({ parent_id: parentId, ...(requiredLabel === undefined ? {} : { labels: requiredLabel }) }, update)
   )));
 }
 
@@ -890,10 +893,10 @@ export async function removeMongoVectorParentLabel(
   const hotUpdate = updateForTier("hot");
   const compactUpdate = updateForTier("compact");
   await Promise.all([
-    mongo.hotVectors.updateMany({ parent_id: parentId }, hotUpdate),
-    mongo.compactVectors.updateMany({ parent_id: parentId }, compactUpdate),
-    updatePartitionVectorLabels(mongo, "hot", parentId, hotUpdate),
-    updatePartitionVectorLabels(mongo, "compact", parentId, compactUpdate),
+    mongo.hotVectors.updateMany({ parent_id: parentId, labels: normalized }, hotUpdate),
+    mongo.compactVectors.updateMany({ parent_id: parentId, labels: normalized }, compactUpdate),
+    updatePartitionVectorLabels(mongo, "hot", parentId, hotUpdate, normalized),
+    updatePartitionVectorLabels(mongo, "compact", parentId, compactUpdate, normalized),
   ]);
 }
 
@@ -953,6 +956,7 @@ export async function indexTextInMongoVectors(params: {
   metadata: Record<string, unknown>;
   embeddingFunction: IEmbeddingFunction;
 }): Promise<void> {
+  validateVectorMetadata(params.metadata);
   let normalizedSource: string | undefined;
   const getNormalizedSource = () => normalizedSource ??=
     prepareIndexDocument({ parentId: "source-reference", text: params.text }).normalizedText;
@@ -965,6 +969,7 @@ export async function indexTextInMongoVectors(params: {
     });
 
     const entries: MongoVectorEntry[] = [];
+    let expectedDimensions: number | undefined;
 
     for (const batch of batchPreparedChunks(prepared.chunks)) {
       const texts = batch.map((chunk) => formatEmbeddingPassageText(chunk.text));
@@ -976,6 +981,8 @@ export async function indexTextInMongoVectors(params: {
       if (dimensions <= 0) {
         throw new Error(`embedding function returned an empty vector batch for ${params.parentId}`);
       }
+      expectedDimensions ??= dimensions;
+      if (dimensions !== expectedDimensions) throw new Error("embedding dimensions changed across indexing batches");
       batch.forEach((chunk, index) => {
         const embedding = embeddings[index];
         if (!Array.isArray(embedding) || embedding.length !== dimensions || embedding.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
@@ -1376,6 +1383,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   // Duplicate parents would reuse chunk identities and pair another text's vector.
   const seenParentIds = new Set<string>();
   for (const item of items) {
+    validateVectorMetadata(item.metadata);
     if (seenParentIds.has(item.id)) throw new Error(`Duplicate vector parent ID: ${item.id}`);
     seenParentIds.add(item.id);
   }
@@ -1439,6 +1447,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   // Generate embeddings in large batches for GPU saturation
   const embeddings = new Map<string, number[]>();
   const embeddingErrors = new Map<string, string>();
+  let expectedDimensions: number | undefined;
 
   for (let offset = 0; offset < allChunks.length; offset += embeddingBatchSize) {
     const batch = allChunks.slice(offset, offset + embeddingBatchSize);
@@ -1448,6 +1457,13 @@ export async function batchIndexTextsInMongoVectors(params: {
       const vectors = await embeddingFunction.generate(texts);
       if (!Array.isArray(vectors) || vectors.length !== batch.length) {
         throw new Error(`Embedding batch size mismatch: expected ${batch.length}, got ${Array.isArray(vectors) ? vectors.length : 0}`);
+      }
+      for (const vec of vectors) {
+        if (!Array.isArray(vec) || !vec.length || vec.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+          throw new Error("Invalid embedding vector");
+        }
+        expectedDimensions ??= vec.length;
+        if (vec.length !== expectedDimensions) throw new Error("embedding dimensions changed across indexing batches");
       }
       batch.forEach((chunk, index) => {
         const vec = vectors[index];

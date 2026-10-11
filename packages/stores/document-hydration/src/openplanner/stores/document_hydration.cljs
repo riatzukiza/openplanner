@@ -115,7 +115,7 @@
   (let [extra (parse-extra row)
         meta (metadata extra)
         ts (jget row "ts")]
-    #js {:id (str (or (jget row "id") ""))
+    #js {:id (str (or (jget row "id") (jget row "_id") ""))
          :title (str (or (jget extra "title") (jget row "message") (jget row "id") ""))
          :content (str (or (jget row "text") ""))
          :project (str (or (jget row "project") "devel"))

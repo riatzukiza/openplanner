@@ -165,6 +165,35 @@ function autoDerivedEventId(event: EventEnvelopeV1): string | null {
 }
 
 
+function planGeneratedEvents(event: EventEnvelopeV1) {
+  const sentences: Array<{ hash: string; sent: ReturnType<typeof splitSentences>[number]; nodeId: string; eventId: string }> = [];
+  const ids: string[] = [];
+  const automatic = autoDerivedEventId(event);
+  if (automatic) ids.push(automatic);
+  const extra = (event.extra as Record<string, unknown> | undefined) ?? {};
+  const nodeId = norm(extra.node_id)?.trim() ?? norm(event.source_ref?.message)?.trim() ?? "";
+  const body = norm(event.text)?.trim() ?? "";
+  const prepared = event.kind === "graph.node" && nodeId && body ? prepareIndexDocument({
+    parentId: nodeId, text: body, forceChunking: false,
+    targetChunkTokens: 32_000, targetChunkChars: 180_000, overlapChars: 1_000,
+  }) : undefined;
+  if (prepared) {
+    if (prepared.chunkCount > 1) ids.push(...prepared.chunks.map(chunk => `graph.node:doc_chunk:${chunk.id}`));
+    const hashes = new Set<string>();
+    const sources = prepared.chunkCount <= 1 ? [{ text: prepared.normalizedText }] : prepared.chunks;
+    for (const source of sources) for (const [hash, sent] of deduplicateByHash(splitSentences(source.text))) {
+      if (sent.tokens <= 3 || hashes.has(hash)) continue;
+      hashes.add(hash);
+      const sentenceNodeId = "sentence:" + createHash("sha256").update(JSON.stringify([norm(event.source_ref?.project) ?? null, event.id, hash]), "utf8").digest("hex");
+      const eventId = `graph.node:sentence:${sentenceNodeId}`;
+      ids.push(eventId);
+      sentences.push({ hash, sent, nodeId: sentenceNodeId, eventId });
+    }
+  }
+  return { ids, prepared, sentences };
+}
+
+
 export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
   const unique = new Map<string, EventEnvelopeV1>();
   const payloads = new Map<string, string>();
@@ -178,9 +207,10 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     payloads.set(event.id, payload);
     unique.set(event.id, event);
   }
+  const plans = new Map([...unique.values()].map(event => [event.id, planGeneratedEvents(event)]));
   const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
   ingestTails.set(ctx.mongo, tails);
-  const reservedIds = new Set([...unique.keys(), ...[...unique.values()].map(autoDerivedEventId).filter((id): id is string => id !== null)]);
+  const reservedIds = new Set([...unique.keys(), ...[...plans.values()].flatMap(plan => plan.ids)]);
   const predecessors = [...reservedIds].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
   let complete!: () => void;
   const terminal = new Promise<void>(resolve => { complete = resolve; });
@@ -193,7 +223,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   };
   try {
     await Promise.all(predecessors);
-    const result = await ingestReservedEvents(ctx, [...unique.values()]);
+    const result = await ingestReservedEvents(ctx, [...unique.values()], plans);
     void result.backgroundIndexing.then(release, release);
     return result;
   } catch (error) {
@@ -202,7 +232,7 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   }
 }
 
-async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
+async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[], plans: Map<string, ReturnType<typeof planGeneratedEvents>>): Promise<IngestResult> {
   const { mongo, embeddingRuntime } = ctx;
   const log = ctx.log ?? noopLogger;
   const protocols = createProtocols({ mongo });
@@ -221,10 +251,13 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
   // Generated event identities cannot replace caller-owned source rows. Check
   // every batch and persisted owner before the first event/projection write.
   const sourceIds = new Set(events.map(event => event.id));
-  for (const event of events) {
-    const derivedId = autoDerivedEventId(event);
-    if (!derivedId) continue;
-    if (sourceIds.has(derivedId)) throw new Error(`derived event identity collision: ${derivedId}`);
+  const generatedOwners = new Map<string, string>();
+  for (const event of events) for (const derivedId of plans.get(event.id)!.ids) {
+    const batchOwner = generatedOwners.get(derivedId);
+    if (sourceIds.has(derivedId) || batchOwner !== undefined && batchOwner !== event.id) {
+      throw new Error(`derived event identity collision: ${derivedId}`);
+    }
+    generatedOwners.set(derivedId, event.id);
     const previous = await mongo.events.findOne({ _id: derivedId });
     if (previous && (previous.source !== "openplanner-derive" || (previous.extra as Record<string, unknown> | undefined)?.source_event_id !== event.id)) {
       throw new Error(`derived event identity ownership collision: ${derivedId}`);
@@ -473,14 +506,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       const body = norm(ev.text)?.trim() ?? "";
       if (nodeId && body) {
         const label = String(extra.label ?? extra.path ?? (sr as any).message ?? nodeId).trim() || nodeId;
-        const prepared = prepareIndexDocument({
-          parentId: nodeId,
-          text: body,
-          forceChunking: false,
-          targetChunkTokens: 32_000,
-          targetChunkChars: 180_000,
-          overlapChars: 1_000,
-        });
+        const prepared = plans.get(ev.id)!.prepared!;
 
         if (prepared.chunkCount <= 1) {
           queueNodeEmbedding({
@@ -548,27 +574,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
           }
         }
 
-        const sentenceHashesInDoc = new Set<string>();
-        const sentenceNodeIdsQueued = new Set<string>();
-
-        const sentenceSources = prepared.chunkCount <= 1
-          ? [{ text: prepared.normalizedText }]
-          : prepared.chunks.map((chunk) => ({ text: chunk.text }));
-
-        for (const sourceChunk of sentenceSources) {
-          const sentences = splitSentences(sourceChunk.text);
-          const uniqueSentences = deduplicateByHash(sentences);
-
-          for (const [hash, sent] of uniqueSentences) {
-            if (sent.tokens <= 3) continue;
-            if (sentenceHashesInDoc.has(hash)) continue;
-            sentenceHashesInDoc.add(hash);
-
-            const sentenceNodeId = `sentence:${createHash("sha256").update(JSON.stringify([project ?? null, ev.id, hash]), "utf8").digest("hex")}`;
-            const sentenceEventId = `graph.node:sentence:${sentenceNodeId}`;
-
-            if (!sentenceNodeIdsQueued.has(sentenceNodeId)) {
-              sentenceNodeIdsQueued.add(sentenceNodeId);
+        for (const { hash, sent, nodeId: sentenceNodeId, eventId: sentenceEventId } of plans.get(ev.id)!.sentences) {
               queueDerivedGraphNodeEvent({
                 id: sentenceEventId,
                 ts: new Date(ev.ts),
@@ -583,7 +589,6 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
                   derived_from_node_id: nodeId,
                 },
               });
-            }
 
             projectedGraphEdges.push({
               source_node_id: nodeId,
@@ -606,7 +611,6 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
               sourceText: ev.text ?? "",
               chunkCount: 1,
             });
-          }
         }
       }
     }

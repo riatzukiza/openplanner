@@ -36,6 +36,7 @@ function nonBlankString(value: unknown): string | undefined {
 
 async function createHydrationCache(): Promise<OwnedHydrationCache> {
   const ttlMs = Number(process.env.OPENPLANNER_HYDRATION_CACHE_TTL_MS ?? 5 * 60 * 60 * 1000);
+  if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) throw new Error("hydration cache TTL must be a positive safe integer");
   const layers: CacheHandle[] = [createMemoryLruCache({ maxEntries: 1024, defaultTtlMs: ttlMs })];
 
   let close: () => Promise<void> = async () => {};
@@ -71,6 +72,19 @@ export async function closeHydrationCache(): Promise<void> {
   return hydrationClosePromise;
 }
 
+let sdkCacheOwners = 0;
+
+/** SDK instances share the process cache; only the last owner's release closes it. */
+export function acquireHydrationCacheOwner(): () => Promise<void> {
+  sdkCacheOwners++;
+  let released = false;
+  return async () => {
+    if (released) return;
+    released = true;
+    if (--sdkCacheOwners === 0) await closeHydrationCache();
+  };
+}
+
 export function sourceRoot(): string {
   return process.env.OPENPLANNER_SOURCE_ROOT ?? "/home/err/devel";
 }
@@ -104,11 +118,13 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
   try {
     const [root, filePath] = await Promise.all([realpath(sourceRoot()), realpath(candidate)]);
     if (!(filePath === root || filePath.startsWith(`${root}${path.sep}`))) return null;
+    // Caller hashes are not physical file identity; aliases share the resolved path.
+    const fileCacheKey = "openplanner:hydration-file:v3:" + JSON.stringify([cacheKey, filePath]);
     const hydrationCache = await getHydrationCache();
-    const cached = await cacheGet(hydrationCache, cacheKey);
+    const cached = await cacheGet(hydrationCache, fileCacheKey);
     if (typeof cached === "string") return cached;
     const text = await readFile(filePath, "utf8");
-    await cachePut(hydrationCache, cacheKey, text);
+    await cachePut(hydrationCache, fileCacheKey, text);
     return text;
   } catch {
     return null;

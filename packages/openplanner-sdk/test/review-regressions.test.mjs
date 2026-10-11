@@ -446,7 +446,7 @@ test('explicit graph-node embeddings bind the authoritative raw event text',asyn
 });
 test('session updates retain immutable identity and creation time',async()=>{
   const mongo=mongoFixture();const original={_id:'stored',session:'session-a',kind:'session',createdAt:'original'};let stored={...original};
-  mongo.events.updateOne=async(filter,update)=>{assert.deepEqual(filter,{session:'session-a',kind:'session'});Object.assign(stored,update.$set);};
+  mongo.events.updateOne=async(filter,update)=>{assert.deepEqual(filter,{_id:'stored'});Object.assign(stored,update.$set);};
   mongo.events.findOne=async filter=>stored.session===filter.session&&stored.kind===filter.kind?stored:null;
   const result=await createProtocols({mongo}).sessionManagement.updateSession('session-a',{_id:'foreign',session:'session-b',kind:'message',createdAt:'replaced',title:'changed'});
   assert.deepEqual({...result,updatedAt:undefined},{...original,title:'changed',updatedAt:undefined});

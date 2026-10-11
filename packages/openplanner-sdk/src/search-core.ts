@@ -151,20 +151,31 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
 
   const limit = boundedSearchLimit(k);
 
-  const whereFromBody = isRecord(body.where) ? { ...body.where } : {};
-  if (body.source) whereFromBody.source = body.source;
-  if (body.kind) whereFromBody.kind = body.kind;
-  if (body.project) whereFromBody.project = body.project;
-  if (body.visibility) whereFromBody.visibility = body.visibility;
-
-  const mongoWhere = Object.fromEntries(
-    Object.entries(whereFromBody).filter(([key, value]) => (
-      ["source", "kind", "project", "session", "visibility", "parent_id", "embedding_model"].includes(key)
-      && !key.startsWith("$")
-      && !key.includes(".")
-      && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
-    )),
-  );
+  if (body.where !== undefined && (!isRecord(body.where) || Array.isArray(body.where))) {
+    throw new Error("vector where must be a filter object");
+  }
+  const whereFromBody = { ...(body.where ?? {}) };
+  for (const field of ["source", "kind", "project", "session", "visibility"] as const) {
+    if (body[field] !== undefined) whereFromBody[field] = body[field];
+  }
+  const scalar = (value: unknown): boolean => typeof value === "string" || typeof value === "boolean"
+    || (typeof value === "number" && Number.isFinite(value));
+  const mongoWhere: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(whereFromBody)) {
+    if (!["source", "kind", "project", "session", "visibility", "parent_id", "embedding_model"].includes(key)) {
+      throw new Error("unsupported vector filter field: " + key);
+    }
+    if (scalar(value)) { mongoWhere[key] = value; continue; }
+    if (isRecord(value) && !Array.isArray(value) && Object.keys(value).length === 1) {
+      const [operator, operand] = Object.entries(value)[0]!;
+      if ((operator === "$eq" || operator === "$ne") && scalar(operand)
+          || (operator === "$in" && Array.isArray(operand) && operand.length > 0 && operand.every(scalar))) {
+        mongoWhere[key] = value;
+        continue;
+      }
+    }
+    throw new Error("unsupported vector filter value for " + key);
+  }
   const tier = body.tier ?? "both";
   const includeHot = tier !== "compact";
   const includeCompact = tier !== "hot";

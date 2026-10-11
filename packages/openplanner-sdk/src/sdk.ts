@@ -8,6 +8,7 @@
  * server itself is just another consumer of this library, kept for external
  * clients that cannot be granted database access.
  */
+import { acquireHydrationCacheOwner } from "./source-hydration.js";
 import { loadConfig } from "./config.js";
 import type { OpenPlannerConfig } from "./config.js";
 import { openMongoDB, closeMongoDB } from "./mongodb.js";
@@ -59,8 +60,17 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
   try { protocols = createProtocols({ mongo }); }
   catch (error) { await closeMongoDB(mongo); throw error; }
   const log = options.log;
-  const pendingIngests = new Set<Promise<void>>();
+  const releaseHydrationCache = acquireHydrationCacheOwner();
+  const pendingIngests = new Set<Promise<unknown>>();
   let closing: Promise<void> | undefined;
+
+  const tracked = <T>(work: () => Promise<T>): Promise<T> => {
+    if (closing) return Promise.reject(new Error("OpenPlanner SDK is closing"));
+    const pending = work();
+    pendingIngests.add(pending);
+    void pending.then(() => pendingIngests.delete(pending), () => pendingIngests.delete(pending));
+    return pending;
+  };
 
   return {
     config,
@@ -75,10 +85,10 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
       void completed.then(() => pendingIngests.delete(completed), () => pendingIngests.delete(completed));
       return admitted;
     },
-    searchFts: (body) => ftsSearchWithQuality({ mongo, embeddingRuntime }, body),
-    searchVector: (body) => vectorSearchWithQuality({ mongo, embeddingRuntime }, body),
-    listSessions: (opts) => protocols.sessionManagement.listSessions(opts),
-    getSessionEvents: (sessionId, opts) => protocols.sessionManagement.getSessionEvents(sessionId, opts),
+    searchFts: (body) => tracked(() => ftsSearchWithQuality({ mongo, embeddingRuntime }, body)),
+    searchVector: (body) => tracked(() => vectorSearchWithQuality({ mongo, embeddingRuntime }, body)),
+    listSessions: (opts) => tracked(() => protocols.sessionManagement.listSessions(opts)),
+    getSessionEvents: (sessionId, opts) => tracked(() => protocols.sessionManagement.getSessionEvents(sessionId, opts)),
     listCollections: async () => {
       const collections = await mongo.db.listCollections().toArray();
       return collections.map((c: { name: string }) => c.name).sort();
@@ -88,7 +98,8 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
         await Promise.allSettled([...pendingIngests]);
         try { await embeddingRuntime.flushCaches(); }
         catch { console.warn("Embedding cache persistence failed"); }
-        await closeMongoDB(mongo);
+        try { await releaseHydrationCache(); }
+        finally { await closeMongoDB(mongo); }
       })();
       return closing;
     },

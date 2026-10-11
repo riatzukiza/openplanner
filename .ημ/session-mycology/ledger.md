@@ -622,3 +622,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-938daf5-sixteen-boundaries-red-20261011
   note: All sixteen findings have causal RED fixtures within imported four packages; no original assertions deleted/weakened. Capture actual outputs including runtime notices. Source208prefixes immutable; no live/board/deploy/paid/spore.
+
+- ts: 2026-10-11T00:27:56.481Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-938daf5-sixteen-boundaries-green-20261011
+  note: Retain every new RED failure and prior assertion; one existing immutable-session fixture filter assertion strengthens to its real stored_id. Source ownership, realfile cache binding, typedsemantic identity, validated limits/filters/labels/scope/dimensions/TTL/workers, transactional replacement refusal, projectsession isolation, contiguous dual-budget chunks, no-op expiry, sharedSDKcacheclose. Unsupported transactions now explicitly refuse; no untransactional unsafe replay/livecompatibilityclaim. Actual failed intermediate outputs retained. No live/board/deploy/paid/spore.

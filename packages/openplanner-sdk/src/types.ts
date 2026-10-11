@@ -90,6 +90,7 @@ export type VectorSearchRequest = {
   source?: string;
   kind?: string;
   project?: string;
+  session?: string;
   visibility?: DocumentVisibility;
   where?: Record<string, unknown>;
   tier?: SearchTier;
