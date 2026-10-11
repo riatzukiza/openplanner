@@ -124,7 +124,12 @@ function collection(name, initial = []) {
     async findOneAndUpdate(filter, update) { await this.updateOne(filter,update); return this.findOne(filter); },
     async insertOne(row) { rows.set(`auto-${rows.size}`, {...row}); },
     async insertMany(items) { for (const row of items) await this.insertOne(row); },
-    async findOne(filter) { return rows.get(filter._id ?? filter.tenant_id ?? filter.label_id) ?? null; },
+    async findOne(filter) {
+      // The native empty-cleanup query uses parent ownership, not an _id lookup.
+      if(Object.hasOwn(filter,'parent_id'))return [...rows.values()].find(row=>
+        Array.isArray(filter.parent_id?.$in)?filter.parent_id.$in.includes(row.parent_id):row.parent_id===filter.parent_id)??null;
+      return rows.get(filter._id ?? filter.tenant_id ?? filter.label_id) ?? null;
+    },
     find(filter) {
       calls.searches.push(filter);
       if (filter.$text && this.failText) throw new Error('text index unavailable');
@@ -1762,4 +1767,31 @@ test('generated ownership preflight batches a large document and rejects a late 
   await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[ev]),/derived.*ownership.*collision/i);
   assert.equal(scalarGeneratedReads,0);assert.ok(batches.length>=2);assert.ok(batches.every(batch=>batch.length>0&&batch.length<=256));assert.equal(new Set(batches.flat()).size,batches.flat().length);
   assert.equal(mongo.events.calls.writes.length,0);assert.equal(providers,0);assert.equal(mongo.events.rows.get(conflict).text,'protected outside ownership');
+});
+
+// CodeRabbit5481374361: empty no-op cleanup and explicit full-history cap.
+test('standalone empty vector cleanup lets every graph/empty event and deferred projection finish',async()=>{
+  const mongo=mongoFixture();let started=0;
+  mongo.client.startSession=()=>{started++;return {withTransaction:async()=>{throw Object.assign(new Error('Transaction numbers are only allowed on a replica set member or mongos'),{code:20});},endSession:async()=>{}};};
+  const edge={...ordinaryEvent('edge-without-vectors',''),kind:'graph.edge',extra:{source_node_id:'a',target_node_id:'b',edge_kind:'related'}};
+  const empty=ordinaryEvent('empty-without-vectors','');
+  const result=await ingestEvents({mongo,embeddingRuntime:{}},[edge,empty]);await result.backgroundIndexing;
+  assert.equal(result.count,2);assert.ok(mongo.events.rows.has(edge.id));assert.ok(mongo.events.rows.has(empty.id));
+  assert.equal(result.projectedGraphEdges,1);assert.ok(mongo.graphEdges.calls.writes.length>0);assert.equal(started,0);
+});
+for(const location of ['flat','partition'])test(`owned vector cleanup in ${location} retains the required transaction and old row on standalone refusal`,async()=>{
+  const mongo=mongoFixture();let started=0;const row={_id:'owned-chunk',parent_id:'owned-parent',text:'existing'};
+  const collection=location==='flat'?mongo.hotVectors:mongo.db.collection('owned-partition');collection.rows.set(row._id,row);
+  if(location==='partition')mongo.vectorPartitions.rows.set('partition',{tier:'hot',collectionName:'owned-partition',updatedAt:new Date(0)});
+  mongo.client.startSession=()=>{started++;return {withTransaction:async()=>{throw Object.assign(new Error('Transaction numbers are only allowed on a replica set member or mongos'),{code:20});},endSession:async()=>{}};};
+  await assert.rejects(replaceMongoVectorEntries(mongo,'hot','owned-parent',[]),/Transaction.*replica/i);
+  assert.equal(started,1);assert.equal(collection.rows.get(row._id),row);assert.equal(collection.calls.deletes.length,0);
+});
+test('full history signals actual rows beyond its compatible cap using one extra observation',async()=>{
+  const mongo=mongoFixture();const row={session:'history',ts:new Date(0),text:'encounter'};let observedLimit;
+  mongo.events.find=()=>({sort(){return this;},limit(n){observedLimit=n;return this;},toArray:async()=>Array(Math.min(observedLimit,100001)).fill(row)});
+  const result=await getSessionResponse({mongo},'history',{mode:'full'});
+  assert.equal(result.rows.length,100000);assert.equal(result.has_more,true);assert.equal(result.limit,100000);assert.equal(observedLimit,100001);
+  mongo.events.find=()=>({sort(){return this;},limit(){return this;},toArray:async()=>Array(100000).fill(row)});
+  const complete=await getSessionResponse({mongo},'history',{mode:'full'});assert.equal(complete.has_more,false);assert.equal(complete.rows.length,100000);
 });
