@@ -1167,3 +1167,24 @@ while that root decision is pending. Native PR3 stays ed91509; its eight
 conversations remain unresolved and existing MiMo38117099081 remains live in
 the latest fresh capture. No approval, merge, deployment, physical-field/mood
 admission or live B3 completion is claimed.
+
+## Correction: required source configuration was already authorized
+
+The accepted milestone's Authorized bounded OpenPlanner import section records
+the actual human choice, "bring over the limited 56 files," as the four-package
+import plus required configuration. The earlier root-only scope pause overlooked
+that existing authorization. The minimal documented Mongo replica configuration
+is necessary to the selected SDK's transaction contract and remains within that
+B3 prerequisite. Earlier pending-scope receipts/proposals remain historical;
+this append supersedes the pause. No new behavior or live deployment is added.
+
+A new actual-source Compose verifier fails on unchanged root configuration:
+"documented Mongo service must declare a transactional replica topology." It
+will consume the actual rendered service command, health and documented client
+URI, then test actual SDK replacement and injected-failure rollback in a uniquely
+owned bounded disposable Mongo fixture. It is added to existing required CI.
+Prior real standalone error20 and replica proofs remain retained. One original
+owned added-only capture, bounded-source-verification-20261010.json, is moved
+losslessly into the existing bundle with original path, source Git blob/mode,
+complete bytes/hash and retained Git history. This offsets the new verifier
+path; all150 review inputs remain included, prior40 records remain unchanged.
