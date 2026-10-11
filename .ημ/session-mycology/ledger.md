@@ -595,3 +595,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-6d90f6b-streaming-partition-final-green-20261010
   note: Driver batches256 and at most k retained parents; no full-partition candidate array. Optional late accelerator failure discards every accelerator score and rescans entire filtered partition locally; enforced failure closes cursor and refuses. Five causal tests RED5/GREEN0;all existing320 assertions retained. O(k+256) candidate rows does not establish byte/latency/concurrency bounds or live Mongo/provider behavior. Source205 prefixes retained; no runtime/board/deploy/paid/spore.
+
+- ts: 2026-10-11T00:02:32.403Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-00f8546-retention-k-red-20261011
+  note: Own follow-up to confirmed partition-memory P1: NaN makes retained-size comparisons false and infinity removes finite bound. Direct public SDK needs finite safe-integer admission before any partition/provider work. Six causal invalid cases and three zero/negative/two valid legacy controls preserve existing behavior/assertions. Original206prefixes/56manifest retained;no live/board/deploy/paid/spore.

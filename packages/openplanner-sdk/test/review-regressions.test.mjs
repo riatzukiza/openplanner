@@ -42,6 +42,16 @@ function streamingQueryFixture(count, rowAt) {
 }
 const streamingQuery=(vectors,mongo,k=1)=>vectors.queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
 
+for(const invalid of [NaN,Infinity,-Infinity,1.5,Number.MAX_SAFE_INTEGER+1,'3'])test(`streaming query rejects invalid retention k ${String(invalid)} before partition/provider IO`,async()=>{
+  const {mongo,observed}=streamingQueryFixture(601,i=>vectorRow('row-'+i,'parent-'+i,.2));let generated=0;
+  await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:invalid,getEmbeddingFunctionForModel:()=>({generate:async()=>{generated++;return [[1,0]];}})}),/k.*safe integer|safe integer.*k/i);
+  assert.equal(mongo.vectorPartitions.calls.searches.length,0);assert.equal(observed.scans,0);assert.equal(observed.yielded,0);assert.equal(generated,0);
+});
+for(const k of [0,-1,2])test(`streaming query preserves existing safe integer retention k ${k}`,async()=>{
+  const mongo=parentQueryFixture('cosine',[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]);
+  const result=await streamingQuery({queryMongoVectorsByText},mongo,k);assert.deepEqual(result.ids,[k===2?['best','second']:['best']]);
+});
+
 test('streaming cosine scans every row and retains a late best match without toArray',async()=>{
   const {mongo,observed}=streamingQueryFixture(1201,i=>vectorRow('row-'+i,'parent-'+i,i===1200?1:.2));
   const result=await streamingQuery({queryMongoVectorsByText},mongo);
