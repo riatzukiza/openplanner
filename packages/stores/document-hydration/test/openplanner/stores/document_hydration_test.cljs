@@ -155,5 +155,19 @@
   (is (= "openplanner:source-ref:v2:[null,[\"host-row\",\"outside.example\",\"public\"]]"
          (hydration/document-cache-key #js {:id "public" :_id "storage" :extra #js {:hostname "outside.example"}}))))
 
+
+(deftest migration-source-path-preserves-hydration-provenance
+  (doseq [encoded? [false true]]
+    (let [extra #js {:migration_2 #js {:source_path "legacy/path"}}
+          row #js {:id "legacy" :project "lake" :text "" :extra (if encoded? (js/JSON.stringify extra) extra)}
+          ^js ref (hydration/document-source-ref row)]
+      (is (some? ref))
+      (is (true? (hydration/document-needs-hydration row)))
+      (is (= "legacy/path" (when ref (.-sourcePath ref))))
+      (is (= "legacy/path" (.-sourcePath (hydration/row-to-document row))))))
+  (doseq [value [#js {} #js [] 42]]
+    (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
+          (hydration/document-source-ref #js {:extra #js {:source_path "direct" :migration_2 #js {:source_path value}}})))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

@@ -253,5 +253,30 @@
              (protocol/cache-get-entry cache "key")))
       (is (= 1 @reads)))))
 
+
+(deftest absolute-expiry-deadline-is-not-a-live-cache-hit
+  (let [clock (atom 100) original core/now-ms
+        store (atom {})
+        db #js {:get (fn [k] (get @store k))
+                :put (fn [k v] (swap! store assoc k v))
+                :remove (fn [k] (swap! store dissoc k))}]
+    (set! core/now-ms #(deref clock))
+    (try
+      (is (false? (schema/entry-expired? {:cache/expires-at-ms 105} 104)))
+      (is (true? (schema/entry-expired? {:cache/expires-at-ms 105} 105)))
+      (is (true? (schema/entry-expired? {:cache/expires-at-ms 105} 106)))
+      (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 5})
+                    (boundary/create-lmdb-cache #js {:db db :prefix "deadline:" :defaultTtlMs 5})]]
+        (reset! clock 100)
+        (doseq [k ["read" "entry" "touch"]] (boundary/cache-put-js cache k "value"))
+        (reset! clock 104)
+        (is (= "value" (boundary/cache-get-js cache "read")))
+        (reset! clock 105)
+        (is (nil? (boundary/cache-get-js cache "read")))
+        (is (nil? (protocol/cache-get-entry cache "entry")))
+        (is (false? (boundary/cache-touch-js cache "touch" 10)))
+        (is (nil? (boundary/cache-get-js cache "touch"))))
+      (finally (set! core/now-ms original)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

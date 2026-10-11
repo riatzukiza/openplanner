@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { createServer } from 'node:http';
 import { MongoClient, ObjectId } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
@@ -2261,4 +2262,50 @@ test('CodeRabbit0f: real Mongo ObjectId vector identity does not block scoped so
     const id=new ObjectId('0123456789abcdef01234567');
     assert.equal(await hydrateVectorDocumentText({_id:id,project:'lake',source_text_redacted:true,source_ref:{source_path:'encounter.md',lake:'lake'}}),text);
   });}finally{closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+
+
+// Native Codex5481827605: numeric forces, whole-batch metadata and deadlines.
+for (const [field,values] of [['similarity',[undefined,null,'0.5',NaN,Infinity,-Infinity,-1.01,1.01]],['charge',[null,'0.5',NaN,Infinity,-Infinity,{}]]])
+for (const value of values) test(`Codex0f: force batch refuses ${field} ${String(value)} before any write`,async()=>{
+  let writes=0;const row={source_node_id:'a',target_node_id:'b',similarity:.5};
+  await assert.rejects(upsertGraphSemanticForceSamples({bulkWrite:async()=>{writes++;}},[row,{...row,source_node_id:'c',target_node_id:'d',[field]:value}]),/similarity|charge|finite|range/i);
+  assert.equal(writes,0);
+});
+test('Codex0f: force cosine endpoints and finite charges retain exact values',async()=>{
+  let ops;const rows=[-1,0,1].map((similarity,i)=>({source_node_id:'a'+i,target_node_id:'b'+i,similarity,...(i===1?{charge:2}:{})}));
+  assert.equal(await upsertGraphSemanticForceSamples({bulkWrite:async x=>{ops=x;}},rows),3);
+  assert.deepEqual(ops.map(x=>x.updateOne.update.$set.similarity),[-1,0,1]);
+  assert.deepEqual(ops.map(x=>x.updateOne.update.$set.charge),[-1,2,1]);
+});
+for (const reversed of [false,true]) test(`Codex0f: duplicate undirected semantic identities reject whole batch reversed=${reversed}`,async()=>{
+  let writes=0;const row={source_node_id:'a',target_node_id:'b',similarity:.5};
+  await assert.rejects(upsertGraphSemanticEdges({bulkWrite:async()=>{writes++;}},[row,{...row,...(reversed?{source_node_id:'b',target_node_id:'a'}:{}),similarity:.9}]),/duplicate.*semantic|semantic.*duplicate/i);
+  assert.equal(writes,0);
+});
+for (const extra of [[],['label'],'metadata',42,false,new Date(0)]) test(`Codex0f: malformed extra ${JSON.stringify(extra)} rejects before any batch effects`,async()=>{
+  const mongo=vectorDeletionFixture();let generated=0;
+  const runtime=eventRuntime({generate:async texts=>{generated++;return texts.map(()=>[1,0]);}});
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:runtime},[ordinaryEvent('first-valid'),{...ordinaryEvent('second-invalid'),extra}]),/extra.*plain object|plain object.*extra/i);
+  assert.equal(generated,0);
+  assert.ok([...mongo.collections.values()].every(c=>c.calls.writes.length===0&&c.calls.indexes.length===0&&c.calls.deletes.length===0));
+});
+for (const mode of ['native','cosine']) for (const enforced of [false,true]) test(`Codex0f: actual stalled HTTP body retains Vexx deadline ${mode} enforced=${enforced}`,async()=>{
+  let requests=0;const server=createServer((_request,res)=>{requests++;res.writeHead(200,{'Content-Type':'application/json'});res.flushHeaders();res.write('{"matches":[');});
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+  let guard;
+  try{const address=server.address();await withEnv({VEXX_BASE_URL:`http://127.0.0.1:${address.port}`,VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:String(enforced),VEXX_TIMEOUT_MS:'40'},async()=>{
+    const vectors=await import(new URL(`../dist/mongo-vectors.js?codex0f-body-${mode}-${enforced}`,import.meta.url).href);
+    const work=vectors.queryMongoVectorsByText({mongo:parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]),tier:'hot',q:'outside',k:1,getEmbeddingFunctionForModel:()=>({generate:async()=>[[1,0]]})});
+    const bounded=Promise.race([work,new Promise((_,reject)=>{guard=setTimeout(()=>reject(new Error('fixture body deadline exceeded')),700);})]);
+    if(enforced)await assert.rejects(bounded,error=>{assert.equal(error.message,'vector query execution unavailable for all partitions');assert.deepEqual(error.unavailablePartitions,['healthy_vectors']);return true;});
+    else assert.deepEqual((await bounded).ids,[['best']]);
+    assert.ok(requests>0);
+  });}finally{clearTimeout(guard);server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+test('Codex0f: migration-only filesystem provenance hydrates exact retained text',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-migration-source-'));const text='Retained migration encounter.';
+  try{await writeFile(join(dir,'legacy.md'),text);await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+    assert.equal(await loadHydrationSourceText({id:'legacy',project:'lake',text:'',extra:{migration_2:{source_path:'legacy.md'}}}),text);
+  });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });
