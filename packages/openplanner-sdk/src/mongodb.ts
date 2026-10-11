@@ -1245,15 +1245,23 @@ export async function upsertGraphEdges(
 
   await collection.bulkWrite(
     rows.map((row) => {
-      // Edge ID includes kind to allow multiple edge types between same nodes
+      for (const field of ["source_node_id", "target_node_id", "edge_kind"] as const) {
+        assertNonblankIdentifier(row[field], `graph edge ${field}`);
+      }
+      if (row.project !== undefined && row.project !== null && typeof row.project !== "string") {
+        throw new Error("graph edge project must be a string or null");
+      }
       const owner = row.data?.source_event_id;
-      const edgeId = typeof owner === "string" && owner.length > 0
+      if (owner !== undefined && owner !== null) assertNonblankIdentifier(owner, "graph edge source_event_id");
+      const owned = typeof owner === "string";
+      const edgeId = owned
         ? `event-edge:${createHash("sha256").update(JSON.stringify([owner, row.project ?? null, row.source_node_id, row.target_node_id, row.edge_kind])).digest("hex")}`
-        : `${row.source_node_id}||${row.target_node_id}||${row.edge_kind}`;
+        : `graph-edge:${createHash("sha256").update(JSON.stringify([row.project ?? null, row.source_node_id, row.target_node_id, row.edge_kind])).digest("hex")}`;
 
       return {
         updateOne: {
-          filter: { _id: edgeId },
+          filter: owned ? { _id: edgeId } : { source_node_id: row.source_node_id, target_node_id: row.target_node_id,
+            edge_kind: row.edge_kind, project: row.project ?? null, "data.source_event_id": null },
           update: {
             $set: {
               source_node_id: row.source_node_id,
@@ -1268,6 +1276,7 @@ export async function upsertGraphEdges(
               updatedAt: now,
             },
             $setOnInsert: {
+              ...(owned ? {} : { _id: edgeId }),
               createdAt: now,
             },
           },

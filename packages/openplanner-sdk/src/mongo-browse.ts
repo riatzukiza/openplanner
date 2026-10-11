@@ -73,7 +73,11 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
   if (!collectionName) throw new Error("Invalid collection name");
 
   let filter: Record<string, unknown> = {};
-  if (body.filter && typeof body.filter === "object" && !Array.isArray(body.filter)) {
+  if (Object.hasOwn(body, "filter")) {
+    if (body.filter === null || typeof body.filter !== "object" || Array.isArray(body.filter)
+        || (Object.getPrototypeOf(body.filter) !== Object.prototype && Object.getPrototypeOf(body.filter) !== null)) {
+      throw new Error("collection filter must be a plain object when supplied");
+    }
     filter = body.filter as Record<string, unknown>;
   }
   assertSafeFilter(filter);

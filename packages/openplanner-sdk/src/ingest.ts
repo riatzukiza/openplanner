@@ -81,6 +81,9 @@ export function validateEvent(ev: EventEnvelopeV1) {
   // Use the writer's shared label admission before any batch event is persisted.
   eventRetentionExpiry(ev.extra, 0, new Date(0));
   const extra = ev.extra ?? {};
+  for (const labels of [extra, extra.openplanner_labels as Record<string, unknown> | undefined]) {
+    if (labels && Object.hasOwn(labels, "tenant_id")) assertNonblankIdentifier(labels.tenant_id, "label tenant_id");
+  }
   const supplied = ev.kind === "graph.edge" ? ["source_node_id", "target_node_id", "edge_type", "edge_kind"]
     : ev.kind === "graph.node" ? ["node_id"] : [];
   for (const field of supplied) {
@@ -441,7 +444,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
 
     const labels = eventLabels(extra);
     for (const label of labels) {
-      const tenantId = String((extra.openplanner_labels as any)?.tenant_id ?? (extra as any).tenant_id ?? "default").trim() || "default";
+      const tenantId = ((extra.openplanner_labels as any)?.tenant_id ?? extra.tenant_id ?? "default").trim();
       const labelId = graphLabelId(tenantId, label);
       if (!queuedGraphLabelIds.has(labelId)) {
         queuedGraphLabelIds.add(labelId);

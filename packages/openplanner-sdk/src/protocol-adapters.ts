@@ -205,19 +205,29 @@ class MongoSessionManagement implements SessionManagement {
 
   async getSessionEvents(sessionId: string, opts: any): Promise<any[]> {
     assertNonblankIdentifier(sessionId, "session");
-    assertOptionalSessionString(opts.project, "project");
+    if (opts.project !== null) assertOptionalSessionString(opts.project, "project");
     assertOptionalSessionString(opts.kind, "kind");
     const requestedLimit = sessionPageInteger(opts.limit, 1000);
     if (opts.mode !== undefined && opts.mode !== "full") throw new Error("session event mode must be full when supplied");
     const limit = Math.min(requestedLimit > 0 ? requestedLimit : 1000, opts.mode === "full" ? 100001 : 1000);
     const filter: Record<string, unknown> = { session: sessionId };
-    if (opts.project) filter.project = opts.project;
+    if (opts.project === undefined) {
+      const scopes = await this.ctx.mongo.events.aggregate([
+        { $match: { session: sessionId } },
+        { $group: { _id: { $ifNull: ["$project", null] } } },
+        { $limit: 2 },
+      ]).toArray();
+      if (scopes.length > 1) throw new Error("ambiguous session identity; specify project");
+      const project = scopes[0]?._id ?? null;
+      if (project !== null) assertOptionalSessionString(project, "project");
+      filter.project = project;
+    } else filter.project = opts.project;
     if (opts.kind) filter.kind = opts.kind;
 
     let cursor = this.ctx.mongo.events.find(filter);
     if (opts.projection) cursor = cursor.project(opts.projection);
     return cursor
-      .sort({ ts: opts.sort === "asc" ? 1 : -1 })
+      .sort({ ts: opts.sort === "asc" ? 1 : -1, _id: opts.sort === "asc" ? 1 : -1 })
       .limit(limit)
       .toArray();
   }

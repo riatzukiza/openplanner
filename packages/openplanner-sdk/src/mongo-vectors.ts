@@ -7,6 +7,7 @@ import { batchPreparedChunks, isContextOverflowError, prepareIndexDocument } fro
 import type { MongoConnection, MongoVectorDocument, MongoVectorPartitionDocument } from "./mongodb.js";
 import { OPENPLANNER_SCHEMA_TARGETS, vectorChunkMigrationState } from "./schema-versions.js";
 import { loadHydrationSourceText } from "./source-hydration.js";
+import { assertNonblankIdentifier } from "./types.js";
 
 export type MongoVectorTier = "hot" | "compact";
 
@@ -659,6 +660,12 @@ export async function listMongoVectorPartitions(
 }
 
 function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, now: Date, ttlSeconds: number): MongoVectorDocument {
+  assertNonblankIdentifier(entry.id, "vector id");
+  assertNonblankIdentifier(entry.parentId, "vector parentId");
+  if (!Array.isArray(entry.embedding) || entry.embedding.length === 0) throw new Error("embedding must be a nonempty finite number array");
+  for (const value of entry.embedding) {
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("embedding must contain finite numbers");
+  }
   validateVectorMetadata(entry.metadata);
   const ts = asDate(entry.metadata.ts);
   const sourceTextRedacted = entry.metadata.source_text_redacted === true;
@@ -724,8 +731,8 @@ export async function upsertMongoVectorDocuments(
   if (entries.length === 0) return;
 
   const now = new Date();
-  const flatCollection = getFlatCollection(mongo, tier);
   const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
+  const flatCollection = getFlatCollection(mongo, tier);
 
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
   for (const doc of documents) {
@@ -837,6 +844,7 @@ export async function addMongoVectorParentLabel(
   parentId: string,
   label: string,
 ): Promise<void> {
+  assertNonblankIdentifier(parentId, "vector parentId");
   const normalized = label.trim();
   if (!normalized) return;
   const update = [
@@ -866,6 +874,7 @@ export async function removeMongoVectorParentLabel(
   parentId: string,
   label: string,
 ): Promise<void> {
+  assertNonblankIdentifier(parentId, "vector parentId");
   const normalized = label.trim();
   if (!normalized) return;
   const now = new Date();
@@ -923,6 +932,9 @@ async function replaceMongoVectorParents(
   parentIds: ReadonlyArray<string>,
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
+  for (const parentId of parentIds) assertNonblankIdentifier(parentId, "vector parentId");
+  const parents = new Set(parentIds);
+  if (entries.some(entry => !parents.has(entry.parentId))) throw new Error("replacement entry parentId must belong to the requested parents");
   // Empty graph cleanup is a no-op only after inspecting every storage copy.
   // Actual destructive replacements still require the transaction below.
   if (entries.length === 0) {

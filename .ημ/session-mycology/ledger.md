@@ -676,3 +676,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-64d5b84-eight-boundaries-red-20261011
   note: Eight newnativeCOMMENTEDfindings reproduced inexistingfourpackages beforeproductionedit:session scope/ties,ownerlessedgeprojectidentity,browsefilter,embeddingadmission,replacementparent,labelparent andtenant. Fixture adds actualboundedprojectgroupsemantics,nooldassertionremoved. Source214prefix/original56manifest retained;old566MiMoactuallyCANCELLED/current64MiMoin_progress/noapproval/live/board/paid/spore.
+
+- ts: 2026-10-11T01:19:12.641Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-eight-scoped-boundaries-green-20261011
+  note: 8realnativefindings repairedwithscopedhistory/projectless/ties,completeownerlessedgelegacycompatibletuple,browseplainfilter,finitevectordirectadmission,exactreplacementparents,labelparent andtenantguards. Source215prefix/original56manifest retained,nooldassertions/receiptsremoved. Candidateunapproved;newconsumer/hostedpending. Old566MiMoactuallycancelled382secgrace;64MiMoinprogress. No live/board/model/social/deploy/paid/spore;CodeRabbitfullnewheadafter01:47freshgates.

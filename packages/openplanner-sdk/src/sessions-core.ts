@@ -71,7 +71,7 @@ export async function getSessionResponse(
 ) {
   if (!sessionId) throw new Error("sessionId required");
   const protocols = createProtocols({ mongo: ctx.mongo });
-  const project = typeof query.project === "string" ? query.project.trim() : "";
+  const project = typeof query.project === "string" ? query.project.trim() : query.project;
   const mode = query.mode === undefined ? "resume" : typeof query.mode === "string" ? query.mode.trim() : null;
   if (mode !== "full" && mode !== "resume" && mode !== "visibility") {
     throw new Error("session mode must be full, resume or visibility");

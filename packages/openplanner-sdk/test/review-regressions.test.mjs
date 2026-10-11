@@ -1873,3 +1873,23 @@ for(const tenant of [{},[],42,false,null,' '])for(const field of ['nested','fall
   await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{provider++;return texts.map(()=>[1,0]);}})},[ordinaryEvent('preceding-valid',''),bad]),/tenant.*nonblank string|nonblank string.*tenant/i);
   assert.equal(provider,0);assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(mongo.graphLabelNodes.calls.writes.length,0);
 });
+
+// Companion checks protect the typed selectors introduced by these repairs.
+test('Codex64d companion: typed ownerless graph selectors reject operator-valued identities before writes',async()=>{
+  for(const field of ['source_node_id','target_node_id','edge_kind','project','owner']){
+    const mongo=mongoFixture();const row={source_node_id:'a',target_node_id:'b',edge_kind:'related',project:'lake'};
+    if(field==='owner')row.data={source_event_id:{$ne:'owner'}};else row[field]={$ne:'protected'};
+    await assert.rejects(upsertGraphEdges(mongo.graphEdges,[{source_node_id:'good-a',target_node_id:'good-b',edge_kind:'related'},row]),/graph edge.*string/i);
+    assert.equal(mongo.graphEdges.calls.writes.length,0);assert.equal(mongo.graphEdges.rows.size,0);
+  }
+});
+test('Codex64d companion: direct vector identifiers reject operators before any partition setup',async()=>{
+  for(const field of ['id','parentId'])for(const value of [{$ne:'protected'},' ',null]){
+    const mongo=mongoFixture();await assert.rejects(upsertMongoVectorDocuments(mongo,'hot',[entry('good'),{...entry('bad'),[field]:value}]),/vector.*nonblank string/i);
+    assert.equal(mongo.vectorPartitions.calls.writes.length,0);assert.equal(mongo.hotVectors.calls.writes.length,0);assert.equal(mongo.vectorPartitions.calls.searches.length,0);
+  }
+});
+test('Codex64d companion: inferred malformed legacy project never becomes a Mongo query operator',async()=>{
+  const row={_id:'protected',session:'legacy',project:{$ne:'lake'},kind:'knoxx.message',ts:new Date(0)};const mongo=scopedHistoryFixture([row]);let reads=0;mongo.events.find=()=>{reads++;throw new Error('unsafe inferred selector was used');};
+  await assert.rejects(createProtocols({mongo}).sessionManagement.getSessionEvents('legacy',{}),/project.*string/i);assert.equal(reads,0);assert.equal(mongo.events.rows.get('protected'),row);
+});
