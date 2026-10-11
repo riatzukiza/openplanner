@@ -856,3 +856,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex949-seven-findings-red-20261011
   note: RED rawSHAcd9f7175684f135d80b722a2e11c787fa9d8808ce1fa5e4f49ae062342279dd6. All862 prior SDK tests and71 prior graph tests still pass; positive dimensions/strict legacy timestamps/nested JSON controls retained. No assertion weakened. Native request6105501154 is valid actualwriter riatzukiza with pr-flow-review marker; initial readback assumed obsolete pr-flow-head and failed only its operator assertion. Native finding reader initial KeyError line corrected using optional native fields; original raw retained. A fixture-placement guard saw original header already at offset0 and exited before any edit; added tests were already at the end. No provider/request failure synthesized. Original56manifest and exact234 prefixes intact; no native approval/round/merge/liveB1B2B3/board/deploy/paid/spore claim.
+
+- ts: 2026-10-11T04:59:43.882Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex949-seven-findings-green-20261011
+  note: GREEN rawSHAc62555e13e04d99d5048e48532f30c15c1dc1b27de40512cd5a25a2b53273350. Canonical force duplicate/dimension batch guards; graph embedding owner collision preflight; recursive finiteJSON/cycle refusal and structured claim ID tuple; quality/tier diagnostics and shared strictISOlegacy admission. Correction: initial two query fixtures used outer instead of actual response.result; stronger corrected SDK verified21 causal failures on all7 frozen949production hashes before restoring GREEN. Initial RED/intermediate885/887 failure retained, no weakening. Missing defn delimiter caught before affected graph gates; both source hash epochs retained. Original56manifest and235prefixes immutable. New candidate consumer/hostedCI/currentreviews/native settlement/authorizedmerge owed; no current approval/round/liveB1B2B3/board/runtime/deploy/paid/spore claim.

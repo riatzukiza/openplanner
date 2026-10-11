@@ -66,6 +66,31 @@
   [[_ value]]
   (and (some? value) (not (str/blank? (str value)))))
 
+(defn- json-scope-value?
+  "Accept only finite JSON data, refusing runtime values and ancestor cycles."
+  [value]
+  (let [ancestors (js/WeakSet.)]
+    (letfn [(valid? [v]
+              (cond
+                (identical? js/undefined v) false
+                (nil? v) true
+                (or (string? v) (boolean? v)) true
+                (number? v) (js/Number.isFinite v)
+                (or (array? v) (js-object? v))
+                (and (not (.has ancestors v))
+                     (or (array? v)
+                         (let [prototype (js/Object.getPrototypeOf v)]
+                           (and (or (nil? prototype) (identical? prototype (.-prototype js/Object)))
+                                (zero? (alength (js/Object.getOwnPropertySymbols v))))))
+                     (do (.add ancestors v)
+                         (try
+                           (every? valid? (if (array? v)
+                                            (array-seq v)
+                                            (map #(aget v %) (array-seq (js/Object.keys v)))))
+                           (finally (.delete ancestors v)))))
+                :else false))]
+      (valid? value))))
+
 (defn normalize-edge-claim-scope
   [value]
   (when (and (some? value)
@@ -78,6 +103,8 @@
                        (array-seq)
                        (map (fn [entry] [(str (aget entry 0)) (aget entry 1)]))
                        (filter plain-scope-entry?))]
+      (when-not (every? (fn [[_ v]] (json-scope-value? v)) entries)
+        (throw (ex-info "Claim scope must contain only finite JSON values without cycles" {})))
       (when (seq entries)
         (into {} entries)))))
 

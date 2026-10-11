@@ -2333,7 +2333,8 @@ for(const ordinary of [false,true])for(const reverse of [false,true])test(`Codex
 for(const quality of ['any','good_then_not_bad'])test(`Codex949: ${quality} retains lower-level timestamp and partition diagnostics`,async()=>{
   const mongo=parentQueryFixture('cosine',[{...vectorRow('bad-time','bad-time',1),ts:'not-a-date'},vectorRow('healthy','healthy',.9)]);
   const embeddingRuntime=eventRuntime({generate:async()=>[[1,0]]});embeddingRuntime.hot.getEmbeddingFunctionForModel=()=>({generate:async()=>[[1,0]]});
-  const result=await vectorSearchWithQuality({mongo,embeddingRuntime},{q:'outside',k:2,tier:'hot',quality});
+  const response=await vectorSearchWithQuality({mongo,embeddingRuntime},{q:'outside',k:2,tier:'hot',quality});
+  assert.equal(response.ok,true);assert.equal(response.storageBackend,'mongodb');assert.equal(response.qualityMode,quality);const result=response.result;
   assert.deepEqual(result.ids,[['healthy']]);assert.equal(result.partial,true);assert.equal(result.discarded_invalid_timestamp_count,quality==='any'?1:2);assert.equal(result.queried_partition_count,quality==='any'?1:2);
 });
 for(const ts of ['2020','1/2/2020','2021-02-30T00:00:00Z','2026-01-01T24:00:00Z','2026-01-01T00:00:00+24:00'])test(`Codex949: legacy non-ISO timestamp ${ts} is discarded before rank limit`,async()=>{

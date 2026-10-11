@@ -75,8 +75,13 @@ function mergeVectorPayloads(first: Record<string, unknown>, second: Record<stri
 
   const unavailable = [...new Set([first, second].flatMap(result =>
     Array.isArray(result.unavailable_partitions) ? result.unavailable_partitions as string[] : []))];
+  const discarded = [first, second].reduce((sum, result) => sum + Number(result.discarded_invalid_timestamp_count ?? 0), 0);
+  const queried = [first, second].reduce((sum, result) => sum + Number(result.queried_partition_count ?? 0), 0);
   return { ids: [ids], documents: [documents], metadatas: [metadatas], distances: [distances], include: ["documents", "metadatas", "distances"],
-    ...(unavailable.length > 0 ? { partial: true, unavailable_partitions: unavailable } : {}) };
+    queried_partition_count: queried,
+    ...(first.partial === true || second.partial === true || unavailable.length > 0 ? { partial: true } : {}),
+    ...(discarded > 0 ? { discarded_invalid_timestamp_count: discarded } : {}),
+    ...(unavailable.length > 0 ? { unavailable_partitions: unavailable } : {}) };
 }
 
 function validateExactSearchFilters(body: {
@@ -203,6 +208,8 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
     const tieredHits = [];
     const unavailable = new Set<string>();
     let queriedPartitions = 0;
+    let discardedInvalidTimestamps = 0;
+    let partial = false;
     const queryTier = async (rowTier: "hot" | "compact") => {
       try {
         const result = await queryMongoVectorsByText({
@@ -213,6 +220,8 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
         });
         for (const name of result.unavailable_partitions ?? []) unavailable.add(name);
         queriedPartitions += result.queried_partition_count ?? 0;
+        discardedInvalidTimestamps += result.discarded_invalid_timestamp_count ?? 0;
+        partial ||= result.partial === true;
         return extractTieredVectorHits(result, rowTier);
       } catch (error) {
         if (!(error instanceof VectorQueryUnavailableError)) throw error;
@@ -233,6 +242,9 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
       throw new VectorQueryUnavailableError([...unavailable]);
     }
     return { ...mergeTieredVectorHits(tieredHits, vectorLimit),
+      queried_partition_count: queriedPartitions,
+      ...(partial || unavailable.size > 0 ? { partial: true } : {}),
+      ...(discardedInvalidTimestamps > 0 ? { discarded_invalid_timestamp_count: discardedInvalidTimestamps } : {}),
       ...(unavailable.size > 0 ? { partial: true, unavailable_partitions: [...unavailable] } : {}) };
   };
 

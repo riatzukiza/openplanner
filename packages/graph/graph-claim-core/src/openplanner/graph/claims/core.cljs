@@ -40,7 +40,7 @@
   concern so pure CLJS remains host-independent."
   [{:keys [relation-kind direction scope-json] :as claim-key}]
   (let [[left right] (canonical-endpoints claim-key)]
-    (str left "\n" right "\n" relation-kind "\n" (name direction) "\n" (or scope-json "{}"))))
+    (pr-str [left right relation-kind (name direction) (or scope-json "{}")])))
 
 (declare valid-edge-claim?)
 

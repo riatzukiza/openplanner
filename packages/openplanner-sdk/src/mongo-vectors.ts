@@ -7,7 +7,7 @@ import { batchPreparedChunks, isContextOverflowError, prepareIndexDocument } fro
 import type { MongoConnection, MongoVectorDocument, MongoVectorPartitionDocument } from "./mongodb.js";
 import { OPENPLANNER_SCHEMA_TARGETS, vectorChunkMigrationState } from "./schema-versions.js";
 import { loadHydrationSourceText } from "./source-hydration.js";
-import { assertNonblankIdentifier } from "./types.js";
+import { assertNonblankIdentifier, validIsoTimestamp } from "./types.js";
 
 export type MongoVectorTier = "hot" | "compact";
 
@@ -381,7 +381,7 @@ async function queryPartitionWithVexxTopK(params: {
 // Admit Date or legacy date strings before ranking/parent limits and metadata conversion.
 function normalizeQueryTimestamp(doc: MongoVectorDocument, onInvalid: (id: string) => void): MongoVectorDocument | null {
   const value: unknown = doc.ts;
-  const ms = value instanceof Date ? value.getTime() : typeof value === "string" ? Date.parse(value) : NaN;
+  const ms = value instanceof Date ? value.getTime() : validIsoTimestamp(value) ? Date.parse(value) : NaN;
   if (!Number.isFinite(ms)) { onInvalid(doc._id); return null; }
   return { ...doc, ts: new Date(ms) };
 }

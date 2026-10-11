@@ -12,7 +12,7 @@ import type { MongoConnection } from "./mongodb.js";
 import { prepareIndexDocument } from "./indexing.js";
 import { indexTextInMongoVectors, replaceMongoVectorEntries } from "./mongo-vectors.js";
 import type { EventEnvelopeV1 } from "./types.js";
-import { assertNonblankIdentifier } from "./types.js";
+import { assertNonblankIdentifier, validIsoTimestamp } from "./types.js";
 import { splitSentences, deduplicateByHash, computeTextHash } from "./sentence-split.js";
 import { formatEmbeddingPassageText } from "./embedding-text.js";
 import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS } from "./schema-versions.js";
@@ -53,18 +53,6 @@ function norm(v: any): string | null {
   return String(v);
 }
 
-function validIsoTimestamp(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  const match = /^(\d{4}|[+-]\d{6})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1]
-    && Number(match[4]) < 24 && Number(match[5]) < 60 && Number(match[6]) < 60
-    && (!match[7] || (Number(match[8]) < 24 && Number(match[9]) < 60))
-    && Number.isFinite(Date.parse(value));
-}
 
 export function validateEvent(ev: EventEnvelopeV1) {
   if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
@@ -225,6 +213,20 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
     unique.set(event.id, event);
   }
   const plans = new Map([...unique.values()].map(event => [event.id, planGeneratedEvents(event)]));
+  // One batch cannot assign the same physical embedding identity to two owners.
+  // Include ordinary automatic nodes as well as explicit parents/chunks/sentences.
+  const embeddingOwners = new Map<string, string>();
+  for (const event of unique.values()) {
+    const nodeIds = [...plans.get(event.id)!.embeddingIds,
+      ...(autoDerivedEventId(event) ? [event.id] : [])];
+    for (const nodeId of nodeIds) {
+      const owner = embeddingOwners.get(nodeId);
+      if (owner !== undefined && owner !== event.id) {
+        throw new Error(`graph embedding identity ownership collision: ${nodeId}`);
+      }
+      embeddingOwners.set(nodeId, event.id);
+    }
+  }
   const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
   ingestTails.set(ctx.mongo, tails);
   const reservedIds = new Set([...unique.keys(),

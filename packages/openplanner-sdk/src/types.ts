@@ -3,6 +3,20 @@ export function assertNonblankIdentifier(value: unknown, field: string): asserts
   if (typeof value !== "string" || !value.trim()) throw new Error(`${field} must be a nonblank string`);
 }
 
+/** Strict calendar and ISO timestamp admission shared by ingest and legacy query reads. */
+export function validIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4}|[+-]\d{6})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1]
+    && Number(match[4]) < 24 && Number(match[5]) < 60 && Number(match[6]) < 60
+    && (!match[7] || (Number(match[8]) < 24 && Number(match[9]) < 60))
+    && Number.isFinite(Date.parse(value));
+}
+
 export type BlobRef = {
   blob: string; // sha256 hex
   mime: string;
