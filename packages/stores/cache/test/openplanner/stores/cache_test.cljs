@@ -213,5 +213,22 @@
       (boundary/cache-put-js cache "zero" "retained" 0)
       (is (= "retained" (boundary/cache-get-js cache "zero"))))))
 
+
+(deftest cache-keys-are-admitted-before-adapter-effects
+  (let [effects (atom 0)
+        db #js {:get (fn [_] (swap! effects inc) nil)
+                :put (fn [_ _] (swap! effects inc))
+                :remove (fn [_] (swap! effects inc))}]
+    (doseq [cache [(boundary/create-memory-lru-cache)
+                  (boundary/create-lmdb-cache #js {:db db})]]
+      (doseq [key [#js {} #js [] nil 42 "" " "]]
+        (doseq [operation [#(boundary/cache-get-js cache key)
+                           #(boundary/cache-put-js cache key "value")
+                           #(boundary/cache-touch-js cache key)
+                           #(boundary/cache-evict-js cache key)
+                           #(protocol/cache-get-entry cache key)]]
+          (is (thrown-with-msg? js/Error #"key.*string|string.*key" (operation)))))
+      (is (zero? @effects)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

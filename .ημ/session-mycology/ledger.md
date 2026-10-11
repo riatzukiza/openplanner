@@ -730,3 +730,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-twelve-direct-guards-green-20261011
   note: Repair10 actual Codex5481523582 findings plus2 completed full CodeRabbit5481545352 findings in the original four selected packages. Whole-batch graph tuple/vector identity and unique vector IDs admitted before storage;compacted ID guarded;empty exact search strings retained;unsupported quality/routing reject;fragment dimensions agree before averaging;explicit lifecycle evidence complete;explicit projection time finite;cache TTL finite nonnegative preserving numeric zero and optional nil-as-omitted;BSONDate milliseconds retained before limits. Both TTL fixtures use injected clocks. Actual all19 gates freshly executed:SDK638/638,graph70/463 zero fail/error andforced actualexit1,cache12/73,hydration8/27,JVM17/100,zero lint/compiler warnings. No output reuse. Retain all three failedGREENoutputs:map-vs-JS TTL reader23fail fixed,optional nil1error compatibility restored,andolder partial-filter lifecycle fixture1error replaced with original malformed-array rejection plus original valid normalization expectation. Numeric TTL test-call correction independentlyRED24;prior outputs preserved. Original56 manifest/source220 immutable prefixes intact. No current-headapproval/round/live/board/deploy/paid/spore claim;heartbeat remainsPAUSED andgoalACTIVE.
+
+- ts: 2026-10-11T02:23:55.893Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-eight-followup-red-20261011
+  note: Actual Codex5481584632 NEW8 reproduced on unchanged7e production. SDK686 tests639PASS47FAIL;cache13tests135assertions61FAIL0error;graph71tests468assertions4FAIL0error,forced runner5FAIL. Compilation zero warnings. Tests exercise whole-batch layout and semantic identity,force tuple scalars,projectless-versus-empty session grouping,explicit plain claim scope,legacy valid and unusable vector timestamps before rank limit,direct compact search provenance,and nonblank string cache keys before adapter effects. Prior valid assertions retained;original56 manifest and221 journal/reflection prefixes frozen. No approval/round/live/deploy/board/paid/spore claim.

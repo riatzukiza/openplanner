@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
+import { openMongoDB, ftsSearch, ilikeSearch, upsertGraphLayoutOverrides, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
 import { EmbedProviderFunction, ParallelEmbeddingPool } from '../dist/embeddings.js';
@@ -1981,4 +1981,42 @@ for (const fallback of [false,true]) for (const quality of ['any','good_then_not
   const mongo=mongoFixture();const row=(id,ts)=>({id,ts:new Date(ts),extra:{openplanner_labels:{quality:'good'}}});
   mongo.events=collection('events',[row('a-older','2026-10-11T00:00:00.100Z')]);mongo.compacted=collection('compacted',[row('z-newer','2026-10-11T00:00:00.900Z')]);mongo.events.failText=fallback;mongo.compacted.failText=fallback;
   const result=await ftsSearchWithQuality({mongo},{q:'outside',tier:'both',quality,limit:1});assert.deepEqual(result.rows.map(row=>row.id),['z-newer']);assert.equal(result.ftsEnabled,!fallback);
+});
+
+// Actual native Codex5481584632 on7e: whole-batch identity, scope and provenance admission.
+for(const bad of [{$ne:'victim'},[],null,42,'',' ']) {
+ test(`layout whole batch refuses malformed identity ${JSON.stringify(bad)}`,async()=>{
+  let effects=0;const c={bulkWrite:async()=>{effects++}};
+  await assert.rejects(upsertGraphLayoutOverrides(c,[{node_id:'valid',x:1,y:2},{node_id:bad,x:3,y:4}]),/node.*id|identifier/i);assert.equal(effects,0);
+ });
+ for(const field of ['source_node_id','target_node_id'])for(const writer of [upsertGraphSemanticEdges,upsertGraphSemanticForceSamples])test(`${writer.name} whole batch refuses ${field} ${JSON.stringify(bad)}`,async()=>{
+  let effects=0;const c={bulkWrite:async()=>{effects++}};const row={source_node_id:'a',target_node_id:'b',similarity:.5};
+  await assert.rejects(writer(c,[row,{...row,[field]:bad}]),/node.*id|identifier/i);assert.equal(effects,0);
+ });
+}
+for(const field of ['field_profile','embedding_model'])for(const bad of [{$ne:'victim'},[],42,false])test(`force tuple refuses ${field} ${JSON.stringify(bad)}`,async()=>{
+ let effects=0;const c={bulkWrite:async()=>{effects++}};const row={source_node_id:'a',target_node_id:'b',similarity:.5};
+ await assert.rejects(upsertGraphSemanticForceSamples(c,[row,{...row,[field]:bad}]),/profile|model|string/i);assert.equal(effects,0);
+});
+test('force tuple preserves null-model and explicit empty-model/profile distinctions',async()=>{
+ let ops;await upsertGraphSemanticForceSamples({bulkWrite:async x=>{ops=x}},[{source_node_id:'b',target_node_id:'a',similarity:.5},{source_node_id:'a',target_node_id:'b',similarity:.5,embedding_model:'',field_profile:''}]);
+ assert.deepEqual(ops.map(x=>x.updateOne.filter),[{source_node_id:'a',target_node_id:'b',field_profile:'layout.v1',embedding_model:null},{source_node_id:'a',target_node_id:'b',field_profile:'',embedding_model:''}]);
+});
+test('session listing keeps null/missing projects distinct from explicit empty project and exact filters',async()=>{
+ const mongo=mongoFixture();const pipelines=[];mongo.events.aggregate=p=>{pipelines.push(p);return{toArray:async()=>[]}};
+ const sessions=createProtocols({mongo}).sessionManagement;await sessions.listSessions({project:'',limit:50,offset:0});
+ for(const p of pipelines){assert.equal(p[0].$match.project,'');assert.deepEqual(p.find(x=>x.$group).$group._id.project,{$ifNull:['$project',null]});}
+});
+test('vector query admits legacy ISO timestamps without discarding healthy results',async()=>{
+ const rows=[{...vectorRow('legacy','legacy',1),ts:'2026-01-01T00:00:00.123Z'},vectorRow('healthy','healthy',.9)];const{mongo}=streamingQueryFixture(rows.length,i=>rows[i]);
+ const result=await streamingQuery({queryMongoVectorsByText},mongo,2);assert.deepEqual(result.ids,[['legacy','healthy']]);assert.equal(result.metadatas[0][0].ts,'2026-01-01T00:00:00.123Z');
+});
+for(const bad of [undefined,'invalid',new Date(NaN),42,{}])test(`vector query skips unusable timestamp ${String(bad)} before rank limit`,async()=>{
+ const rows=[{...vectorRow('invalid','invalid',1),ts:bad},vectorRow('healthy','healthy',.9)];const{mongo}=streamingQueryFixture(rows.length,i=>rows[i]);
+ const result=await streamingQuery({queryMongoVectorsByText},mongo,1);assert.deepEqual(result.ids,[['healthy']]);assert.equal(result.partial,true);assert.equal(result.discarded_invalid_timestamp_count,1);
+});
+for(const search of [ftsSearch,ilikeSearch])test(`direct ${search.name} returns explicitly bound compact provenance`,async()=>{
+ const c={collectionName:'custom_compacted',find:()=>({sort(){return this},limit(){return this},toArray:async()=>[{id:'compact',text:'outside'}]})};
+ const compact=await search(c,'outside',{tier:'compact'});assert.equal(compact[0].tier,'compact');const hot=await search(c,'outside',{tier:'hot'});assert.equal(hot[0].tier,'hot');
+ c.collectionName='compacted_memories';assert.equal((await search(c,'outside'))[0].tier,'compact');
 });

@@ -157,6 +157,16 @@
     (is (= "withdrawn" (aget withdraw "status")))
     (is (nil? (aget withdraw "eventField")))))
 
+
+(deftest explicit-claim-scope-rejects-runtime-objects-before-identity
+  (doseq [scope [(js/Date.) (js/Map.) (js/Set.) (js/RegExp. "x")]]
+    (is (thrown-with-msg? js/Error #"scope.*plain|plain.*scope"
+          (boundary/build-edge-claim-id #js {:source "a" :target "b" :scope scope}))))
+  (let [scope (js/Object.create nil)]
+    (aset scope "project" "owned")
+    (is (= (boundary/build-edge-claim-id #js {:source "a" :target "b" :scope scope})
+           (boundary/build-edge-claim-id #js {:source "a" :target "b" :scope #js {:project "owned"}})))))
+
 (defn -main []
   (let [result (run-tests 'openplanner.graph.claims.core-test)]
     (when (pos? (+ (:fail result) (:error result)))
