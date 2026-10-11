@@ -2611,3 +2611,73 @@ test('Codex371: programmatic SDK model overrides bind graph indexes to the same 
   try{assert.equal(sdk.embeddingRuntime.hot.getEmbeddingDimensionsForModel('owned'),2);assert.equal(indexes.get('embedding_vector').fields.find(f=>f.type==='vector').numDimensions,2);assert.equal(indexes.get('embedding_vector_dims_3')?.fields.find(f=>f.type==='vector').numDimensions,3);assert.deepEqual(sdk.mongo.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector',3:'embedding_vector_dims_3'});}finally{await sdk.close();}
  });
 });
+
+// Native Codex5482559650 and CodeRabbit5482583386, exact470818c.
+for(const body of ['<section>', '<!-- note -->', '\u0000'])test('Review470: structurally empty graph text admits its source and the rest of the batch '+JSON.stringify(body),async()=>{
+ const mongo=mongoFixture();let providerCalls=0;const runtime=eventRuntime({generate:async texts=>{providerCalls++;return texts.map(()=>[1,0]);}});
+ const empty={...ordinaryEvent('empty-graph',body),kind:'graph.node',extra:{node_id:'empty-node'}};
+ const other={...ordinaryEvent('other-source',''),kind:'graph.edge',extra:{source_node_id:'one',target_node_id:'two',edge_kind:'related'}};
+ const result=await ingestEvents({mongo,embeddingRuntime:runtime},[empty,other]);await result.backgroundIndexing;
+ assert.deepEqual(result.ids,['empty-graph','other-source']);assert.equal(mongo.events.rows.get('empty-graph').text,body);
+ assert.equal(mongo.graphNodeEmbeddings.rows.size,0);assert.equal(providerCalls,0);assert.equal(result.queuedGraphNodeEmbeddings,0);
+ assert.equal(mongo.events.rows.size,2);assert.equal(mongo.graphEdges.rows.size,1);
+});
+test('Review470: unavailable default graph index does not prevent an independent routed width',async(t)=>{
+ const {mongo,indexes,writes}=graphSearchIndexFixture(t),warnings=[];
+ const create=mongo.graphNodeEmbeddings.createSearchIndex;
+ mongo.graphNodeEmbeddings.createSearchIndex=async spec=>{if(spec.name==='embedding_vector')throw new Error('fixture default Atlas index unavailable');return create(spec);};
+ t.mock.method(console,'warn',(...args)=>warnings.push(args));
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'small',EMBED_PROVIDER_MODEL_BY_PROJECT:'character=large',EMBED_PROVIDER_MODEL_DIMENSIONS:'small=2;large=3'},async()=>{
+  const connection=await openMongoDB(openingConfig);
+  assert.equal(indexes.get('embedding_vector_dims_3')?.fields.find(f=>f.type==='vector').numDimensions,3);
+  assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{3:'embedding_vector_dims_3'});
+  assert.equal(writes.length,1);assert.ok(warnings.some(args=>args.join(' ').includes('fixture default Atlas index unavailable')));
+ });
+});
+for(const fallback of ['not-a-number','0','-2','1.5','Infinity'])test('Review470: malformed ambient width cannot suppress declared graph contracts '+fallback,async(t)=>{
+ const {indexes}=graphSearchIndexFixture(t);t.mock.method(console,'warn',()=>{});
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'undeclared',EMBED_PROVIDER_MODEL_BY_PROJECT:'character=declared',EMBED_PROVIDER_MODEL_DIMENSIONS:'declared=2',EMBED_PROVIDER_DIMENSIONS:fallback},async()=>{
+  const connection=await openMongoDB(openingConfig);
+  assert.equal(indexes.get('embedding_vector')?.fields.find(f=>f.type==='vector').numDimensions,1024);
+  assert.equal(indexes.get('embedding_vector_dims_2')?.fields.find(f=>f.type==='vector').numDimensions,2);
+  assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{1024:'embedding_vector',2:'embedding_vector_dims_2'});
+ });
+});
+test('Review470: derived source preview inherits exact admitted expiry despite a slow source batch',async(t)=>{
+ t.mock.timers.enable({apis:['Date'],now:Date.parse('2026-01-01T00:00:00Z')});
+ const mongo=mongoFixture(),write=mongo.events.updateOne.bind(mongo.events);
+ mongo.events.updateOne=async(filter,...args)=>{const value=await write(filter,...args);if(filter._id==='expiring-source')t.mock.timers.tick(120_000);return value;};
+ const source={...ordinaryEvent('expiring-source','Identified outside encounter.'),extra:{}};
+ const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[source]);await result.backgroundIndexing;
+ const stored=mongo.events.rows.get(source.id),derived=mongo.events.rows.get('graph.node:derive:'+source.id);
+ assert.ok(derived);assert.equal(derived.expiresAt?.getTime(),stored.expiresAt.getTime());assert.ok(derived.updatedAt>stored.expiresAt);
+});
+for(const identical of [false,true])test('Review470: duplicate canonical graph embedding tuples refuse the whole unordered write identical='+identical,async()=>{
+ const mongo=mongoFixture();const row={node_id:'same',source_event_id:'source',embedding_model:null,embedding_dimensions:2,embedding:[1,0],chunk_count:1};
+ const second={...row,embedding_model:undefined,chunk_index:0,...(identical?{}:{source_event_id:'other',embedding:[0,1]})};
+ await assert.rejects(upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings,[row,second]),/duplicate.*graph.*embedding|graph.*embedding.*duplicate/i);
+ assert.equal(mongo.graphNodeEmbeddings.calls.writes.length,0);assert.equal(mongo.graphNodeEmbeddings.rows.size,0);
+});
+test('Review470: direct vector writer owns validated arrays before awaiting partition setup',async()=>{
+ const mongo=mongoFixture(),vector=[1,0],row={...entry('caller-owned-array'),embedding:vector};
+ const pending=upsertMongoVectorDocuments(mongo,'hot',[row]);vector.splice(0,2,NaN,7,9);await pending;
+ assert.deepEqual(mongo.hotVectors.rows.get(row.id).embedding,[1,0]);
+ for(const partition of mongo.vectorPartitions.rows.values()){
+  assert.equal(partition.dimensions,2);assert.deepEqual(mongo.db.collection(partition.collectionName).rows.get(row.id).embedding,[1,0]);
+ }
+});
+test('Review470: replacing the verified hydration root cannot authorize a different descriptor tree',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'hydration-root-descriptor-race-')),root=join(dir,'root'),outside=join(dir,'outside');
+ await mkdir(root);await mkdir(outside);await writeFile(join(root,'source.txt'),'owned encounter');await writeFile(join(outside,'source.txt'),'outside secret');let swapped=false,closes=0;const originalOpen=fsPromises.open;
+ const interception=mock.method(fsPromises,'open',async(file,...flags)=>{
+  if(file===root&&!swapped){await rename(root,join(dir,'retained-root'));await symlink(outside,root);swapped=true;}
+  const handle=await originalOpen(file,...flags),close=handle.close.bind(handle);handle.close=async()=>{closes++;return close();};return handle;
+ });syncBuiltinESMExports();
+ try{await withEnv({OPENPLANNER_SOURCE_ROOT:root},async()=>assert.equal(await loadHydrationSourceText({id:'root-swap',extra:{source_path:'source.txt'}}),null));assert.equal(swapped,true);assert.equal(closes,2);}
+ finally{interception.mock.restore();syncBuiltinESMExports();await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+for(const q of ['', ' \n\t ', null, 23])test('Review470: malformed direct vector query refuses before partition or provider work '+JSON.stringify(q),async()=>{
+ const mongo=mongoFixture();let storage=0,providers=0;mongo.vectorPartitions.find=()=>{storage++;throw new Error('storage must not run');};
+ await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q,k:1,getEmbeddingFunctionForModel:()=>{providers++;throw new Error('provider must not run');}}),/query.*nonblank|string.*nonblank|nonblank.*query/i);
+ assert.equal(storage,0);assert.equal(providers,0);
+});

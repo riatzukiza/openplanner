@@ -1027,3 +1027,21 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex371-three-green-20261011
   note: Provider settings explicitly win over documented Ollama fallbacks;Linux procfs validates opened root/file descriptors, reads same file and closes both; unsupported descriptor capability fails closed;descriptor cache identityv4 includesdev/inode. Active option-merged model contracts share dimension resolver with Mongo,default embedding_vector and routed per-width queryable index map retain prior rows/indexes;actualAtlas availability unverified. Full source/consumer native-boundary evidence retained in62records;original56 manifestSHA and150changedpaths unchanged;receipt253/earlier and reflection prefixes immutable. Receipt candidate initially failed canonical missing-field validation before any append;required fields added and253 validated;nohistorical rewrite. No live,board,maker,publication,paid or spore mutation.
+
+- ts: 2026-10-11T08:32:49.881Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex-three-470818c-native-delivery-20261011
+  note: Actual completed Codex5482454712 restores current availability and three valid findings are now causally reproduced/fixed/published470 and canonicallysettled. Dated canonical298threads0unresolved/3PASS/no exactapproval/0of5cohorts;allcurrentCodeRabbit/Codex/MiMo obligations retained. FreshincludedCRfull6107145524 requested08:29:39 afterhourlywindow namesall150paths/all254committedreceipts/fullreflection/all62losslessrawrecords;request notapproval. CurrentMiMo38124327129/job114426826046 actuallylive afterbothproducersPASS;superseded37138122675907 actuallycancelled08:25:02 followingnormal+318.201482secfreshguardedforce,zeroapprovalcredit. Wholebodyreadback56711bytesPASS/SHA013f73a294fa4a751b7b4ee8650254d58ea07e5dcfcf7911f1ddca3668b7de03. Existing limited56 authority includes requiredconfig;no useranswerneeded. OriginalmanifestSHA and150paths unchanged;oldhistories/receipt/reflectionprefixes immutable;uncommittedobservations no reviewheadchurn. Linux/procfs hydration failclosed onunsupportedplatform;Atlasavailability andatomicownershipfencing unverified. GoalACTIVE/heartbeat humanPAUSED;qualifiedexactheadMERGE authorized;no live/runtime/board/deployment/paid/spore mutation.
+
+- ts: 2026-10-11T08:46:46.742Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-470-eight-native-red-20261011
+  note: Complete paginated native reads5reviewpages407rows identify two new finding-bearing reviews and8roots;two share one independent-width defect. Earlier metadata first100 omitted current rows;operator read incompleteness corrected by full pagination,not provider defect. CodeRabbit6107145524 actuallycompleted6107146527 at08:37:12,not no-actionable approval. CurrentMiMo38124327129/job114426826046 stillverifiedlive08:42;do not cancel without actual replacement. All prior255receipt/reflection byteprefixes and62 full records preserved;adds3 full native/RED records total65. No head churn solely for observations/no board/runtime/maker/clock/deployment/paid/spore mutation.
