@@ -820,3 +820,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-coderabbit0f-cache-hydration-causal-red-20261011
   note: Verified causal RED SHA256c213bf27f9aad2b09febc0a4fbb3af58a35e689ace05f6f732989cd89239be52. JSONL Unicode/chunk/4096vector, bounded10000entry loading, small legacy migration, actual12MiB oversized legacy cold-cache recovery and real Mongo ObjectId scoped hydration fail on unchanged0f production. The bounded12MiB fixture is not an860MB V8 allocation proof. Initial missing fixture bracket and uncaught hydration guard attempt remain archived; corrected only fixture syntax/error capture before verified RED, preserving assertions. All829 old SDK tests pass. Both production hashes unchanged. Actual0f hosted38109599598SUCCESS is distinct from current negative review and pending38109600298. No native approval/round, imported-scope expansion, live/runtime/board/deployment/social/paid mutation or spore.
+
+- ts: 2026-10-11T04:24:00.084Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-coderabbit0f-cache-hydration-green-20261011
+  note: GREEN rawSHA53b64b7e13dc866d63fe42bbb27505661ae0592b2e7c8a5997f00b2bb85f88e9. Cache now loads JSONL in64KiB UTF8-decoded chunks, validates each tuple, trims retained entries to10000 while loading, keeps small legacy array migration and skips oversized8MiB legacy/record caches with a fixed path-free warning. Atomic private0600file/0700directory sync/rename/cleanup and owned vectors unchanged. Hydration excludes BSON id/_id from generic source validation and picks only nonblank string logical/storage identity; actual Mongo ObjectId fixture passes. Two prior durable snapshot assertions adapt only JSONL decoding and retain exact expected vectors/close ordering. Causal3f07 production-unmodified RED retained; assertion count changes reflect conditional cases now reaching their original assertions. Newly read Codex5481827605 has six further findings, not yet repaired at this intermediate checkpoint; no merge approval/round or liveB3 claim. Exact231 prefixes and original56manifest preserved; no runtime/board/social/deployment/paid/spore mutation.

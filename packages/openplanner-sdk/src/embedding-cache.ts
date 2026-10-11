@@ -4,9 +4,12 @@ export interface EmbeddingCacheEntry {
 }
 
 import { createHash, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { mkdir, open, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
+import { StringDecoder } from "node:string_decoder";
+
+const maxCacheRecordBytes = 8 * 1024 * 1024;
 
 export function makeEmbeddingCacheKey(params: {
   model: string;
@@ -39,21 +42,83 @@ export class PersistentEmbeddingCache {
 
   constructor(private _cachePath?: string) {
     if (!_cachePath) return;
-    let saved: unknown;
-    try { saved = JSON.parse(readFileSync(_cachePath, "utf8")); }
+    try { this.load(_cachePath); }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
       throw error;
     }
-    if (!Array.isArray(saved)) throw new Error("Invalid persistent embedding cache");
-    for (const entry of saved) {
-      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string"
-        || !Array.isArray(entry[1]) || entry[1].length === 0
-        || !entry[1].every((value: unknown) => typeof value === "number" && Number.isFinite(value))) {
-        throw new Error("Invalid persistent embedding cache entry");
+  }
+
+  private load(cachePath: string): void {
+    const descriptor = openSync(cachePath, "r");
+    try {
+      const size = fstatSync(descriptor).size;
+      const chunk = Buffer.alloc(64 * 1024);
+      const decoder = new StringDecoder("utf8");
+      let format: "legacy" | "jsonl" | undefined;
+      let pending = "";
+      const skip = (): void => {
+        this.map.clear();
+        console.warn("Oversized embedding cache skipped; starting with an empty cache");
+      };
+      const consume = (text: string): boolean => {
+        pending += text;
+        if (format === undefined) {
+          const first = pending.trimStart();
+          const next = first.startsWith("[") ? first.slice(1).trimStart() : first;
+          if (next.length > 0) {
+            format = first.startsWith("[") && (next.startsWith("[") || next.startsWith("]"))
+              ? "legacy" : "jsonl";
+          }
+        }
+        // Legacy arrays are migrated only when small enough to parse safely.
+        if (format === "legacy" && size > maxCacheRecordBytes) {
+          skip();
+          return false;
+        }
+        if (format === "jsonl") {
+          let newline: number;
+          while ((newline = pending.indexOf("\n")) !== -1) {
+            const line = pending.slice(0, newline);
+            pending = pending.slice(newline + 1);
+            if (Buffer.byteLength(line, "utf8") > maxCacheRecordBytes) {
+              skip();
+              return false;
+            }
+            if (line.trim().length > 0) this.loadEntry(JSON.parse(line));
+          }
+        }
+        if (Buffer.byteLength(pending, "utf8") > maxCacheRecordBytes) {
+          skip();
+          return false;
+        }
+        return true;
+      };
+      let count: number;
+      while ((count = readSync(descriptor, chunk, 0, chunk.length, null)) > 0) {
+        if (!consume(decoder.write(chunk.subarray(0, count)))) return;
       }
-      this.map.set(entry[0], entry[1]);
+      if (!consume(decoder.end())) return;
+      if (format === "legacy") {
+        const saved: unknown = JSON.parse(pending);
+        if (!Array.isArray(saved)) throw new Error("Invalid persistent embedding cache");
+        for (const entry of saved) this.loadEntry(entry);
+      } else if (pending.trim().length > 0) {
+        this.loadEntry(JSON.parse(pending));
+      }
+    } finally {
+      closeSync(descriptor);
     }
+  }
+
+  private loadEntry(entry: unknown): void {
+    if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== "string"
+      || !Array.isArray(entry[1]) || entry[1].length === 0
+      || !entry[1].every((value: unknown) => typeof value === "number" && Number.isFinite(value))) {
+      throw new Error("Invalid persistent embedding cache entry");
+    }
+    this.map.delete(entry[0]);
+    this.map.set(entry[0], ownedEmbedding(entry[1]));
     this.trimToLimit();
   }
 
@@ -142,13 +207,10 @@ export class PersistentEmbeddingCache {
     let file: Awaited<ReturnType<typeof open>> | undefined;
     try {
       file = await open(temporary, "wx", 0o600);
-      // Keep the existing array format without allocating or stringifying one
-      // giant snapshot on the provider's completion path.
-      await file.writeFile("[");
-      for (let i = 0; i < snapshot.length; i++) {
-        await file.writeFile((i === 0 ? "" : ",") + JSON.stringify(snapshot[i]));
+      // Each entry can be reloaded independently without one giant JSON string.
+      for (const entry of snapshot) {
+        await file.writeFile(JSON.stringify(entry) + "\n");
       }
-      await file.writeFile("]");
       await file.sync();
       await file.close();
       file = undefined;

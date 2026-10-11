@@ -825,7 +825,7 @@ test('SDK close persists recent embeddings and deletions before closing Mongo',a
   const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});
   const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
   const close=mock.method(MongoClient.prototype,'close',async()=>{
-    assert.deepEqual(JSON.parse(await readFile(path,'utf8')),[[added,[1,2]]]);closes++;
+    assert.deepEqual((await readFile(path,'utf8')).trim().split('\n').map(line=>JSON.parse(line)),[[added,[1,2]]]);closes++;
   });
   try{
     const sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:path,embedProviderBatchWindowMs:1,mongodb:openingConfig}});
@@ -2178,7 +2178,7 @@ for (const operation of ['set','putMany']) test(`Codex518: embedding cache ${ope
     const first=(await cache.getMany(['owned'])).get('owned'); assert.deepEqual(first,[1,0]);
     first[0]=17;
     assert.deepEqual((await cache.getMany(['owned'])).get('owned'),[1,0]);
-    await cache.flush(); assert.deepEqual(JSON.parse(await readFile(path,'utf8')),[['owned',[1,0]]]);
+    await cache.flush(); assert.deepEqual((await readFile(path,'utf8')).trim().split('\n').map(line=>JSON.parse(line)),[['owned',[1,0]]]);
   } finally { await rm(dir,{recursive:true,force:true}); }
 });
 for (const vector of [[],[NaN],[Infinity],[-Infinity],[1,'2'],Array(2)]) for (const operation of ['set','putMany'])
