@@ -1223,3 +1223,29 @@ Their original blobs/history remain recoverable. Original56 manifest is
 unchanged; all150 current review inputs remain included, without exclusions
 or paid usage. Current-head hosted gates/review/settlement/merge remain owed.
 B1 physical-field persistence, B2 consumed mood and live B3 remain unfinished.
+
+
+## Full review5482394213: copied environment and scope parity causal RED
+
+Exact8c CodeRabbit full request6106683415 finished through bot6106684299 at
+07:39:33 UTC and formal COMMENTED review5482394213 at07:39:25. Both native
+findings are valid: root4240731470/copied .env gives the app container localhost,
+and4240731477/Mongo inferred scope differs from the direct boundary. Completion
+is not approval. All150 selected inputs and explicit exact8c coverage are
+recorded; native summary's capability URL stays private,not in this bundle.
+
+The actual checked-in Compose verifier now copies .env.example into an owned
+temporary .env, selects Mongo storage and renders actual Compose config. On
+unchanged production8c it exits1 because the application URI is localhost rather
+than mongodb. Failure occurs before any container allocation;tempdir cleanup
+runs in finally. It also asserts a separate explicit Compose external URI is
+preserved unchanged. New graph parity regressions compare complete projected
+edges/claim identities for all five inferred scope fields and null/blank/false/
+zero/nonblank values,plus explicit scopes including null/empty/object values.
+Actual compile0warnings;runner79tests671assertions16failures0errors/exit1.
+An initial operator command-name lookup failed with StopIteration before any
+graph test;the corrected real compile/runner is separately captured. Assertions
+and production code remain unchanged in this RED commit. Full native review,
+two inline comments and both full raw RED outputs are losslessly appended to
+the existing bundle,now52records;all47 earlier record values/bytes stay intact.
+No live,maker,board,deployment,provider credits or approval is claimed.

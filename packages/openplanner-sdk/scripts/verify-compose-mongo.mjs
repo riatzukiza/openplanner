@@ -3,7 +3,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 import { loadConfig } from "../dist/config.js";
@@ -20,6 +22,22 @@ assert.equal(compose.services.openplanner.environment.MONGODB_URI, "mongodb://mo
 assert.equal(service.healthcheck.test[0], "CMD");
 const documented = readFileSync(new URL("../../../.env.example", import.meta.url), "utf8").match(/^MONGODB_URI=(.+)$/m)?.[1];
 assert.equal(documented, "mongodb://localhost:27017/?directConnection=true");
+// Render the documented copied-.env setup without reading a private project .env.
+const envDirectory = mkdtempSync(join(tmpdir(), "openplanner-compose-env-proof-"));
+try {
+  const copied = join(envDirectory, ".env");
+  copyFileSync(new URL("../../../.env.example", import.meta.url), copied);
+  appendFileSync(copied, "\nOPENPLANNER_STORAGE_BACKEND=mongodb\n");
+  const fromCopied = JSON.parse(docker("compose", "--env-file", copied, "-f", `${root}docker-compose.yml`, "--profile", "mongodb", "config", "--format", "json"));
+  assert.equal(fromCopied.services.openplanner.environment.OPENPLANNER_STORAGE_BACKEND, "mongodb");
+  assert.equal(fromCopied.services.openplanner.environment.MONGODB_URI, "mongodb://mongodb:27017/?replicaSet=openplanner",
+    "copied .env must keep the application container on the Mongo service URI");
+  const override = "mongodb://owned-external.invalid:27017/?replicaSet=owned";
+  appendFileSync(copied, `COMPOSE_MONGODB_URI=${override}\n`);
+  const fromOverride = JSON.parse(docker("compose", "--env-file", copied, "-f", `${root}docker-compose.yml`, "--profile", "mongodb", "config", "--format", "json"));
+  assert.equal(fromOverride.services.openplanner.environment.MONGODB_URI, override,
+    "an explicit Compose-specific external Mongo URI must survive unchanged");
+} finally { rmSync(envDirectory, { recursive: true, force: true }); }
 const previousUri = process.env.MONGODB_URI;
 delete process.env.MONGODB_URI;
 try { assert.equal(loadConfig().mongodb.uri, documented); }

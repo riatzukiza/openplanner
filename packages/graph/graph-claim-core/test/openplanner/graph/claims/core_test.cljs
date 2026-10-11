@@ -497,3 +497,26 @@
                      (js/Object.assign #js {} base #js {:tenant_id js/undefined}))))
     (is (= unscoped (boundary/build-edge-claim-id-js
                      (js/Object.assign #js {} base #js {:tenant_id "inferred" :scope #js {}}))))))
+
+
+(deftest mongo-and-direct-inferred-scope-share-canonical-identity
+  (doseq [field ["tenant_id" "org_id" "project" "lake" "graph_version"]
+          value [nil "" "   " false 0 "owned"]]
+    (let [row #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                   :status "active" :confidence 0.8}
+          _ (aset row field value)
+          opts #js {:now 1000}
+          direct (boundary/project-edge-claims-js #js [row] opts)
+          stored (mongo/project-mongo-edge-claims-js #js [row] opts)]
+      (is (= 1 (alength (aget direct "edges"))))
+      (is (= (js->clj (aget direct "edges")) (js->clj (aget stored "edges")))
+          (str "inferred " field "=" (pr-str value))))))
+
+(deftest mongo-explicit-scope-presence-does-not-fall-back-to-inference
+  (doseq [scope [nil #js {} #js {:tenant_id nil} #js {:tenant_id ""}
+                #js {:tenant_id false} #js {:tenant_id 0}]]
+    (let [row #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                   :status "active" :tenant_id "must-not-be-inferred" :scope scope}
+          opts #js {:now 1000}]
+      (is (= (js->clj (aget (boundary/project-edge-claims-js #js [row] opts) "edges"))
+             (js->clj (aget (mongo/project-mongo-edge-claims-js #js [row] opts) "edges")))))))
