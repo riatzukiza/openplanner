@@ -13,7 +13,7 @@ import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ftsSearch, ilikeSearch, upsertGraphLayoutOverrides, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
-import { safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
+import { sourceRoot, safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
 import { EmbedProviderFunction, ParallelEmbeddingPool } from '../dist/embeddings.js';
 import { cacheGet, cachePut } from '@open-hax/openplanner-document-hydration';
 import { splitSentences, deduplicateByHash } from '../dist/sentence-split.js';
@@ -2344,4 +2344,69 @@ for(const ts of ['2020','1/2/2020','2021-02-30T00:00:00Z','2026-01-01T24:00:00Z'
 for(const ts of ['2024-02-29T00:00:00Z','2026-01-01T00:00:00.123+05:30'])test(`Codex949: strict legacy ISO timestamp ${ts} retains its actual instant`,async()=>{
   const mongo=parentQueryFixture('cosine',[{...vectorRow('legacy','legacy',1),ts}]);const result=await streamingQuery({queryMongoVectorsByText},mongo);
   assert.deepEqual(result.ids,[['legacy']]);assert.equal(result.metadatas[0][0].ts,new Date(ts).toISOString());assert.equal(result.discarded_invalid_timestamp_count,undefined);
+});
+
+
+// Exact current Codex5482017007 and CodeRabbit5482020746: all eight native seams.
+for(const ts of ['2020','01/02/2026','2021-02-30T00:00:00Z','2026-01-01T24:00:00Z'])for(const op of ['single','batch','direct'])test(`Codex0b: vector write ${op} rejects non-ISO timestamp ${ts} before IO`,async()=>{
+ const mongo=mongoFixture();let providers=0;const embeddingFunction={generate:async texts=>{providers++;return texts.map(()=>[1,2]);}};const metadata={embedding_model:'fixture',ts};
+ const promise=op==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text:'outside',metadata,embeddingFunction}):op==='batch'?batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[{...item('parent'),metadata}],embeddingFunction}):upsertMongoVectorDocuments(mongo,'hot',[{...entry(),metadata}]);
+ await assert.rejects(promise,/timestamp|metadata.ts|ISO/i);assert.equal(providers,0);for(const c of mongo.collections.values())assert.equal(c.calls.writes.length,0);
+});
+for(const ts of [new Date('2024-02-29T00:00:00Z'),1709164800000,'2024-02-29T00:00:00Z'])test(`Codex0b: explicit supported vector timestamp retains instant ${String(ts)}`,async()=>{
+ const mongo=mongoFixture();await upsertMongoVectorDocuments(mongo,'hot',[{...entry(),metadata:{embedding_model:'fixture',ts}}]);assert.equal(mongo.hotVectors.rows.get('chunk').ts.getTime(),new Date(ts).getTime());
+});
+for(const populated of [false,true])for(const where of [null,{unknown:'value'},{project:{$nin:['a']}}])test(`Codex0b: invalid vector predicate rejects before registry/provider populated=${populated} ${JSON.stringify(where)}`,async()=>{
+ const mongo=populated?parentQueryFixture('cosine',[vectorRow('healthy','parent',1)]):mongoFixture();let providers=0;
+ await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q:'outside',k:1,where,getEmbeddingFunctionForModel:()=>({generate:async()=>{providers++;return [[1,0]];}})}),/vector filter|unsupported vector/i);
+ assert.equal(mongo.vectorPartitions.calls.searches.length,0);assert.equal(providers,0);
+});
+for(const owner of [undefined,'source-owner'])test(`Codex0b: duplicate graph edge identity refuses entire unordered batch owner=${owner}`,async()=>{
+ const c=collection('edges');const edge={source_node_id:'a',target_node_id:'b',edge_kind:'related',project:'lake',data:owner===undefined?{}:{source_event_id:owner}};
+ await assert.rejects(upsertGraphEdges(c,[{...edge,target_node_id:'different'},edge,{...edge,source:'changed-metadata'}]),/duplicate.*graph edge|graph edge.*duplicate/i);assert.equal(c.calls.writes.length,0);
+});
+test('Codex0b: graph edge ownership/project/direction remain distinct identities',async()=>{
+ const c=collection('edges');const a={source_node_id:'a',target_node_id:'b',edge_kind:'related',project:'lake'};
+ assert.equal(await upsertGraphEdges(c,[a,{...a,project:'other'},{...a,source_node_id:'b',target_node_id:'a'},{...a,data:{source_event_id:'owner-a'}},{...a,data:{source_event_id:'owner-b'}}]),5);assert.equal(c.calls.writes.length,5);
+});
+for(const text of [17,true,{},null,undefined])for(const op of ['prepare','single','batch'])test(`Codex0b: ${op} rejects non-string text before normalization/provider ${String(text)}`,async()=>{
+ const mongo=mongoFixture();let providers=0;const embeddingFunction={generate:async texts=>{providers++;return texts.map(()=>[1,2]);}};
+ if(op==='prepare')assert.throws(()=>prepareIndexDocument({parentId:'parent',text}),/text.*string|string.*text/i);
+ else await assert.rejects(op==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text,metadata:{embedding_model:'fixture'},embeddingFunction}):batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[{...item('parent'),text}],embeddingFunction}),/text.*string|string.*text/i);
+ assert.equal(providers,0);for(const c of mongo.collections.values())assert.equal(c.calls.writes.length,0);
+});
+for(const labels of [null,'keep',[null],['']])for(const ttl of [0,60])test(`Codex0b: appendEvents preflights all retention labels ttl=${ttl} ${JSON.stringify(labels)}`,async()=>{
+ const mongo=mongoFixture();mongo.retention.eventsTtlSeconds=ttl;const admission=createProtocols({mongo}).eventAdmission;
+ await assert.rejects(admission.appendEvents([ordinaryEvent('first','outside'),{...ordinaryEvent('last','outside'),extra:{openplanner_labels:{labels}}}]),/retention.*labels|labels.*array|labels.*strings/i);assert.equal(mongo.events.calls.writes.length,0);
+});
+for(const separate of [false,true])test(`Codex0b: label graph ownership distinguishes projects separate=${separate}`,async()=>{
+ const mongo=mongoFixture();const ctx={mongo,embeddingRuntime:eventRuntime({generate:async()=>{throw new Error('no embedding expected for empty texts');}})};
+ const event=(id,project)=>({...ordinaryEvent(id,''),source_ref:{project},extra:{openplanner_labels:{labels:['keep'],tenant_id:'one-tenant'}}});const a=event('owner-a','lake'),b=event('owner-b','river');
+ if(separate){await ingestEvents(ctx,[a]);await ingestEvents(ctx,[b]);}else await ingestEvents(ctx,[a,b]);
+ const nodes=[...mongo.graphLabelNodes.rows.values()];assert.equal(nodes.length,2);assert.deepEqual(nodes.map(x=>x.project).sort(),['lake','river']);
+ const edges=mongo.graphEdges.calls.writes.filter(x=>x.update.$set.edge_kind==='has_label').map(x=>x.update.$set);assert.equal(edges.length,2);assert.notEqual(edges[0].target_node_id,edges[1].target_node_id);
+ for(const edge of edges)assert.equal(nodes.find(n=>n.label_id===edge.target_node_id)?.project,edge.project);
+});
+test('Codex0b: same tenant/project/label reuses stable label identity across sources and replay',async()=>{
+ const mongo=mongoFixture();const ctx={mongo,embeddingRuntime:eventRuntime({generate:async()=>{throw new Error('empty texts');}})};const a={...ordinaryEvent('owner-a',''),source_ref:{project:'lake'}},b={...ordinaryEvent('owner-b',''),source_ref:{project:'lake'}};
+ await ingestEvents(ctx,[a,b]);const id=[...mongo.graphLabelNodes.rows.keys()][0];assert.equal(mongo.graphLabelNodes.rows.size,1);await ingestEvents(ctx,[a]);assert.deepEqual([...mongo.graphLabelNodes.rows.keys()],[id]);
+});
+for(const key of ['latestDefinition','definition'])for(const oldDimensions of [2,3])test(`Codex0b: graph vector index reconciles ${key} dimensions ${oldDimensions} to2`,async(t)=>{
+ const mongo=mongoFixture();const c=mongo.graphNodeEmbeddings;let definition={fields:[{type:'vector',path:'embedding',numDimensions:oldDimensions,similarity:'cosine'},{type:'filter',path:'project'},{type:'filter',path:'node_id'},{type:'filter',path:'embedding_model'},{type:'filter',path:'embedding_dimensions'}]};const updates=[];
+ c.listSearchIndexes=()=>({toArray:async()=>[{name:'embedding_vector',status:'READY',queryable:true,[key]:definition}]});
+ c.updateSearchIndex=async(name,next)=>{updates.push({name,next});definition=next;};c.createSearchIndex=async()=>{throw new Error('existing index must not be duplicated');};
+ t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);
+ await withEnv({EMBED_PROVIDER_DIMENSIONS:'2'},async()=>openMongoDB(openingConfig));assert.equal(updates.length,oldDimensions===2?0:1);assert.equal(definition.fields.find(f=>f.type==='vector').numDimensions,2);if(updates.length)assert.equal(updates[0].name,'embedding_vector');
+});
+for(const root of [undefined,'','   '])test(`CodeRabbit0b: absent/blank source root explicitly disables hydration ${String(root)}`,async()=>{
+ const saved=process.env.OPENPLANNER_SOURCE_ROOT;
+ try{if(root===undefined)delete process.env.OPENPLANNER_SOURCE_ROOT;else process.env.OPENPLANNER_SOURCE_ROOT=root;
+  assert.equal(sourceRoot(),undefined);assert.equal(safeSourceFilePath({id:'no-root',extra:{source_path:'outside.txt'}}),undefined);assert.equal(await loadHydrationSourceText({id:'no-root',extra:{source_path:'outside.txt'}}),null);
+ }finally{if(saved===undefined)delete process.env.OPENPLANNER_SOURCE_ROOT;else process.env.OPENPLANNER_SOURCE_ROOT=saved;}
+});
+test('CodeRabbit0b: configured trimmed root hydrates only its actual owned file',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'openplanner-explicit-root-'));
+ try{await writeFile(join(dir,'outside.txt'),'outside encounter');await withEnv({OPENPLANNER_SOURCE_ROOT:'  '+dir+'  '},async()=>{
+  assert.equal(sourceRoot(),dir);const row={id:'configured',extra:{source_path:'outside.txt'}};assert.equal(safeSourceFilePath(row),join(dir,'outside.txt'));assert.equal(await loadHydrationSourceText(row),'outside encounter');
+ });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });
