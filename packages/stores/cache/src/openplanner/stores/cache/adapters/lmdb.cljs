@@ -10,7 +10,7 @@
           expires-at (core/jget entry "expiresAt")]
       (cond
         (nil? entry) nil
-        (and expires-at (< expires-at (core/now-ms))) (do (.remove db key) nil)
+        (and expires-at (<= expires-at (core/now-ms))) (do (.remove db key) nil)
         :else (when-some [value (core/jget entry "value")]
                 {:value value :expires-at-ms expires-at}))))
   CacheStore
@@ -20,7 +20,7 @@
           now (core/now-ms)]
       (cond
         (nil? entry) nil
-        (and (core/jget entry "expiresAt") (< (core/jget entry "expiresAt") now))
+        (and (core/jget entry "expiresAt") (<= (core/jget entry "expiresAt") now))
         (do (.remove db key) nil)
         :else (core/jget entry "value"))))
 
@@ -45,7 +45,7 @@
           now (core/now-ms)]
       (cond
         (nil? entry) false
-        (and (core/jget entry "expiresAt") (< (core/jget entry "expiresAt") now))
+        (and (core/jget entry "expiresAt") (<= (core/jget entry "expiresAt") now))
         (do (.remove db key) false)
         :else
         (let [ttl-ms (core/ttl-ms opts default-ttl-ms)]

@@ -1158,6 +1158,7 @@ export async function upsertGraphSemanticEdges(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  const identities = new Set<string>();
   for (const row of rows) {
     assertNonblankIdentifier(row.source_node_id, "semantic source_node_id");
     assertNonblankIdentifier(row.target_node_id, "semantic target_node_id");
@@ -1165,6 +1166,11 @@ export async function upsertGraphSemanticEdges(
         || row.similarity < -1 || row.similarity > 1) {
       throw new Error("semantic similarity must be a finite number in the range [-1, 1]");
     }
+    const pair = row.source_node_id < row.target_node_id
+      ? [row.source_node_id, row.target_node_id] : [row.target_node_id, row.source_node_id];
+    const identity = JSON.stringify(pair);
+    if (identities.has(identity)) throw new Error("duplicate canonical semantic edge identity");
+    identities.add(identity);
   }
   const now = new Date();
 
@@ -1228,6 +1234,13 @@ export async function upsertGraphSemanticForceSamples(
   for (const row of rows) {
     assertNonblankIdentifier(row.source_node_id, "force source_node_id");
     assertNonblankIdentifier(row.target_node_id, "force target_node_id");
+    if (typeof row.similarity !== "number" || !Number.isFinite(row.similarity)
+        || row.similarity < -1 || row.similarity > 1) {
+      throw new Error("force similarity must be a finite number in the range [-1, 1]");
+    }
+    if (row.charge !== undefined && (typeof row.charge !== "number" || !Number.isFinite(row.charge))) {
+      throw new Error("force charge must be a finite number when supplied");
+    }
     for (const field of ["field_profile", "embedding_model"] as const) {
       if (row[field] !== undefined && row[field] !== null && typeof row[field] !== "string") {
         throw new Error(`force ${field} must be a string or null`);

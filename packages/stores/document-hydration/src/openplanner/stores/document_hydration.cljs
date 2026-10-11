@@ -56,16 +56,18 @@
   [row]
   (let [extra (parse-extra row)
         meta (metadata extra)
+        migration (jget extra "migration_2")
         _ (doseq [[container field] [[row "project"]
                                     [extra "source_path"] [extra "path"] [meta "path"] [meta "file_id"]
                                     [extra "url"] [meta "url"] [extra "hostname"] [meta "hostname"]
                                     [extra "lake"] [meta "lake"] [extra "content_hash"] [meta "content_hash"]
-                                    [(jget extra "migration_2") "text_hash_sha256"]]]
+                                    [migration "source_path"] [migration "text_hash_sha256"]]]
             (nonblank (jget container field)))
         source-path (or (nonblank (jget extra "source_path"))
                         (nonblank (jget extra "path"))
                         (nonblank (jget meta "path"))
-                        (nonblank (jget meta "file_id")))
+                        (nonblank (jget meta "file_id"))
+                        (nonblank (jget migration "source_path")))
         url (or (nonblank (jget extra "url"))
                 (nonblank (jget meta "url")))
         hostname (or (nonblank (jget extra "hostname"))
@@ -75,7 +77,7 @@
                  (nonblank (jget meta "lake")))
         content-hash (or (nonblank (jget extra "content_hash"))
                          (nonblank (jget meta "content_hash"))
-                         (nonblank (jget (jget extra "migration_2") "text_hash_sha256")))
+                         (nonblank (jget migration "text_hash_sha256")))
         logical-id (jget row "id")
         storage-id (jget row "_id")
         row-id (or (when (string? logical-id) (nonblank logical-id))

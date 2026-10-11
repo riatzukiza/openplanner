@@ -838,3 +838,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex0f-six-findings-causal-red-20261011
   note: Verified RED rawSHA921ccbffc944c1e055fb2ba17a28a67c717a2c62403c3161fc4686cb9c6cf7b6. All834 old SDK tests remain passing plus new valid-force control;27new failures reproduce14malformedforce cases,2canonicalduplicates,6non-objectextras,4real owned HTTP-body stalls and migration-onlysource. Cache exactdeadline and hydration migrationaliases fail actualassertions without errors. Initial enforced-body fixture expected internal vexx_required wording; corrected before production to exact public execution-unavailable message and healthy_vectors identity, preserving initialraw. Actual stalled HTTPheaders/body retained until700ms fixtureguard, without liveprovideruse. Same four imported packages; original56manifest and232receipt/reflection prefixes preserved; no runtime/board/deployment/social/paid/spore mutation.
+
+- ts: 2026-10-11T04:30:34.997Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex0f-six-findings-green-20261011
+  note: GREEN actual rawSHA99a413bcb09341c87067f56b2cfbcac3eeb35033e06e6989eea941c4e35c6226. Numericforce batch validates finite[-1,1] similarity and finite supplied charge beforebulkWrite; finite charge2 remainsvalid. Canonical undirected semanticduplicates reject before writes. Shared source hydration includes validated migration_2.source_path after existingaliases. Vexx timeout spans fetch and body JSON/cancellation; real owned localstalls either fallbacktocorrectlocalranking or failwith exactpublicexecution-unavailable and partitionidentity. Non-null supplied eventextra must plainObject/nullprototype beforewholebatcheffects; existing absent/null behavior retained. Memory/schema and all LMDBget/get-entry/touch paths expire at now>=deadline. Verified RED27SDK/9cache/11hydrationfailures retained; all previousassertions stay. No approval/round/native settlement inferred; newheadconsumer/hostedreviews/settlements owed. Original56manifest and exact233prefixes intact; heartbeatPAUSED/goalACTIVE/no live/runtime/board/deployment/social/paid/spore mutation.

@@ -334,9 +334,8 @@ async function queryPartitionWithVexxTopK(params: {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), VEXX_TIMEOUT_MS);
-  let response: Response;
   try {
-    response = await fetch(`${VEXX_BASE_URL.replace(/\/$/, "")}/v1/cosine/topk`, {
+    const response = await fetch(`${VEXX_BASE_URL.replace(/\/$/, "")}/v1/cosine/topk`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -351,30 +350,32 @@ async function queryPartitionWithVexxTopK(params: {
       }),
       signal: controller.signal,
     });
+    if (!response.ok) {
+      await response.body?.cancel();
+      return null;
+    }
+
+    const payload = await response.json() as { matches?: unknown } | null;
+    if (!payload || !Array.isArray(payload.matches) || payload.matches.length !== validCandidates.length) return null;
+    const docsById = new Map(validCandidates.map((doc) => [doc._id, doc]));
+    if (docsById.size !== validCandidates.length) return null;
+    const seen = new Set<string>();
+    const matches: Array<{ doc: MongoVectorDocument; score: number }> = [];
+    for (const value of payload.matches) {
+      if (!value || typeof value !== "object") return null;
+      const match = value as { id?: unknown; score?: unknown };
+      if (typeof match.id !== "string" || typeof match.score !== "number" || !Number.isFinite(match.score)
+        || match.score < -1 || match.score > 1
+        || seen.has(match.id)) return null;
+      const doc = docsById.get(match.id);
+      if (!doc) return null;
+      seen.add(match.id);
+      matches.push({ doc, score: match.score });
+    }
+    return matches;
   } finally {
     clearTimeout(timeout);
   }
-
-  if (!response.ok) return null;
-
-  const payload = await response.json() as { matches?: unknown } | null;
-  if (!payload || !Array.isArray(payload.matches) || payload.matches.length !== validCandidates.length) return null;
-  const docsById = new Map(validCandidates.map((doc) => [doc._id, doc]));
-  if (docsById.size !== validCandidates.length) return null;
-  const seen = new Set<string>();
-  const matches: Array<{ doc: MongoVectorDocument; score: number }> = [];
-  for (const value of payload.matches) {
-    if (!value || typeof value !== "object") return null;
-    const match = value as { id?: unknown; score?: unknown };
-    if (typeof match.id !== "string" || typeof match.score !== "number" || !Number.isFinite(match.score)
-      || match.score < -1 || match.score > 1
-      || seen.has(match.id)) return null;
-    const doc = docsById.get(match.id);
-    if (!doc) return null;
-    seen.add(match.id);
-    matches.push({ doc, score: match.score });
-  }
-  return matches;
 }
 
 // Admit Date or legacy date strings before ranking/parent limits and metadata conversion.

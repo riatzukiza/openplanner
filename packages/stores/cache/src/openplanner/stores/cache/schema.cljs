@@ -66,7 +66,7 @@
   ([entry] (entry-expired? entry (core/now-ms)))
   ([entry now]
    (let [expires-at (entry-expires-at entry)]
-     (boolean (and (number? expires-at) (< expires-at now))))))
+     (boolean (and (number? expires-at) (<= expires-at now))))))
 
 (defn touch-entry
   [entry ttl-ms]

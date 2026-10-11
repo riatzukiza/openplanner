@@ -72,6 +72,10 @@ export function validateEvent(ev: EventEnvelopeV1) {
     assertNonblankIdentifier(ev[field], `event.${field}`);
   }
   if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
+  if (ev.extra !== undefined && ev.extra !== null && (typeof ev.extra !== "object"
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(ev.extra)))) {
+    throw new Error("event.extra must be a plain object when supplied");
+  }
   if (ev.source_ref !== undefined && (ev.source_ref === null || typeof ev.source_ref !== "object"
       || ![Object.prototype, null].includes(Object.getPrototypeOf(ev.source_ref)))) {
     throw new Error("source_ref must be a plain object when supplied");
