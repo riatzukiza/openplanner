@@ -165,6 +165,7 @@ export function prepareIndexDocument(params: {
   const rawText = normalizeWhitespace(params.text);
   const htmlCandidate = extractHtmlCandidate(rawText, params.extra);
   const normalizedText = htmlCandidate ? htmlToMarkdown(htmlCandidate) : stripMarkdownHtmlArtifacts(rawText);
+  if (!normalizedText) throw new Error("index document normalized text must be nonempty");
   const normalizedFormat = htmlCandidate ? "markdown" : "text";
   const rawEstimatedTokens = estimateTokens(rawText);
   const normalizedEstimatedTokens = estimateTokens(normalizedText);

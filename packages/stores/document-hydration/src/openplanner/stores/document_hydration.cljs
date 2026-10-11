@@ -128,7 +128,11 @@
   (let [extra (parse-extra row)
         meta (metadata extra)
         ts (jget row "ts")]
-    #js {:id (str (or (jget row "id") (jget row "_id") ""))
+    #js {:id (let [id (jget row "id") stored-id (jget row "_id")]
+               (cond
+                 (and (string? id) (not (str/blank? id))) id
+                 (and (string? stored-id) (not (str/blank? stored-id))) stored-id
+                 :else ""))
          :title (str (or (jget extra "title") (jget row "message") (jget row "id") ""))
          :content (str (or (jget row "text") ""))
          :project (str (or (jget row "project") "devel"))

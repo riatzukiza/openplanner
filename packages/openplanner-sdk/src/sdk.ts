@@ -28,7 +28,7 @@ export interface OpenPlannerSdkOptions {
    * MONGODB_* / EMBED_PROVIDER_* env vars). Pass { mongodb: { uri, ... } } to
    * point at a specific deployment without touching process.env.
    */
-  config?: Partial<OpenPlannerConfig> & { mongodb?: Partial<OpenPlannerConfig["mongodb"]> };
+  config?: Omit<Partial<OpenPlannerConfig>, "mongodb"> & { mongodb?: Partial<OpenPlannerConfig["mongodb"]> };
   log?: IngestLogger;
 }
 

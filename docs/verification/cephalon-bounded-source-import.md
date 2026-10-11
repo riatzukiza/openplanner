@@ -1062,3 +1062,54 @@ not a changed live service or a deployment proof. A source-only proposal for
 imported package roots, and awaits the finite milestone's explicit scope
 decision. Transaction atomicity is retained; no standalone fallback or failed
 vector indexing is relabeled success. All B1/B2/liveB3 proofs remain unfinished.
+
+## Seven ed91509 source boundary findings: verified GREEN
+
+Ordinary RED `58690ff24bf00ecd55adb71b777c76343fa9678e` precedes these
+production fixes, all inside the four imported package roots:
+
+- Provider binary overflow splits only between complete code points and
+  terminates on a single astral point; original cache identity is preserved.
+- Explicit scope preserves top-level JSON null, blank, false and zero values;
+  undefined is refused, inferred absent fields alone are omitted, and an
+  explicit empty object is not broadened through inferred scope.
+- SDK config uses `Omit` so partial Mongo overrides type-check without weakening
+  Mongo field types. The actual TypeScript consumer fixture executes tsc.
+- Legacy ownership checks compare the stored complete edge tuple before
+  treating a delimiter-colliding legacy ID as the previous projection.
+- Empty normalized text is rejected before embedding or vector replacement,
+  including whitespace and HTML removed by normalization; batch failure is
+  reported and prior vectors remain intact. Existing empty-event receipts
+  remain admitted without fabricated vector output.
+- Tenant deletion removes ingested graph label nodes and edges to their IDs
+  across projects, along with legacy labels/policy/tenant, in one transaction.
+  Another tenant and unrelated graph edges are retained.
+- Public hydration document IDs use only nonblank string identities, with a
+  usable string storage-ID fallback; objects/numbers are not coerced to IDs.
+
+All19 actual bounded gates PASS: SDK962/962; graph77 tests/605 assertions;
+hydration13/108; cache17/176; JVM recall17/100; zero compiler/lint warnings.
+The actual graph runner still exits1 for an intentionally injected assertion
+failure. The real isolated Knoxx consumer passes1977 tests/11459 assertions
+with the same73 hashed package inputs, unchanged after execution. Its105.086s
+run cleaned only the owned temporary snapshot. This is compatibility evidence,
+not a merged-pin hosted run or live maker proof.
+
+A second real Mongo fixture verifies the exact proposed health command reaches
+a writable single-member primary and repeats idempotently. A real tenant
+cleanup/rollback proof removes only the selected tenant's labels/references
+and preserves another tenant and unrelated edges. The first injected-failure
+attempt mistakenly patched a single Collection handle while the adapter
+acquired a new handle; its missing-rejection failure remains in the bundle.
+Only the owned fixture interception was corrected to the driver prototype;
+the rejection and rollback assertions remain unchanged. The corrected actual
+proof passes and all owned Mongo fixtures are removed. All28 previous bundle
+records remain value/byte-equivalent; six complete captures append to34.
+
+The P1 documented Mongo topology finding4240518752 remains outstanding. The
+prepared two-file root configuration proposal is still awaiting a scope
+answer; neither root file nor the SDK default URI has changed. This GREEN
+commit is local preparation while the native PR remains on ed91509. Eight
+current native conversations therefore remain unresolved until publication
+and verified settlement. No current-head review approval, merge, deployment,
+physical field transition, consumed mood or live B3 proof is asserted.

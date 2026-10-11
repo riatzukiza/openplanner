@@ -101,9 +101,8 @@
   (when (js-object? value)
     (let [entries (->> (js/Object.entries value)
                        (array-seq)
-                       (map (fn [entry] [(str (aget entry 0)) (aget entry 1)]))
-                       (filter plain-scope-entry?))]
-      (when-not (every? (fn [[_ v]] (json-scope-value? v)) entries)
+                       (map (fn [entry] [(str (aget entry 0)) (aget entry 1)])))]
+      (when-not (json-scope-value? value)
         (throw (ex-info "Claim scope must contain only finite JSON values without cycles" {})))
       (when (seq entries)
         (into {} entries)))))
@@ -111,11 +110,16 @@
 (defn- inferred-scope
   [input]
   (normalize-edge-claim-scope
-    #js {:tenant_id (jget input "tenant_id")
-         :org_id (jget input "org_id")
-         :project (jget input "project")
-         :lake (jget input "lake")
-         :graph_version (jget input "graph_version")}))
+    (js/Object.fromEntries
+      (clj->js (filter plain-scope-entry?
+                      (map (fn [k] [k (jget input k)])
+                           ["tenant_id" "org_id" "project" "lake" "graph_version"]))))))
+
+(defn- input-scope
+  [input]
+  (if (and (js-object? input) (js/Object.hasOwn input "scope"))
+    (normalize-edge-claim-scope (jget input "scope"))
+    (inferred-scope input)))
 
 (defn- stable-json
   "Preserve all nested JSON keys while sorting object keys at every depth."
@@ -136,8 +140,7 @@
 (defn edge-claim-key-from-js
   [input]
   (let [direction (normalize-edge-claim-direction (jget input "direction"))
-        scope (or (normalize-edge-claim-scope (jget input "scope"))
-                  (inferred-scope input))
+        scope (input-scope input)
         source-node-id (agreeing-alias input ["sourceNodeId" "source_node_id" "source-node-id" "source"] nil)
         target-node-id (agreeing-alias input ["targetNodeId" "target_node_id" "target-node-id" "target"] nil)
         relation-kind (agreeing-alias input ["relationKind" "relation_kind" "relation-kind" "kind"] "related_to")]

@@ -306,7 +306,8 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       const kind = (norm(old.edge_type) ?? norm(old.edge_kind))?.trim();
       if (source && target && kind) {
         const legacy = await mongo.graphEdges.findOne({ _id: `${source}||${target}||${kind}` });
-        if (legacy && legacy.data?.source_event_id !== ev.id) {
+        if (legacy && legacy.source_node_id === source && legacy.target_node_id === target
+          && legacy.edge_kind === kind && legacy.data?.source_event_id !== ev.id) {
           throw new Error(`graph projection ownership unavailable for event ${ev.id}`);
         }
       }

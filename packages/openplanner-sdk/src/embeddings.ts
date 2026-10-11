@@ -316,7 +316,8 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         const [embedding] = await this.fetchBatch([text]);
         return embedding;
       } catch (error) {
-        if (!isContextOverflowError(error) || text.length <= 1) throw error;
+        if (!isContextOverflowError(error) || text.length <= 1
+          || (text.length === 2 && text.codePointAt(0)! > 0xffff)) throw error;
         // Fall through to binary split
       }
     }
@@ -353,6 +354,9 @@ export class EmbedProviderFunction implements IEmbeddingFunction {
         break;
       }
     }
+    // UTF-16 midpoint offsets must preserve the provider's actual code points.
+    const before = text.charCodeAt(splitAt - 1), after = text.charCodeAt(splitAt);
+    if (before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff) splitAt++;
     return [text.slice(0, splitAt), text.slice(splitAt)];
   }
 }

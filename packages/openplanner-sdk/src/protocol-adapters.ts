@@ -284,10 +284,22 @@ class MongoTenantManagement implements TenantManagement {
 
   async deleteTenant(tenantId: string): Promise<boolean> {
     assertNonblankIdentifier(tenantId, "tenant_id");
-    await this.ctx.mongo.db.collection("km_labels").deleteMany({ tenant_id: tenantId });
-    await this.policiesCollection().deleteOne({ tenant_id: tenantId });
-    const result = await this.collection().deleteOne({ tenant_id: tenantId });
-    return result.deletedCount > 0;
+    const mongo = this.ctx.mongo;
+    const session = mongo.client.startSession();
+    try {
+      return await session.withTransaction(async () => {
+        const labels = await mongo.graphLabelNodes.find({ tenant_id: tenantId }, { session }).toArray();
+        const labelIds = labels.map(label => label.label_id);
+        if (labelIds.length) await mongo.graphEdges.deleteMany({ target_node_id: { $in: labelIds } }, { session });
+        await mongo.graphLabelNodes.deleteMany({ tenant_id: tenantId }, { session });
+        await mongo.db.collection("km_labels").deleteMany({ tenant_id: tenantId }, { session });
+        await this.policiesCollection().deleteOne({ tenant_id: tenantId }, { session });
+        const result = await this.collection().deleteOne({ tenant_id: tenantId }, { session });
+        return result.deletedCount > 0;
+      });
+    } finally {
+      await session.endSession();
+    }
   }
 
   async getPolicy(tenantId: string): Promise<any | null> {
