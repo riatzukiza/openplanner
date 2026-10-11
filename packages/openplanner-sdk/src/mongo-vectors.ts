@@ -84,11 +84,11 @@ function asDate(value: unknown): Date {
   return parsed;
 }
 
-function toStringOrNull(value: unknown): string | null {
+function toStringOrNull(value: unknown, preserveEmpty = false): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== "string") throw new Error("vector metadata fields must be strings or null");
   const next = value;
-  return next.length > 0 ? next : null;
+  return preserveEmpty || next.length > 0 ? next : null;
 }
 
 function toNumberOrNull(value: unknown): number | null {
@@ -108,12 +108,18 @@ function toStringArray(value: unknown): string[] {
   return [...new Set(value.map(entry => entry.trim()))];
 }
 
+function vectorModelIdentity(value: unknown): string {
+  assertNonblankIdentifier(value, "vector embedding_model");
+  return value;
+}
+
 function validateVectorMetadata(metadata: Record<string, unknown>): void {
   asDate(metadata.ts);
   for (const field of ["source", "kind", "project", "session", "visibility", "author", "role", "model", "quality_label", "embedding_model", "title", "seed_id"]) {
     toStringOrNull(metadata[field]);
   }
   toStringArray(metadata.labels);
+  vectorModelIdentity(metadata.embedding_model);
 }
 
 function parsePositiveIntEnv(name: string): number {
@@ -664,8 +670,9 @@ async function deletePartitionDocuments(
 export async function listMongoVectorPartitions(
   mongo: MongoConnection,
   tier: MongoVectorTier,
+  session?: ClientSession,
 ): Promise<MongoVectorPartitionDocument[]> {
-  return mongo.vectorPartitions.find({ tier }).sort({ updatedAt: -1 }).toArray();
+  return mongo.vectorPartitions.find({ tier }, { session }).sort({ updatedAt: -1 }).toArray();
 }
 
 function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, now: Date, ttlSeconds: number): MongoVectorDocument {
@@ -693,16 +700,16 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
     ts,
     source: toStringOrNull(entry.metadata.source) ?? "",
     kind: toStringOrNull(entry.metadata.kind) ?? "",
-    project: toStringOrNull(entry.metadata.project),
-    session: toStringOrNull(entry.metadata.session),
+    project: toStringOrNull(entry.metadata.project, true),
+    session: toStringOrNull(entry.metadata.session, true),
     author: toStringOrNull(entry.metadata.author),
     role: toStringOrNull(entry.metadata.role),
     model: toStringOrNull(entry.metadata.model),
-    visibility: toStringOrNull(entry.metadata.visibility),
+    visibility: toStringOrNull(entry.metadata.visibility, true),
     quality_label: toStringOrNull(entry.metadata.quality_label),
     labels,
     title: toStringOrNull(entry.metadata.title),
-    embedding_model: toStringOrNull(entry.metadata.embedding_model),
+    embedding_model: vectorModelIdentity(entry.metadata.embedding_model),
     embedding_dimensions: entry.embedding.length,
     search_tier: tier,
     chunk_id: toStringOrNull(entry.metadata.chunk_id) ?? entry.id,
@@ -755,7 +762,7 @@ export async function upsertMongoVectorDocuments(
 
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
   for (const doc of documents) {
-    const model = doc.embedding_model ?? "unknown-model";
+    const model = vectorModelIdentity(doc.embedding_model);
     const dimensions = doc.embedding.length;
     const key = makePartitionKey(model, dimensions);
     const existing = groups.get(key) ?? { model, dimensions, documents: [] };
@@ -780,7 +787,7 @@ export async function upsertMongoVectorDocuments(
     }).toArray();
 
     const stalePartitionIds = new Map<string, { model: string; dimensions: number; ids: string[] }>();
-    const nextPartitionById = new Map(documents.map((doc) => [doc._id, makePartitionKey(doc.embedding_model ?? "unknown-model", doc.embedding.length)]));
+    const nextPartitionById = new Map(documents.map((doc) => [doc._id, makePartitionKey(vectorModelIdentity(doc.embedding_model), doc.embedding.length)]));
     for (const existing of existingDocs) {
       const previousModel = existing.embedding_model ?? "unknown-model";
       const previousDimensions = Number(existing.embedding_dimensions ?? 0);
@@ -851,11 +858,14 @@ async function updatePartitionVectorLabels(
   parentId: string,
   update: Record<string, unknown> | Record<string, unknown>[],
   requiredLabel?: string,
+  session?: ClientSession,
 ): Promise<void> {
-  const partitions = await listMongoVectorPartitions(mongo, tier);
-  await Promise.all(partitions.map((partition) => (
-    mongo.db.collection<MongoVectorDocument>(partition.collectionName).updateMany({ parent_id: parentId, ...(requiredLabel === undefined ? {} : { labels: requiredLabel }) }, update)
-  )));
+  const partitions = await listMongoVectorPartitions(mongo, tier, session);
+  // The Mongo driver requires sequential commands within a transaction.
+  for (const partition of partitions) {
+    await mongo.db.collection<MongoVectorDocument>(partition.collectionName).updateMany(
+      { parent_id: parentId, ...(requiredLabel === undefined ? {} : { labels: requiredLabel }) }, update, { session });
+  }
 }
 
 export async function addMongoVectorParentLabel(
@@ -880,12 +890,12 @@ export async function addMongoVectorParentLabel(
       },
     },
   ];
-  await Promise.all([
-    mongo.hotVectors.updateMany({ parent_id: parentId }, update),
-    mongo.compactVectors.updateMany({ parent_id: parentId }, update),
-    updatePartitionVectorLabels(mongo, "hot", parentId, update),
-    updatePartitionVectorLabels(mongo, "compact", parentId, update),
-  ]);
+  await withMongoTransaction(mongo, async (session) => {
+    await mongo.hotVectors.updateMany({ parent_id: parentId }, update, { session });
+    await mongo.compactVectors.updateMany({ parent_id: parentId }, update, { session });
+    await updatePartitionVectorLabels(mongo, "hot", parentId, update, undefined, session);
+    await updatePartitionVectorLabels(mongo, "compact", parentId, update, undefined, session);
+  });
 }
 
 export async function removeMongoVectorParentLabel(
@@ -928,12 +938,12 @@ export async function removeMongoVectorParentLabel(
   };
   const hotUpdate = updateForTier("hot");
   const compactUpdate = updateForTier("compact");
-  await Promise.all([
-    mongo.hotVectors.updateMany({ parent_id: parentId, labels: normalized }, hotUpdate),
-    mongo.compactVectors.updateMany({ parent_id: parentId, labels: normalized }, compactUpdate),
-    updatePartitionVectorLabels(mongo, "hot", parentId, hotUpdate, normalized),
-    updatePartitionVectorLabels(mongo, "compact", parentId, compactUpdate, normalized),
-  ]);
+  await withMongoTransaction(mongo, async (session) => {
+    await mongo.hotVectors.updateMany({ parent_id: parentId, labels: normalized }, hotUpdate, { session });
+    await mongo.compactVectors.updateMany({ parent_id: parentId, labels: normalized }, compactUpdate, { session });
+    await updatePartitionVectorLabels(mongo, "hot", parentId, hotUpdate, normalized, session);
+    await updatePartitionVectorLabels(mongo, "compact", parentId, compactUpdate, normalized, session);
+  });
 }
 
 export async function replaceMongoVectorEntries(
@@ -972,7 +982,7 @@ async function replaceMongoVectorParents(
   const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();
   for (const doc of documents) {
-    const model = doc.embedding_model ?? "unknown-model";
+    const model = vectorModelIdentity(doc.embedding_model);
     const dimensions = doc.embedding.length;
     const key = makePartitionKey(model, dimensions);
     const existing = groups.get(key) ?? { model, dimensions, documents: [] };
@@ -1183,6 +1193,8 @@ async function queryPartitionWithNativeVectorSearch(params: {
         chunk_text_hash_sha256: 1,
         char_start: 1,
         char_end: 1,
+        schema_version: 1,
+        migration_state: 1,
         createdAt: 1,
         updatedAt: 1,
         score: { $meta: "vectorSearchScore" },

@@ -1586,7 +1586,7 @@ for(const batch of [false,true])test(`vector ${batch?'batch':'single'} indexing 
   const mongo=mongoFixture();let calls=0;const text='Outside words carry a long encounter. '.repeat(12000);
   const embeddingFunction={generate:async texts=>texts.map(()=>++calls===1?[1,0]:[1,0,0])};
   if(batch){const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('long-parent',text)],embeddingFunction,config:{embeddingBatchSize:1}});assert.equal(result.indexed,0);assert.equal(result.failed.length,1);assert.match(result.failed[0].error,/dimension/i);}
-  else await assert.rejects(indexTextInMongoVectors({mongo,tier:'hot',parentId:'long-parent',text,metadata:{},embeddingFunction:{generate:async texts=>{calls++;return texts.map(()=>calls===1?[1,0]:[1,0,0]);}}}),/dimension|invalid embedding/i);
+  else await assert.rejects(indexTextInMongoVectors({mongo,tier:'hot',parentId:'long-parent',text,metadata:{embedding_model:'fixture'},embeddingFunction:{generate:async texts=>{calls++;return texts.map(()=>calls===1?[1,0]:[1,0,0]);}}}),/dimension|invalid embedding/i);
   assert.ok(calls>1);assert.equal(mongo.hotVectors.calls.deletes.length,0);assert.equal(mongo.hotVectors.calls.writes.length,0);
 });
 test('unsupported Mongo transactions refuse unsafe vector replacement without an untransactional replay',async()=>{

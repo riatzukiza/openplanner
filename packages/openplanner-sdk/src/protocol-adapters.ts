@@ -222,7 +222,7 @@ class MongoSessionManagement implements SessionManagement {
       if (project !== null) assertOptionalSessionString(project, "project");
       filter.project = project;
     } else filter.project = opts.project;
-    if (opts.kind) filter.kind = opts.kind;
+    if (opts.kind !== undefined) filter.kind = opts.kind;
 
     let cursor = this.ctx.mongo.events.find(filter);
     if (opts.projection) cursor = cursor.project(opts.projection);

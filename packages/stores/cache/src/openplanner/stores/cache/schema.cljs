@@ -26,7 +26,7 @@
 
 (defn valid-cache-key?
   [value]
-  (boolean (core/nonblank value)))
+  (boolean (and (string? value) (core/nonblank value))))
 
 (defn valid-ms?
   [value]
@@ -40,7 +40,7 @@
 (defn cache-entry
   [{:keys [key value ttl-ms now-ms metadata]}]
   (let [now-ms (or now-ms (core/now-ms))]
-    (cond-> {:cache/key (str key)
+    (cond-> {:cache/key (core/checked-key key)
              :cache/value value
              :cache/created-at-ms now-ms
              :cache/touched-at-ms now-ms}

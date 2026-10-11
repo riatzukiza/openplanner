@@ -24,6 +24,8 @@
 
 (defn- nonblank
   [v]
+  (when (and (some? v) (not (string? v)))
+    (throw (ex-info "Document reference identity must be a string" {})))
   (let [s (some-> v str str/trim)]
     (when-not (str/blank? s) s)))
 
@@ -54,6 +56,12 @@
   [row]
   (let [extra (parse-extra row)
         meta (metadata extra)
+        _ (doseq [[container field] [[row "project"] [row "id"] [row "_id"]
+                                    [extra "source_path"] [extra "path"] [meta "path"] [meta "file_id"]
+                                    [extra "url"] [meta "url"] [extra "hostname"] [meta "hostname"]
+                                    [extra "lake"] [meta "lake"] [extra "content_hash"] [meta "content_hash"]
+                                    [(jget extra "migration_2") "text_hash_sha256"]]]
+            (nonblank (jget container field)))
         source-path (or (nonblank (jget extra "source_path"))
                         (nonblank (jget extra "path"))
                         (nonblank (jget meta "path"))

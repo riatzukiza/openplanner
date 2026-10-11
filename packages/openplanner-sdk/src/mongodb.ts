@@ -1346,6 +1346,16 @@ function applyExactSearchFilters(
 /**
  * Full-text search on events.
  */
+function applySearchExclusions(filter: Record<string, unknown>, excludeIds: string[] | undefined): void {
+  if (!excludeIds?.length) return;
+  filter.id = { $nin: excludeIds };
+  // Match the wrapper's effective id, including legacy BSON storage identities.
+  filter.$expr = { $not: [{ $in: [
+    { $convert: { input: { $ifNull: ["$id", "$_id"] }, to: "string", onError: null, onNull: null } },
+    { $literal: excludeIds },
+  ] }] };
+}
+
 export async function ftsSearch(
   collection: Collection<EventDocument> | Collection<CompactedMemoryDocument>,
   query: string,
@@ -1372,7 +1382,7 @@ export async function ftsSearch(
   applyExactSearchFilters(filter, options);
   if (options.quality === "good") filter["extra.openplanner_labels.quality"] = "good";
   if (options.quality === "not_bad") filter["extra.openplanner_labels.quality"] = { $ne: "bad" };
-  if (options.excludeIds?.length) filter.id = { $nin: options.excludeIds };
+  applySearchExclusions(filter, options.excludeIds);
 
   const results = await collection
     .find(filter, {
@@ -1431,7 +1441,7 @@ export async function ilikeSearch(
   applyExactSearchFilters(filter, options);
   if (options.quality === "good") filter["extra.openplanner_labels.quality"] = "good";
   if (options.quality === "not_bad") filter["extra.openplanner_labels.quality"] = { $ne: "bad" };
-  if (options.excludeIds?.length) filter.id = { $nin: options.excludeIds };
+  applySearchExclusions(filter, options.excludeIds);
 
   const results = await collection
     .find(filter, {
