@@ -113,9 +113,9 @@ function estimateTokens(input: string): number {
   return Math.max(Math.ceil(chars / 4), Math.ceil(words * 1.35));
 }
 
-function chunkText(input: string, targetTokens: number, targetChars: number, overlapChars: number): string[] {
+function chunkText(input: string, targetTokens: number, targetChars: number, overlapChars: number): Array<{ text: string; charStart: number; charEnd: number }> {
   const text = normalizeWhitespace(input);
-  const out: string[] = [];
+  const out: Array<{ text: string; charStart: number; charEnd: number }> = [];
   let start = 0;
   while (start < text.length) {
     let low = 0, high = Math.min(targetChars, text.length - start);
@@ -131,26 +131,16 @@ function chunkText(input: string, targetTokens: number, targetChars: number, ove
       const boundary = Math.max(text.lastIndexOf(" ", end - 1), text.lastIndexOf("\n", end - 1));
       if (boundary > start) end = boundary;
     }
-    const chunk = text.slice(start, end).trim();
-    if (chunk) out.push(chunk);
+    const raw = text.slice(start, end);
+    const chunk = raw.trim();
+    const charStart = start + raw.length - raw.trimStart().length;
+    if (chunk) out.push({ text: chunk, charStart, charEnd: charStart + chunk.length });
     if (end === text.length) break;
     // Overlap also consumes the next chunk's budgets; always advance forward.
     const overlap = Math.min(overlapChars, Math.floor((end - start) / 2));
     start = Math.max(start + 1, end - overlap);
   }
   return out;
-}
-
-function locateChunkOffsets(text: string, chunks: string[]): Array<{ charStart: number | null; charEnd: number | null }> {
-  let searchFrom = 0;
-  return chunks.map((chunk) => {
-    let start = text.indexOf(chunk, searchFrom);
-    if (start < 0) start = text.indexOf(chunk);
-    if (start < 0) return { charStart: null, charEnd: null };
-    const charEnd = start + chunk.length;
-    searchFrom = Math.max(start + 1, charEnd - DEFAULT_OVERLAP_CHARS);
-    return { charStart: start, charEnd };
-  });
 }
 
 export function prepareIndexDocument(params: {
@@ -184,21 +174,20 @@ export function prepareIndexDocument(params: {
     || normalizedEstimatedTokens > overflowThresholdTokens;
   const parts = shouldChunk
     ? chunkText(normalizedText, targetChunkTokens, targetChunkChars, overlapChars)
-    : [normalizedText];
+    : [{ text: normalizedText, charStart: 0, charEnd: normalizedText.length }];
 
   // The generated namespace escapes reserved raw parents, with a distinct
   // null discriminator for unchunked documents. Both mappings are injective.
   const chunkId = (index: number): string => parts.length === 1 && !params.parentId.startsWith("index_chunk:")
     ? params.parentId
     : "index_chunk:" + JSON.stringify([params.parentId, parts.length === 1 ? null : index]);
-  const offsets = locateChunkOffsets(normalizedText, parts);
-  const chunks = parts.map((text, index) => ({
+  const chunks = parts.map((part, index) => ({
     id: chunkId(index),
-    text,
+    text: part.text,
     chunkIndex: index,
     chunkCount: parts.length,
-    charStart: offsets[index]?.charStart ?? null,
-    charEnd: offsets[index]?.charEnd ?? null,
+    charStart: part.charStart,
+    charEnd: part.charEnd,
   }));
 
   return {

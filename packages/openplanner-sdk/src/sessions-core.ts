@@ -46,8 +46,11 @@ export async function listSessionsResponse(
   ctx: SessionsContext,
   query: { project?: unknown; limit?: unknown; offset?: unknown } = {},
 ) {
+  if (query.project !== undefined && typeof query.project !== "string") {
+    throw new Error("session-list project must be a string when supplied");
+  }
   const protocols = createProtocols({ mongo: ctx.mongo });
-  const project = typeof query.project === "string" ? query.project.trim() : "";
+  const project = typeof query.project === "string" ? query.project.trim() : undefined;
   const limit = Math.min(parsePositiveInt(query.limit, 50), 500);
   const offset = Math.max(0, Number.parseInt(String(query.offset ?? "0"), 10) || 0);
 

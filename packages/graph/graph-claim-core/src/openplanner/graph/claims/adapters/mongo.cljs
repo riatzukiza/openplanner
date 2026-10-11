@@ -30,7 +30,6 @@
         row #js {:direction (get-any doc [:direction "direction"])
        :status (get-any doc [:status "status"])
        :confidence (get-any doc [:confidence "confidence"])
-       :valid_until (get-any doc [:valid-until :valid_until "valid_until"])
        :scope (clj->js (or (get-any doc [:scope "scope"])
                            (select-keys doc [:tenant_id :org_id :project :lake :graph_version])))}]
     ;; Preserve all supplied identity aliases for the canonical boundary's agreement law.
@@ -41,6 +40,8 @@
         (aset row field (:value entry))))
     (when-let [expiration (present-entry doc [:validUntil "validUntil"])]
       (aset row "validUntil" (:value expiration)))
+    (when-let [expiration (present-entry doc [:valid-until :valid_until "valid_until"])]
+      (aset row "valid_until" (:value expiration)))
     (when camel (aset row "claimId" (:value camel)))
     (when snake (aset row "claim_id" (:value snake)))
     (when storage (aset row "claim_id" (:value storage)))

@@ -89,10 +89,10 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
     searchVector: (body) => tracked(() => vectorSearchWithQuality({ mongo, embeddingRuntime }, body)),
     listSessions: (opts) => tracked(() => protocols.sessionManagement.listSessions(opts)),
     getSessionEvents: (sessionId, opts) => tracked(() => protocols.sessionManagement.getSessionEvents(sessionId, opts)),
-    listCollections: async () => {
+    listCollections: () => tracked(async () => {
       const collections = await mongo.db.listCollections().toArray();
       return collections.map((c: { name: string }) => c.name).sort();
-    },
+    }),
     close: () => {
       if (!closing) closing = (async () => {
         await Promise.allSettled([...pendingIngests]);

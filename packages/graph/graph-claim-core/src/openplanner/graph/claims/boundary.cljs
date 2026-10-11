@@ -150,21 +150,28 @@
 
 (defn- claim-expiration-ms
   [input]
-  (let [camel (jget input "validUntil")
-        value (if (some? camel) camel (jget input "valid_until"))]
-    (when (some? value)
-      (or (parse-ms value) js/NaN))))
+  (let [supplied (when (js-object? input)
+                   (filter #(js/Object.hasOwn input %) ["validUntil" "valid_until"]))
+        values (map (fn [field]
+                      (when-some [value (jget input field)]
+                        (or (parse-ms value) js/NaN))) supplied)]
+    (when (seq supplied)
+      (if (apply = values) (first values) js/NaN))))
 
 (defn- status-set-from-js
   [value]
-  (when (array? value)
-    (->> (array-seq value)
-         (keep edge-claim-status-keyword)
-         set)))
+  (when-not (array? value)
+    (throw (js/Error. "projection statuses must be an array when supplied")))
+  (let [statuses (map edge-claim-status-keyword (array-seq value))]
+    (when-not (every? some? statuses)
+      (throw (js/Error. "projection statuses contain an unsupported status")))
+    (set statuses)))
 
 (defn projection-options-from-js
   [opts]
-  {:statuses (or (status-set-from-js (jget opts "statuses")) claims/projectable-statuses)
+  {:statuses (if (and (js-object? opts) (js/Object.hasOwn opts "statuses"))
+               (status-set-from-js (jget opts "statuses"))
+               claims/projectable-statuses)
    :include-expired? (true? (jget opts "includeExpired"))
    :now-ms (or (parse-ms (jget opts "now")) (.now js/Date))})
 

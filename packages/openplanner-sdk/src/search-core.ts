@@ -19,6 +19,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function searchTier(value: unknown): "hot" | "compact" | "both" {
+  if (value === undefined) return "both";
+  if (value === "hot" || value === "compact" || value === "both") return value;
+  throw new Error("search tier must be hot, compact or both");
+}
+
 export type QualityMode = "good" | "not_bad" | "any" | "good_then_not_bad";
 
 function boundedSearchLimit(value: unknown): number {
@@ -88,7 +94,7 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
   const limit = body.limit ?? 20;
 
   const lim = boundedSearchLimit(limit);
-  const tier = body.tier ?? "both";
+  const tier = searchTier(body.tier);
   const mode = qualityMode(body.quality ?? (body as any).output_quality);
 
   const runFts = async (quality: "good" | "not_bad" | "any", remainingLimit = lim, excludeIds: string[] = []) => {
@@ -151,8 +157,9 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
 
   const limit = boundedSearchLimit(k);
 
-  if (body.where !== undefined && (!isRecord(body.where) || Array.isArray(body.where))) {
-    throw new Error("vector where must be a filter object");
+  if (body.where !== undefined && (!isRecord(body.where) || Array.isArray(body.where)
+      || (Object.getPrototypeOf(body.where) !== Object.prototype && Object.getPrototypeOf(body.where) !== null))) {
+    throw new Error("vector where must be a plain filter object");
   }
   const whereFromBody = { ...(body.where ?? {}) };
   for (const field of ["source", "kind", "project", "session", "visibility"] as const) {
@@ -176,7 +183,7 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
     }
     throw new Error("unsupported vector filter value for " + key);
   }
-  const tier = body.tier ?? "both";
+  const tier = searchTier(body.tier);
   const includeHot = tier !== "compact";
   const includeCompact = tier !== "hot";
   const mode = qualityMode(body.quality ?? (body as any).output_quality);

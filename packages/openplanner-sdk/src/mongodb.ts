@@ -27,7 +27,14 @@ function parsePositiveIntEnv(name: string): number {
 }
 
 function ttlExpiryFromNow(ttlSeconds: number, now: Date): Date | undefined {
+  assertRetentionTtl(ttlSeconds, now.getTime());
   return ttlSeconds > 0 ? new Date(now.getTime() + ttlSeconds * 1000) : undefined;
+}
+
+function assertRetentionTtl(ttlSeconds: number, nowMs = Date.now()): void {
+  if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 0 || ttlSeconds > Math.floor((8.64e15 - nowMs) / 1000)) {
+    throw new Error("retention TTL must be a nonnegative safe integer producing a valid expiry date");
+  }
 }
 
 function labelsFromExtra(extra: unknown): string[] {
@@ -35,7 +42,8 @@ function labelsFromExtra(extra: unknown): string[] {
   const openplannerLabels = (extra as Record<string, unknown>).openplanner_labels;
   if (!openplannerLabels || typeof openplannerLabels !== "object" || Array.isArray(openplannerLabels)) return [];
   const labels = (openplannerLabels as Record<string, unknown>).labels;
-  if (!Array.isArray(labels)) return [];
+  if (!Object.hasOwn(openplannerLabels, "labels")) return [];
+  if (!Array.isArray(labels)) throw new Error("retention labels must be an array when supplied");
   if (labels.some(label => typeof label !== "string" || !label.trim())) {
     throw new Error("retention labels must be nonblank strings");
   }
@@ -91,6 +99,7 @@ async function ensureTtlIndex(
 
 /** Keep an older writer's relative TTL intact until that writer is migrated. */
 export async function reconcileManagedTtl(collection: Collection<any>, name: string, ttlSeconds: number): Promise<void> {
+  assertRetentionTtl(ttlSeconds);
   const indexes = await collection.indexes();
   const existing = indexes.find(index => index.name === name);
   const legacy = existing?.key?.createdAt === 1;
@@ -608,6 +617,10 @@ export interface MongoConnection {
  * Connect to MongoDB and create indexes.
  */
 export async function openMongoDB(config: MongoConfig): Promise<MongoConnection> {
+  const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
+  const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
+  assertRetentionTtl(eventsTtl);
+  assertRetentionTtl(compactedTtl);
   const client = new MongoClient(config.uri, {
     connectTimeoutMS: 10000,
     socketTimeoutMS: 30000,
@@ -847,8 +860,6 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
       }
     })();
 
-    const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
-    const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
     await reconcileManagedTtl(events, "events_ttl", eventsTtl);
     await reconcileManagedTtl(compacted, "compacted_ttl", compactedTtl);
     await reconcileManagedTtl(hotVectors, "hot_vectors_ttl", eventsTtl);
@@ -948,6 +959,7 @@ export async function upsertEvent(
   event: Omit<EventDocument, "_id" | "createdAt" | "updatedAt">,
   ttlSeconds = parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS"),
 ): Promise<void> {
+  if (typeof event.id !== "string" || !event.id.trim()) throw new Error("event ID must be a nonblank string");
   const now = new Date();
   const schemaVersion = event.schema_version ?? OPENPLANNER_SCHEMA_TARGETS.event;
   const state = event.migration_state ?? eventMigrationState(now);

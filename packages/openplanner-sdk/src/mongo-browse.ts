@@ -104,7 +104,11 @@ export async function queryCollectionResponse(ctx: { mongo: MongoConnection }, b
   }
 
   let projection: Record<string, number> | undefined;
-  if (body.projection && typeof body.projection === "object" && !Array.isArray(body.projection)) {
+  if (Object.hasOwn(body, "projection")) {
+    if (body.projection === null || typeof body.projection !== "object" || Array.isArray(body.projection)
+        || (Object.getPrototypeOf(body.projection) !== Object.prototype && Object.getPrototypeOf(body.projection) !== null)) {
+      throw new Error("collection projection must be a plain object when supplied");
+    }
     projection = body.projection as Record<string, number>;
     assertSafeFilter(projection);
   }

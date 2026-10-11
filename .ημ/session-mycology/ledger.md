@@ -694,3 +694,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-2b01e5c-eleven-boundaries-red-20261011
   note: NativeCOMMENTED5481490146 supplies11 findings,notapproval. Actualproduction2b unchanged;newdirectevent,plainwhere,projection,listingdrain,sessionquery,chunkoffset,expiration/status,tier,retentionlabels/TTL fixtures causallyRED. Initialfreeze attempted absent .ημ/receipts.edn and refused before any write;actualsource receipts.edn216prefix then frozen. No originalassertions,history,manifest changed;no board/live/social/deploy/paid/spore.
+
+- ts: 2026-10-11T01:38:42.830Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-eleven-data-boundaries-green-20261011
+  note: 11 real native2b findings repaired with directevent ID,plainwhere/projection,trackedlistingdrain,sessionquerytype,actualsliceoffsets,agreeingexpirationaliases,explicitstatuses,tieradmission,labelsarray andpre-effectvalidTTLs. FirstGREEN SDK600PASS butgraph2oldercamelonlyassertionsFAIL because Mongo adapter manufactured missing alias asnull;productionadapter correctedactualpresence without weakeningtests. Failedrawretained. Source217prefix/original56manifest unchanged;newcandidateunapproved/consumerhostednotyetexecuted;no live/board/model/social/deploy/paid/spore.
