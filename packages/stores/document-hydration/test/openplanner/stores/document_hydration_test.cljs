@@ -169,5 +169,16 @@
     (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
           (hydration/document-source-ref #js {:extra #js {:source_path "direct" :migration_2 #js {:source_path value}}})))))
 
+(deftest public-document-identity-preserves-only-usable-string-identities
+  (doseq [[id storage expected] [["public" #js {} "public"]
+                                [#js {} "storage" "storage"]
+                                ["   " "storage" "storage"]
+                                ["" "storage" "storage"]
+                                [nil "storage" "storage"]
+                                [#js {} #js {} ""]
+                                [42 99 ""]
+                                [nil "  " ""]]]
+    (is (= expected (.-id (hydration/row-to-document #js {:id id :_id storage}))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

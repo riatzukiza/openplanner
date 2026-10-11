@@ -476,3 +476,24 @@
       (is (= ms (:now-ms (boundary/projection-options-from-js #js {:now value}))))
       (is (some? (boundary/project-edge-claim-js claim #js {:now (dec ms)})))
       (is (nil? (boundary/project-edge-claim-js claim #js {:now ms}))))))
+
+(deftest explicit-top-level-scope-preserves-json-values-without-broadening
+  (let [base #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"}
+        unscoped (boundary/build-edge-claim-id-js base)]
+    (doseq [value [nil "" "   " false 0]]
+      (let [claim (js/Object.assign #js {} base #js {:scope #js {:tenant_id value}})
+            normalized (boundary/normalize-edge-claim-input-js claim)]
+        (is (not= unscoped (boundary/build-edge-claim-id-js claim)))
+        (is (some? (aget normalized "scope")))
+        (when (some? (aget normalized "scope"))
+          (is (js/Object.hasOwn (aget normalized "scope") "tenant_id"))
+          (is (= value (aget (aget normalized "scope") "tenant_id"))))))
+    (let [invalid (js/Object.assign #js {} base #js {:scope #js {:tenant_id js/undefined}})]
+      (is (thrown-with-msg? js/Error #"scope.*JSON|JSON.*scope"
+            (boundary/build-edge-claim-id-js invalid)))
+      (is (thrown-with-msg? js/Error #"scope.*JSON|JSON.*scope"
+            (boundary/normalize-edge-claim-input-js invalid))))
+    (is (= unscoped (boundary/build-edge-claim-id-js
+                     (js/Object.assign #js {} base #js {:tenant_id js/undefined}))))
+    (is (= unscoped (boundary/build-edge-claim-id-js
+                     (js/Object.assign #js {} base #js {:tenant_id "inferred" :scope #js {}}))))))

@@ -2458,3 +2458,68 @@ test('Codexd128: a one-code-unit budget cannot split an astral code point',()=>{
  const valid=prepareIndexDocument({parentId:'tiny',text:'ab',forceChunking:true,targetChunkChars:1,targetChunkTokens:2,overlapChars:0});
  assert.deepEqual(valid.chunks.map(x=>x.text),['a','b']);
 });
+
+test('Codexed: provider overflow preserves complete astral inputs and the original cache identity',async()=>{
+ const requests=[];const text='😀'.repeat(5);
+ await withFetch(async(_url,opts)=>{const input=JSON.parse(opts.body).input;requests.push(input);
+  if(input.some(x=>Array.from(x).length>1))return new Response('context window exceeded',{status:400});
+  return response(input.map(()=>[1,0]));
+ },async()=>{
+  const provider=new EmbedProviderFunction('codex-ed-unicode','http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});
+  assert.deepEqual(await provider.generate([text]),[[1,0]]);
+  assert.ok(requests.flat().every(x=>x.isWellFormed()&&Buffer.from(x,'utf8').toString('utf8')===x));
+  assert.ok(requests.flat().filter(x=>Array.from(x).length===1).every(x=>x==='😀'));
+  const count=requests.length;assert.deepEqual(await provider.generate([text]),[[1,0]]);assert.equal(requests.length,count);
+ });
+});
+test('Codexed: one astral code point fails overflow terminally without corrupted retries or cached failure',async()=>{
+ let failing=true;const requests=[];
+ await withFetch(async(_url,opts)=>{const input=JSON.parse(opts.body).input;requests.push(input);
+  if(failing)return new Response(requests.length>5?'fixture recursion guard':'context window exceeded',{status:requests.length>5?503:400});
+  return response(input.map(()=>[0,1]));
+ },async()=>{
+  const provider=new EmbedProviderFunction('codex-ed-tiny','http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});
+  await assert.rejects(provider.generate(['😀']),/context window/);assert.deepEqual(requests,[['😀'],['😀']]);
+  failing=false;assert.deepEqual(await provider.generate(['😀']),[[0,1]]);assert.deepEqual(requests.at(-1),['😀']);
+ });
+});
+test('Codexed: SDK declaration accepts partial Mongo overrides and rejects invalid field types',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'openplanner-partial-config-types-'));
+ try{
+  const sdkTypes=new URL('../dist/sdk.js',import.meta.url).pathname;const fixture=join(dir,'consumer.mts');
+  await writeFile(fixture,`import type { OpenPlannerSdkOptions } from ${JSON.stringify(sdkTypes)};\nconst uriOnly: OpenPlannerSdkOptions = {config:{mongodb:{uri:'mongodb://fixture'}}};\nconst dbOnly: OpenPlannerSdkOptions = {config:{mongodb:{dbName:'encounters'}}};\nconst empty: OpenPlannerSdkOptions = {config:{mongodb:{}}};\n// @ts-expect-error Mongo URI remains a string\nconst invalid: OpenPlannerSdkOptions = {config:{mongodb:{uri:123}}};\n`);
+  await promisify(execFileCallback)(process.execPath,[new URL('../node_modules/typescript/bin/tsc',import.meta.url).pathname,'--noEmit','--strict','--skipLibCheck','--module','NodeNext','--moduleResolution','NodeNext',fixture]);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('Codexed: unrelated delimiter-colliding legacy edge cannot block an owned replacement',async()=>{
+ const mongo=mongoFixture();const previous={_id:'legacy-collision',id:'legacy-collision',kind:'graph.edge',extra:{source_node_id:'a||b',target_node_id:'c',edge_kind:'related'}};
+ mongo.events.rows.set(previous.id,previous);const unrelated={_id:'a||b||c||related',source_node_id:'a',target_node_id:'b||c',edge_kind:'related',data:{source_event_id:'other'}};
+ mongo.graphEdges.rows.set(unrelated._id,unrelated);
+ const result=await ingestEvents({mongo,embeddingRuntime:{}},[{schema:'openplanner.event.v1',id:previous.id,ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'graph.edge',extra:{source_node_id:'a||b',target_node_id:'d',edge_kind:'related'}}]);
+ assert.deepEqual(result.ids,[previous.id]);assert.deepEqual(mongo.graphEdges.rows.get(unrelated._id),unrelated);
+ assert.ok([...mongo.graphEdges.rows.values()].some(row=>row.data?.source_event_id===previous.id&&row.target_node_id==='d'));
+});
+for(const text of ['', '  \n\t ', '<html><body><script>hidden()</script><!-- removed --></body></html>'])test('Codexed: empty normalized document rejects before provider or stored vector effects '+JSON.stringify(text),async()=>{
+ const mongo=mongoFixture();const old={_id:'empty-parent',parent_id:'empty-parent',text:'previous encounter',embedding:[1,0]};mongo.hotVectors.rows.set(old._id,old);let calls=0;
+ const provider={generate:async texts=>{calls++;return texts.map(()=>[1,0]);}};
+ assert.throws(()=>prepareIndexDocument({parentId:'empty-parent',text}),/nonempty|empty/i);
+ await assert.rejects(indexTextInMongoVectors({mongo,tier:'hot',parentId:'empty-parent',text,metadata:{embedding_model:'fixture'},embeddingFunction:provider}),/nonempty|empty/i);
+ const result=await batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('empty-parent',text)],embeddingFunction:provider});
+ assert.equal(result.indexed,0);assert.equal(result.failed.length,1);assert.equal(result.failed[0].id,'empty-parent');assert.match(result.failed[0].error,/nonempty|empty/i);
+ assert.equal(calls,0);assert.deepEqual(mongo.hotVectors.rows.get(old._id),old);assert.equal(mongo.hotVectors.calls.deletes.length,0);assert.equal(mongo.hotVectors.calls.writes.length,0);
+});
+test('Codexed: tenant deletion removes ingested graph labels and their references across projects only for that tenant',async()=>{
+ const mongo=mongoFixture();const event=(id,tenant,project)=>({schema:'openplanner.event.v1',id,ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'',project,extra:{tenant_id:tenant,openplanner_labels:{labels:['curious']}}});
+ await ingestEvents({mongo,embeddingRuntime:{}},[event('a-one','tenant-a','one'),event('a-two','tenant-a','two'),event('b-one','tenant-b','one')]);
+ const tenants=mongo.db.collection('tenants'),policies=mongo.db.collection('tenant_policies');tenants.rows.set('tenant-a',{tenant_id:'tenant-a'});tenants.rows.set('tenant-b',{tenant_id:'tenant-b'});policies.rows.set('tenant-a',{tenant_id:'tenant-a'});policies.rows.set('tenant-b',{tenant_id:'tenant-b'});
+ const match=(row,filter)=>Object.entries(filter).every(([key,value])=>value&&Array.isArray(value.$in)?value.$in.includes(row[key]):row[key]===value);
+ const removed=[];for(const c of [mongo.graphLabelNodes,mongo.graphEdges,mongo.db.collection('km_labels'),tenants,policies]){
+  c.find=filter=>({toArray:async()=>[...c.rows.values()].filter(row=>match(row,filter))});
+  c.deleteMany=async filter=>{removed.push({collection:c.collectionName,filter});let count=0;for(const [id,row]of c.rows)if(match(row,filter)){c.rows.delete(id);count++;}return{deletedCount:count};};
+  c.deleteOne=c.deleteMany;
+ }
+ const retainedLabels=[...mongo.graphLabelNodes.rows.values()].filter(row=>row.tenant_id==='tenant-b');const retainedEdges=[...mongo.graphEdges.rows.values()].filter(row=>row.data?.source_event_id==='b-one');
+ assert.equal(await createProtocols({mongo}).tenantManagement.deleteTenant('tenant-a'),true);
+ assert.deepEqual([...mongo.graphLabelNodes.rows.values()],retainedLabels);assert.deepEqual([...mongo.graphEdges.rows.values()],retainedEdges);assert.ok(tenants.rows.has('tenant-b'));assert.ok(policies.rows.has('tenant-b'));assert.equal(policies.rows.has('tenant-a'),false);
+ assert.equal(await createProtocols({mongo}).tenantManagement.deleteTenant('tenant-a'),false);
+});

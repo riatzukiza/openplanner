@@ -1030,3 +1030,35 @@ Initial GREEN954/953PASS1FAIL was a new positive test control using a token budg
 All19 fresh gates now PASS:SDK954/954/cache17/176/hydration12/100/graph76/581/portable17/100, zero compiler/lint warnings, actual injected assertion exits1, released ESM/formatter/workflow/diff checks. Actual isolated existing Knoxx consumer1977tests11459assertions passes with zero failures/errors/compiler warnings in101.904sec; both source/consumer heads and package bytes remain unchanged, owned temporary snapshot cleaned. Its candidate package bytes are bound to the ordinary RED parent with working GREEN, pending the committed-head comparison. It is not a merged-pin workflow or live B3 proof.
 
 The existing bundle now contains23 complete records, preserving every prior18 record and exact raw byte/hash/tier; initial test-control failure, verified RED, final19 GREEN, real consumer and76 executable bindings are retained. All150 changed inputs stay selected. Original56 selection, immutable journals and ordinary Git history remain intact. Current-head native review, hosted verification and canonical merge qualification are still owed; no runtime/board/deployment/publication/provider/paid/spore mutation.
+
+## Current ed91509 findings: causal RED and topology prerequisite
+
+Native Codex review5482163830 posted seven findings on exact
+`ed91509a453f9c4dadaaa05166ef3797a89c9346`; CodeRabbit full request6106180071
+completed via reply6106180867 and review5482179254 with one additional
+hydration identity finding4240533952. The native snapshot has293 threads,
+eight unresolved. Neither COMMENTED review grants approval.
+
+Actual unchanged-production RED: SDK962 tests,954 passing and8 failing;
+graph77 tests/605 assertions/11 failures/0 errors; hydration13 tests/108
+assertions/6 failures/0 errors. All earlier tests continue passing. New
+regressions exercise actual provider overflow/caching and tiny-astral
+termination, real TypeScript consumer compilation, delimiter-colliding legacy
+ownership, empty normalized indexing before effects, tenant graph label
+cleanup, explicit top-level JSON scope and usable document string identity.
+The existing evidence bundle retains all23 prior records unchanged and adds
+five complete raw captures; no original receipt or selected-file manifest is
+rewritten.
+
+A real isolated Mongo7 fixture reproduced native error20: transaction numbers
+require a replica set member or mongos. The same SDK passed nonempty vector
+upsert, replacement in both flat/partition collections and actual rollback on
+a separate single-member replica fixture. Exact cached image
+`sha256:9fae371f0280c30c40523dbda5edda96be4c8722cd1272d2ac79f699b2d955d3`
+ran under uniquely owned, bounded, non-root, read-only containers and temporary
+filesystems; both were removed in finally cleanup. This is source validation,
+not a changed live service or a deployment proof. A source-only proposal for
+`docker-compose.yml` and `.env.example` is prepared privately, outside the four
+imported package roots, and awaits the finite milestone's explicit scope
+decision. Transaction atomicity is retained; no standalone fallback or failed
+vector indexing is relabeled success. All B1/B2/liveB3 proofs remain unfinished.
