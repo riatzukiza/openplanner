@@ -104,7 +104,8 @@
         (.finally done))))
 
 (deftest lmdb-cache-adapter-expires-and-touches-test
-  (let [store (atom {})
+  (let [clock (atom 100)
+        store (atom {})
         db #js {:get (fn [k] (get @store k))
                 :put (fn [k v]
                        (swap! store assoc k v)
@@ -114,12 +115,13 @@
                             (swap! store dissoc k)
                             present?))}
         cache (boundary/create-lmdb-cache #js {:db db :prefix "l:" :defaultTtlMs 5})]
+    (with-redefs [core/now-ms #(deref clock)]
     (is (true? (boundary/cache-put-js cache "a" "A")))
     (is (= "A" (boundary/cache-get-js cache "a")))
     (is (true? (boundary/cache-touch-js cache "a" 20)))
     (is (= "A" (boundary/cache-get-js cache "a")))
-    (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 25)
-    (is (nil? (boundary/cache-get-js cache "a")))))
+    (reset! clock 125)
+    (is (nil? (boundary/cache-get-js cache "a"))))))
 
 (deftest same-millisecond-recency-is-strict-and-deterministic
   (with-redefs [core/now-ms (constantly 100)]
@@ -238,6 +240,18 @@
     (is (false? (:valid? (schema/explain-cache-entry
                           {:cache/key key :cache/value "content"
                            :cache/created-at-ms 10 :cache/touched-at-ms 10}))))))
+
+(deftest lmdb-entry-value-and-expiry-use-one-read
+  (with-redefs [core/now-ms (constantly 100)]
+    (let [reads (atom 0)
+          db #js {:get (fn [_] (swap! reads inc)
+                        (if (= @reads 1)
+                          #js {:value "old" :expiresAt 150}
+                          #js {:value "new" :expiresAt 300}))}
+          cache (boundary/create-lmdb-cache #js {:db db})]
+      (is (= {:value "old" :expires-at-ms 150}
+             (protocol/cache-get-entry cache "key")))
+      (is (= 1 @reads)))))
 
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

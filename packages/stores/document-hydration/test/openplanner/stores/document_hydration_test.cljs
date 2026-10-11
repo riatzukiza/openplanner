@@ -60,7 +60,8 @@
                     (done)))))))
 
 (deftest lmdb-cache-adapter-expires-and-touches-test
-  (let [store (atom {})
+  (let [clock (atom 100)
+        store (atom {})
         db #js {:get (fn [k] (get @store k))
                 :put (fn [k v]
                        (swap! store assoc k v)
@@ -70,12 +71,13 @@
                             (swap! store dissoc k)
                             present?))}
         cache (hydration/create-lmdb-cache #js {:db db :prefix "l:" :defaultTtlMs 5})]
+    (with-redefs [core/now-ms #(deref clock)]
     (is (true? (hydration/cache-put-js cache "a" "A")))
     (is (= "A" (hydration/cache-get-js cache "a")))
     (is (true? (hydration/cache-touch-js cache "a" 20)))
     (is (= "A" (hydration/cache-get-js cache "a")))
-    (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 25)
-    (is (nil? (hydration/cache-get-js cache "a")))))
+    (reset! clock 125)
+    (is (nil? (hydration/cache-get-js cache "a"))))))
 
 (deftest date-timestamps-use-the-stable-iso-representation
   (let [iso "2026-01-02T03:04:05.006Z"]

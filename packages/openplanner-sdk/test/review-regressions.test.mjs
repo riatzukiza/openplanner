@@ -2060,3 +2060,58 @@ for(const operation of [addMongoVectorParentLabel,removeMongoVectorParentLabel])
  mongo.client.startSession=()=>({withTransaction:async()=>{throw Error('replica-set transaction unavailable')},endSession:async()=>{ended++}});
  await assert.rejects(operation(mongo,'parent','keep'),/transaction unavailable/);assert.equal(effects,0);assert.equal(ended,1);
 });
+
+// Actual native Codex5481674801 on1a: bounded query and projection identities.
+for(const k of [201,1000,Number.MAX_SAFE_INTEGER])for(const mode of ['native','cosine'])test(`Codex1a: direct ${mode} vector retention is capped at200 for ${k}`,async()=>{
+  const mongo=parentQueryFixture(mode,Array.from({length:250},(_,i)=>vectorRow('bounded-'+i,'parent-'+i,1-i/1000)));
+  let nativeBounds;if(mode==='native'){const c=mongo.db.collection('healthy_vectors');const aggregate=c.aggregate;c.aggregate=function(pipeline){nativeBounds=pipeline[0].$vectorSearch;return aggregate.call(this,pipeline);};}
+  const result=await streamingQuery({queryMongoVectorsByText},mongo,k);if(mode==='native'){assert.equal(nativeBounds.limit,4000);assert.equal(nativeBounds.numCandidates,4000);}assert.equal(result.ids[0].length,200);assert.equal(new Set(result.metadatas[0].map(row=>row.parent_id)).size,200);
+});
+for(const field of ['x','y'])for(const bad of [NaN,Infinity,-Infinity,'3',{},null,undefined])test(`Codex1a: whole layout batch refuses ${field}=${String(bad)} before a write`,async()=>{
+  let writes=0;const c={bulkWrite:async()=>{writes++;}};
+  await assert.rejects(upsertGraphLayoutOverrides(c,[{node_id:'valid',x:1,y:2},{node_id:'invalid',x:3,y:4,[field]:bad}]),/coordinate|finite.*number/i);assert.equal(writes,0);
+});
+for(const chunked of [false,true])test(`Codex1a: shared explicit ${chunked?'chunked':'single'} node waits for the earlier detached ingest`,async()=>{
+  const mongo=vectorDeletionFixture();let release,entered;const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve);let secondAdmitted=false;
+  const embeddingRuntime=eventRuntime({generate:async texts=>{if(texts.some(text=>text.includes('first version'))){entered();await gate;}return texts.map(()=>[1,2]);}});
+  const firstText=chunked?'first version '.repeat(15000):'The first version remains pending.';
+  const secondText='The second version is authoritative.';
+  const secondNode=chunked?prepareIndexDocument({parentId:'shared-explicit',text:firstText,targetChunkTokens:32000,targetChunkChars:180000,overlapChars:1000}).chunks[0].id:'shared-explicit';
+  const node=text=>({...ordinaryEvent(text===firstText?'explicit-first':'explicit-second',text),kind:'graph.node',source_ref:{project:text===firstText?'old-project':'current-project'},extra:{node_id:text===firstText?'shared-explicit':secondNode,openplanner_labels:{labels:['keep']}}});
+  const first=await ingestEvents({mongo,embeddingRuntime},[node(firstText)]);await started;
+  try{
+    const secondPromise=ingestEvents({mongo,embeddingRuntime},[node(secondText)]).then(result=>{secondAdmitted=true;return result;});
+    await new Promise(resolve=>setTimeout(resolve,15));const premature=secondAdmitted;release();const second=await secondPromise;await Promise.all([first.backgroundIndexing,second.backgroundIndexing]);
+    assert.equal(premature,false);const parent=[...mongo.graphNodeEmbeddings.rows.values()].filter(row=>row.node_id===secondNode);assert.ok(parent.length>0);assert.ok(parent.every(row=>row.source_event_id==='explicit-second'&&row.project==='current-project'&&row.text.includes('second version')));
+    if(chunked)assert.ok(prepareIndexDocument({parentId:'shared-explicit',text:firstText,targetChunkTokens:32000,targetChunkChars:180000,overlapChars:1000}).chunks.length>1);
+  }finally{release();}
+});
+test('Codex1a: session updates cannot mutate the public event ID',async()=>{
+  const mongo=mongoFixture();mongo.events.rows.set('stored-marker',{_id:'stored-marker',id:'public-marker',session:'owned-session',project:null,kind:'session'});
+  mongo.events.findOne=async filter=>[...mongo.events.rows.values()].find(row=>Object.entries(filter).every(([key,value])=>value===null?row[key]==null:row[key]===value))??null;
+  const row=await createProtocols({mongo}).sessionManagement.updateSession('owned-session',{id:'other-event',title:'New title'});
+  assert.equal(row.id,'public-marker');assert.equal(row._id,'stored-marker');assert.equal(row.title,'New title');assert.equal(Object.hasOwn(mongo.events.calls.writes.at(-1).update.$set,'id'),false);
+});
+for(const parentId of ['', ' ', '\t'])test(`Codex1a: invalid parent${JSON.stringify(parentId)} refuses before provider/cache or Mongo access`,async()=>{
+  const mongo=mongoFixture();let generated=0;await assert.rejects(indexTextInMongoVectors({mongo,tier:'hot',parentId,text:'Outside information.',metadata:{embedding_model:'fixture'},embeddingFunction:{generate:async texts=>{generated++;return texts.map(()=>[1,0]);}}}),/parent.*nonblank|string.*parent/i);
+  assert.equal(generated,0);assert.equal(mongo.hotVectors.calls.writes.length,0);assert.equal(mongo.vectorPartitions.calls.searches.length,0);
+});
+test('Codex1a: labels attach to an explicit graph node rather than its source event',async()=>{
+  const mongo=vectorDeletionFixture();const event={...ordinaryEvent('label-source','A new outside encounter informs the character.'),kind:'graph.node',extra:{node_id:'declared-character',openplanner_labels:{labels:['keep']}}};
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[event]);await result.backgroundIndexing;
+  const labels=[...mongo.graphEdges.rows.values()].filter(row=>row.edge_kind==='has_label'&&row.data.source_event_id===event.id);assert.equal(labels.length,1);assert.equal(labels[0].source_node_id,'declared-character');
+});
+for(const mode of ['native','cosine'])for(const score of [-1.01,1.01,2])test(`Codex1a: optional ${mode} Vexx score${score} falls back to local cosine`,async()=>{
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'false'},async()=>{
+    const vectors=await import(new URL(`../dist/mongo-vectors.js?bounded-score-${mode}-${score}`,import.meta.url).href);
+    await withFetch(async(_url,init)=>{const request=JSON.parse(init.body);return {ok:true,json:async()=>({matches:request.candidates.map(row=>({id:row.id,score:row.id==='second'?score:-score}))})};},async()=>{
+      const result=await streamingQuery(vectors,parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)]));assert.deepEqual(result.ids,[['best']]);assert.equal(result.distances[0][0],0);
+    });
+  });
+});
+for(const mode of ['native','cosine'])test(`Codex1a: enforced ${mode} Vexx out-of-range scores refuse`,async()=>{
+  await withEnv({VEXX_BASE_URL:'https://vexx.fixture.invalid',VEXX_API_KEY:'',VEXX_MIN_CANDIDATES:'1',VEXX_ENFORCE:'true'},async()=>{
+    const vectors=await import(new URL(`../dist/mongo-vectors.js?bounded-score-enforced-${mode}`,import.meta.url).href);
+    await withFetch(async(_url,init)=>({ok:true,json:async()=>({matches:JSON.parse(init.body).candidates.map(row=>({id:row.id,score:2}))})}),async()=>assert.rejects(streamingQuery(vectors,parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)])),/unavailable/i));
+  });
+});
