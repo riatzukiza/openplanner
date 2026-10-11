@@ -101,13 +101,18 @@ export function sourcePathFromRow(row: Record<string, unknown>): string | undefi
     ?? nonBlankString(migration2.source_path);
 }
 
+function withinRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return !path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`);
+}
+
 function sourceFilePathWithinRoot(row: Record<string, unknown>, configuredRoot: string): string | undefined {
   const rawPath = sourcePathFromRow(row);
   if (!rawPath) return undefined;
 
   const root = path.resolve(configuredRoot);
   const candidate = path.isAbsolute(rawPath) ? path.resolve(rawPath) : path.resolve(root, rawPath);
-  return candidate.startsWith(`${root}${path.sep}`) || candidate === root ? candidate : undefined;
+  return withinRoot(root, candidate) ? candidate : undefined;
 }
 
 export function safeSourceFilePath(row: Record<string, unknown>): string | undefined {
@@ -125,7 +130,7 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
   if (!candidate) return null;
   try {
     const [root, filePath] = await Promise.all([realpath(configuredRoot), realpath(candidate)]);
-    if (!(filePath === root || filePath.startsWith(`${root}${path.sep}`))) return null;
+    if (!withinRoot(root, filePath)) return null;
     // Caller hashes are not physical file identity; aliases share the resolved path.
     const fileCacheKey = "openplanner:hydration-file:v3:" + JSON.stringify([cacheKey, filePath]);
     const hydrationCache = await getHydrationCache();

@@ -2454,7 +2454,7 @@ for(const [name,params,text] of [
  assert.equal(result.chunks.at(-1).charEnd,result.normalizedText.length);
 });
 test('Codexd128: a one-code-unit budget cannot split an astral code point',()=>{
- assert.throws(()=>prepareIndexDocument({parentId:'tiny',text:'😀',forceChunking:true,targetChunkChars:1,targetChunkTokens:1,overlapChars:0}),/budget|code point/i);
- const valid=prepareIndexDocument({parentId:'tiny',text:'ab',forceChunking:true,targetChunkChars:1,targetChunkTokens:1,overlapChars:0});
+ assert.throws(()=>prepareIndexDocument({parentId:'tiny',text:'😀',forceChunking:true,targetChunkChars:1,targetChunkTokens:2,overlapChars:0}),/budget|code point/i);
+ const valid=prepareIndexDocument({parentId:'tiny',text:'ab',forceChunking:true,targetChunkChars:1,targetChunkTokens:2,overlapChars:0});
  assert.deepEqual(valid.chunks.map(x=>x.text),['a','b']);
 });

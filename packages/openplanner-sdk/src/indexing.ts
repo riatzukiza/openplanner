@@ -113,6 +113,11 @@ function estimateTokens(input: string): number {
   return Math.max(Math.ceil(chars / 4), Math.ceil(words * 1.35));
 }
 
+function splitsSurrogatePair(text: string, offset: number): boolean {
+  const before = text.charCodeAt(offset - 1), after = text.charCodeAt(offset);
+  return before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff;
+}
+
 function chunkText(input: string, targetTokens: number, targetChars: number, overlapChars: number): Array<{ text: string; charStart: number; charEnd: number }> {
   const text = normalizeWhitespace(input);
   const out: Array<{ text: string; charStart: number; charEnd: number }> = [];
@@ -127,6 +132,8 @@ function chunkText(input: string, targetTokens: number, targetChars: number, ove
     }
     if (!low) throw new Error("index chunk token budget cannot fit a nonempty prefix");
     let end = start + low;
+    if (splitsSurrogatePair(text, end)) end--;
+    if (end === start) throw new Error("index chunk budget cannot fit a complete code point");
     if (end < text.length) {
       const boundary = Math.max(text.lastIndexOf(" ", end - 1), text.lastIndexOf("\n", end - 1));
       if (boundary > start) end = boundary;
@@ -139,6 +146,7 @@ function chunkText(input: string, targetTokens: number, targetChars: number, ove
     // Overlap also consumes the next chunk's budgets; always advance forward.
     const overlap = Math.min(overlapChars, Math.floor((end - start) / 2));
     start = Math.max(start + 1, end - overlap);
+    if (splitsSurrogatePair(text, start)) start++;
   }
   return out;
 }

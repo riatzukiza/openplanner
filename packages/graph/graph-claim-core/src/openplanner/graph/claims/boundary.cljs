@@ -162,13 +162,33 @@
                       {:claim-key claim-key})))
     (str "edge_claim:" (sha256-hex-24 (claims/claim-id-material claim-key)))))
 
+(defn- iso-calendar-string?
+  "Admit ISO dates or zone-qualified instants before permissive Date parsing."
+  [value]
+  (when-let [[_ year month day hour minute second zone zone-hour zone-minute]
+             (re-matches #"(\d{4}|[+-]\d{6})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2})))?" value)]
+    (let [y (js/Number year)
+          m (js/Number month)
+          d (js/Number day)
+          leap? (and (zero? (mod y 4))
+                     (or (not (zero? (mod y 100))) (zero? (mod y 400))))
+          days [31 (if leap? 29 28) 31 30 31 30 31 31 30 31 30 31]]
+      (and (<= 1 m 12) (<= 1 d (nth days (dec m)))
+           (or (nil? hour)
+               (and (< (js/Number hour) 24) (< (js/Number minute) 60)
+                    (< (js/Number second) 60)
+                    (or (nil? zone)
+                        (and (< (js/Number zone-hour) 24)
+                             (< (js/Number zone-minute) 60)))))))))
+
 (defn- parse-ms
   [value]
   (cond
     (nil? value) nil
     (number? value) value
-    (string? value) (let [ms (.parse js/Date value)]
-                      (when-not (js/Number.isNaN ms) ms))
+    (string? value) (when (iso-calendar-string? value)
+                      (let [ms (.parse js/Date value)]
+                        (when (js/Number.isFinite ms) ms)))
     (and (some? value) (fn? (.-getTime value))) (let [ms (.getTime value)]
                                                   (when-not (js/Number.isNaN ms) ms))
     :else nil))

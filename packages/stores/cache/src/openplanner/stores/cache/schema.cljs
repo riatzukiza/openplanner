@@ -30,7 +30,7 @@
 
 (defn valid-ms?
   [value]
-  (and (number? value) (not (js/Number.isNaN value)) (not (neg? value))))
+  (and (number? value) (js/Number.isFinite value) (not (neg? value))))
 
 (defn expires-at-ms
   [now-ms ttl-ms]
