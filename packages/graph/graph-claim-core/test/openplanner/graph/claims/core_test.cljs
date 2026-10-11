@@ -354,3 +354,29 @@
                #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"})]
     (is (.hasOwn js/Object wire "valid_until_ms"))
     (is (nil? (aget wire "valid_until_ms")))))
+
+;; Actual native Codex5481490146/4239864679 and4239864689, current2b source.
+(deftest explicit-expiration-aliases-must-agree
+  (doseq [[camel snake] [["2099-01-01T00:00:00Z" "2025-01-01T00:00:00Z"]
+                        [nil "2099-01-01T00:00:00Z"]
+                        ["2099-01-01T00:00:00Z" nil]]]
+    (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                     :status "active" :validUntil camel :valid_until snake}]
+      (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now "2026-01-01"})))
+      (is (zero? (alength (aget (mongo/project-mongo-edge-claims-js #js [claim] #js {:now "2026-01-01"}) "edges"))))))
+  (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                   :status "active" :validUntil "2099-01-01T00:00:00Z"
+                   :valid_until (js/Date.parse "2099-01-01T00:00:00Z")}]
+    (is (some? (boundary/project-edge-claim-js claim #js {:now "2026-01-01"})))))
+
+(deftest malformed-explicit-projection-statuses-never-become-defaults
+  (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related" :status "supported"}]
+    (doseq [statuses ["active" nil true #js {:status "active"} #js ["active" "unknown"]]]
+      (let [opts #js {:statuses statuses :now 1000}]
+        (is (thrown-with-msg? js/Error #"statuses" (boundary/project-edge-claim-js claim opts)))
+        (is (thrown-with-msg? js/Error #"statuses" (boundary/project-edge-claims-js #js [claim] opts)))
+        (is (thrown-with-msg? js/Error #"statuses" (mongo/project-mongo-edge-claims-js #js [claim] opts)))))
+    (is (nil? (boundary/project-edge-claim-js claim #js {:statuses #js [] :now 1000})))
+    (is (nil? (boundary/project-edge-claim-js claim #js {:statuses #js ["active"] :now 1000})))
+    (is (some? (boundary/project-edge-claim-js claim #js {:now 1000})))))

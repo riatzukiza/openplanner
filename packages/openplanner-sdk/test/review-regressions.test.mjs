@@ -24,7 +24,7 @@ import { createEmbeddingRuntime } from '../dist/embedding-runtime.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
 import { ingestEvents } from '../dist/ingest.js';
 import { queryCollectionResponse } from '../dist/mongo-browse.js';
-import { getSessionResponse } from '../dist/sessions-core.js';
+import { getSessionResponse, listSessionsResponse } from '../dist/sessions-core.js';
 import { mergeTieredVectorHits } from '../dist/vector-search.js';
 import { loadConfig } from '../dist/config.js';
 
@@ -1892,4 +1892,59 @@ test('Codex64d companion: direct vector identifiers reject operators before any 
 test('Codex64d companion: inferred malformed legacy project never becomes a Mongo query operator',async()=>{
   const row={_id:'protected',session:'legacy',project:{$ne:'lake'},kind:'knoxx.message',ts:new Date(0)};const mongo=scopedHistoryFixture([row]);let reads=0;mongo.events.find=()=>{reads++;throw new Error('unsafe inferred selector was used');};
   await assert.rejects(createProtocols({mongo}).sessionManagement.getSessionEvents('legacy',{}),/project.*string/i);assert.equal(reads,0);assert.equal(mongo.events.rows.get('protected'),row);
+});
+
+// Actual native Codex5481490146 on 2b01e5c: exported data boundaries and shutdown.
+for(const id of [{$ne:'victim'},null,17,'',' ']) test(`Codex2b: direct event writer refuses malformed ID ${JSON.stringify(id)}`,async()=>{
+  const c=collection('direct-events',[{_id:'victim',id:'victim',text:'retained'}]);
+  await assert.rejects(upsertEvent(c,{...ordinaryEvent('valid','outside'),id},60),/event.*id|id.*event/i);
+  assert.equal(c.calls.writes.length,0);assert.equal(c.rows.get('victim').text,'retained');
+});
+for(const where of [new Date('2026-01-01'),new Map(),new (class Scope {})()]) test(`Codex2b: vector where refuses nonplain ${where.constructor.name}`,async()=>{
+  const mongo=parentQueryFixture('cosine',[vectorRow('outside','parent',1)]);let generated=0;
+  const runtime={hot:{getEmbeddingFunctionForModel:()=>({generate:async()=>{generated++;return [[1,0]];}})}};
+  await assert.rejects(vectorSearchWithQuality({mongo,embeddingRuntime:runtime},{q:'outside',tier:'hot',quality:'any',where}),/vector.*filter|vector.*where/i);
+  assert.equal(generated,0);assert.equal(mongo.vectorPartitions.calls.searches.length,0);
+});
+for(const projection of [null,'id',['id'],new Date('2026-01-01'),new (class Projection {})()]) test(`Codex2b: browse rejects malformed explicit projection ${JSON.stringify(projection)}`,async()=>{
+  let effects=0;const mongo={db:{collection(){effects++;return {countDocuments:async()=>0,find:()=>({sort(){return this;},skip(){return this;},limit(){return this;},toArray:async()=>[]})};}}};
+  await assert.rejects(queryCollectionResponse({mongo},{collection:'events',projection}),/projection.*plain|plain.*projection/i);assert.equal(effects,0);
+});
+test('Codex2b: SDK close drains admitted collection listing and refuses a later listing',async()=>{
+  const mongo=mongoFixture();let release,closed=false,starts=0;const gate=new Promise(resolve=>release=resolve);
+  mongo.db.listCollections=()=>({toArray:async()=>{starts++;await gate;assert.equal(closed,false,'admitted listing must precede Mongo close');return [{name:'events'}];}});
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);const close=mock.method(MongoClient.prototype,'close',async()=>{closed=true;});let sdk;
+  try{sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:undefined,mongodb:openingConfig}});
+    const listing=sdk.listCollections();const closing=sdk.close();await new Promise(resolve=>setImmediate(resolve));const premature=closed;
+    release();const result=await Promise.allSettled([listing,closing]);assert.equal(premature,false);assert.equal(result[0].status,'fulfilled');assert.deepEqual(result[0].value,['events']);
+    await assert.rejects(sdk.listCollections(),/closing/i);assert.equal(starts,1);assert.equal(closed,true);
+  }finally{release();if(sdk)await sdk.close();connect.mock.restore();db.mock.restore();close.mock.restore();}
+});
+for(const project of [{$ne:'owned'},null,17,true,['owned']]) test(`Codex2b: session list refuses malformed supplied project ${JSON.stringify(project)}`,async()=>{
+  const mongo=mongoFixture();let aggregates=0;mongo.events.aggregate=()=>{aggregates++;return {toArray:async()=>[]};};
+  await assert.rejects(listSessionsResponse({mongo},{project}),/project.*string|string.*project/i);assert.equal(aggregates,0);
+});
+for(const overlapChars of [0,2,30]) test(`Codex2b: repetitive chunks preserve actual offsets with overlap ${overlapChars}`,()=>{
+  const prepared=prepareIndexDocument({parentId:'repetitive',text:'abc '.repeat(50),forceChunking:true,targetChunkChars:20,targetChunkTokens:100,overlapChars});
+  assert.ok(prepared.chunks.length>1);let start=0;
+  for(const chunk of prepared.chunks){const end=Math.min(start+20,prepared.normalizedText.length);let boundedEnd=end;
+    if(end<prepared.normalizedText.length){const boundary=prepared.normalizedText.lastIndexOf(' ',end-1);if(boundary>start)boundedEnd=boundary;}
+    const raw=prepared.normalizedText.slice(start,boundedEnd);const expectedStart=start+raw.length-raw.trimStart().length;
+    assert.equal(chunk.charStart,expectedStart);assert.equal(chunk.charEnd,expectedStart+raw.trim().length);assert.equal(prepared.normalizedText.slice(chunk.charStart,chunk.charEnd),chunk.text);
+    if(boundedEnd===prepared.normalizedText.length)break;start=Math.max(start+1,boundedEnd-Math.min(overlapChars,Math.floor((boundedEnd-start)/2)));
+  }
+});
+for(const search of ['fts','vector'])for(const tier of ['hot ','unknown',null,{},17])test(`Codex2b: ${search} refuses unsupported explicit tier ${JSON.stringify(tier)}`,async()=>{
+  const mongo=parentQueryFixture('cosine',[vectorRow('outside','parent',1)]);let effects=0;mongo.events.find=()=>{effects++;throw new Error('unexpected search IO');};mongo.compacted.find=mongo.events.find;
+  const runtime={hot:{getEmbeddingFunctionForModel:()=>({generate:async()=>{effects++;return [[1,0]];}})},compact:{getEmbeddingFunctionForModel:()=>({generate:async()=>{effects++;return [[1,0]];}})}};
+  await assert.rejects((search==='fts'?ftsSearchWithQuality:vectorSearchWithQuality)({mongo,embeddingRuntime:runtime},{q:'outside',quality:'any',tier}),/tier.*hot|unsupported.*tier/i);assert.equal(effects,0);
+});
+for(const kind of ['event','compacted'])for(const labels of ['keep',{keep:true},null])test(`Codex2b: ${kind} retention refuses nonarray explicit labels ${JSON.stringify(labels)}`,async()=>{
+  const c=collection('retention');const value={...ordinaryEvent('retained','outside'),extra:{openplanner_labels:{labels}}};
+  await assert.rejects((kind==='event'?upsertEvent:upsertCompactedMemory)(c,value,60),/retention.*labels|labels.*array/i);assert.equal(c.calls.writes.length,0);
+});
+for(const field of ['eventsTtlSeconds','compactedTtlSeconds'])for(const ttl of [NaN,Infinity,-1,1.5])test(`Codex2b: Mongo open refuses invalid ${field}=${ttl} before reconciliation`,async()=>{
+  const mongo=mongoFixture();let connections=0;const connect=mock.method(MongoClient.prototype,'connect',async function(){connections++;return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);const close=mock.method(MongoClient.prototype,'close',async()=>{});
+  try{await assert.rejects(openMongoDB({...openingConfig,[field]:ttl}),/TTL|retention/i);assert.equal(connections,0);assert.ok([...mongo.collections.values()].every(c=>c.calls.indexes.length===0&&c.calls.writes.length===0&&c.calls.drops.length===0));}
+  finally{connect.mock.restore();db.mock.restore();close.mock.restore();}
 });
