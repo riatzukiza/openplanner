@@ -1240,6 +1240,7 @@ export async function queryMongoVectorsByText(params: {
   excludeParentIds?: string[];
   getEmbeddingFunctionForModel: (model: string) => IEmbeddingFunction;
 }): Promise<RawQueryResult> {
+  if (!Number.isSafeInteger(params.k)) throw new Error("vector k must be a finite safe integer");
   const queryText = formatEmbeddingQueryText(params.q);
   const partitions = await listMongoVectorPartitions(params.mongo, params.tier);
   if (partitions.length === 0) {

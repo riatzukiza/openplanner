@@ -604,3 +604,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-00f8546-retention-k-red-20261011
   note: Own follow-up to confirmed partition-memory P1: NaN makes retained-size comparisons false and infinity removes finite bound. Direct public SDK needs finite safe-integer admission before any partition/provider work. Six causal invalid cases and three zero/negative/two valid legacy controls preserve existing behavior/assertions. Original206prefixes/56manifest retained;no live/board/deploy/paid/spore.
+
+- ts: 2026-10-11T00:05:13.587Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-00f8546-retention-k-final-green-20261011
+  note: Six causal invalid-input failures now pass with zero partition/provider/scan effects; all prior325 assertions and three safe-integer legacy controls retained. No arbitrary k cap or legacy zero/negative behavior change. Completes same streaming-memory repair within originalfour-package scope. Entire prior64423byte native description archived exactly before preparing current scope/count compaction; no sourcejournal/nativeapproval rewrite. Source207prefixes intact;no live/board/deploy/paid/spore.
