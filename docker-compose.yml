@@ -28,7 +28,7 @@ services:
       # Storage backend: duckdb (default) or mongodb
       OPENPLANNER_STORAGE_BACKEND: "${OPENPLANNER_STORAGE_BACKEND:-duckdb}"
       # MongoDB configuration (used when STORAGE_BACKEND=mongodb)
-      MONGODB_URI: "${MONGODB_URI:-mongodb://mongodb:27017/?replicaSet=openplanner}"
+      MONGODB_URI: "${COMPOSE_MONGODB_URI:-mongodb://mongodb:27017/?replicaSet=openplanner}"
       MONGODB_DB: "${MONGODB_DB:-openplanner}"
       MONGODB_EVENTS_COLLECTION: "${MONGODB_EVENTS_COLLECTION:-events}"
       MONGODB_COMPACTED_COLLECTION: "${MONGODB_COMPACTED_COLLECTION:-compacted_memories}"

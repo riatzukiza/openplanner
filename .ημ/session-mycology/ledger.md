@@ -991,3 +991,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-cr-8c-copied-env-scope-red-20261011
   note: Original required-configuration authorization applies. Actual completed current CR has two valid findings,no approval. Preserve source249 and earlier root388 dated pending handoff;completion supersedes it. Operator StopIteration selection failed before graph test;corrected actual RED retained. No live/runtime/board/deployment/paid/spore mutation;MiMo current8c remains independently live.
+
+- ts: 2026-10-11T07:48:55.688Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-cr-8c-env-scope-green-20261011
+  note: Host and Compose Mongo URIs are separated;Mongo adapter forwards scope presence/inference fields to the sole canonical boundary,including explicitnull/false/zero semantics. Actual causalRED and GREEN retained,no tests weakened;all250prior receipt bytes and52records unchanged. Old8c CI/review are historical and give no new-head approval. No runtime,maker,clock,board,deployment,paid or spore mutation;unique owned fixtures cleaned.

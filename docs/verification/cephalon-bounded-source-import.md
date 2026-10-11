@@ -1249,3 +1249,32 @@ and production code remain unchanged in this RED commit. Full native review,
 two inline comments and both full raw RED outputs are losslessly appended to
 the existing bundle,now52records;all47 earlier record values/bytes stay intact.
 No live,maker,board,deployment,provider credits or approval is claimed.
+
+
+## Full review5482394213: minimal canonical GREEN
+
+GREEN on causal RED8962257 keeps host MONGODB_URI direct localhost and gives
+Compose its separate COMPOSE_MONGODB_URI (default Mongo service replica URI).
+The actual copied-.env render now selects the correct application URI, and an
+explicit separate external Compose URI survives unchanged. No real .env/private
+credential is read or edited. The required actual Mongo fixture still verifies
+writable/idempotent health and real SDK replacement plus injected rollback.
+
+Mongo row adaptation forwards raw inferred fields and explicit scope presence
+to the existing canonical boundary. It owns no second scope filter. This drops
+nil/blank inferred values identically,retains inferred false/zero and preserves
+explicit null/empty/object semantics without fallthrough or broadening. All20
+actual bounded gates PASS: graph79/671,SDK963/963,hydration13/108,cache17/176,
+JVM17/100,zero compiler/lint warnings and actual forced-negative graph exit1.
+New actual isolated Knoxx consumer1977/11459 passes in87.088seconds with zero
+failures/errors/compiler warnings and unchanged source/consumer identities.
+All74 selected package input hashes match tested bytes;this count includes an
+independent source fixture and is not a claim that74 application modules loaded.
+Only the unique test snapshot and owned Mongo fixture are cleaned.
+
+Existing bundle now55complete full raw records with all52 prior values retained.
+Source251 journals retain exact250/earlier prefixes. Original56 manifest hash
+and150 changed-input limit stay intact;no path exclusions/paid usage. Current
+hosted/native review qualification must bind the newly committed GREEN head;
+older8c CI/completed finding-bearing CR/MiMo execution do not transfer approval.
+No live/runtime/board/deployment/physical field/persisted mood proof is claimed.

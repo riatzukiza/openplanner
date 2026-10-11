@@ -29,9 +29,14 @@
         storage (when-not (or camel snake) (present-entry doc [:_id "_id" :id "id"]))
         row #js {:direction (get-any doc [:direction "direction"])
        :status (get-any doc [:status "status"])
-       :confidence (get-any doc [:confidence "confidence"])
-       :scope (clj->js (or (get-any doc [:scope "scope"])
-                           (select-keys doc [:tenant_id :org_id :project :lake :graph_version])))}]
+       :confidence (get-any doc [:confidence "confidence"])}]
+    ;; Forward scope presence and raw inference fields to the canonical boundary.
+    ;; The boundary alone decides which inferred values are absent or blank.
+    (doseq [field ["tenant_id" "org_id" "project" "lake" "graph_version"]]
+      (when-let [entry (present-entry doc [(keyword field) field])]
+        (aset row field (clj->js (:value entry)))))
+    (when-let [entry (present-entry doc [:scope "scope"])]
+      (aset row "scope" (clj->js (:value entry))))
     ;; Preserve all supplied identity aliases for the canonical boundary's agreement law.
     (doseq [field ["sourceNodeId" "source_node_id" "source-node-id" "source"
                    "targetNodeId" "target_node_id" "target-node-id" "target"
