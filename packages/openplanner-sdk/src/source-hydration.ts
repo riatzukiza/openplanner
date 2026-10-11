@@ -145,7 +145,7 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
       fileHandle.stat(),
     ]);
     if (!fileStat.isFile() || openedRoot.endsWith(" (deleted)") || openedFile.endsWith(" (deleted)")
-        || !withinRoot(openedRoot, openedFile)) return null;
+        || openedRoot !== root || openedFile !== filePath || !withinRoot(openedRoot, openedFile)) return null;
     // Validate and read the same descriptor. A later path swap cannot retarget it.
     const fileCacheKey = "openplanner:hydration-file:v4:" + JSON.stringify([cacheKey, openedFile, fileStat.dev, fileStat.ino]);
     const hydrationCache = await getHydrationCache();

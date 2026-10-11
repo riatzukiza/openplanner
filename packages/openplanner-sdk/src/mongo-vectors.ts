@@ -708,7 +708,7 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
     _id: entry.id,
     parent_id: entry.parentId,
     text: sourceTextRedacted ? "" : entry.text,
-    embedding: entry.embedding,
+    embedding: [...entry.embedding],
     ts,
     source: toStringOrNull(entry.metadata.source) ?? "",
     kind: toStringOrNull(entry.metadata.kind) ?? "",
@@ -1339,6 +1339,7 @@ export async function queryMongoVectorsByText(params: {
 }): Promise<RawQueryResult> {
   assertVectorTier(params.tier);
   if (!Number.isSafeInteger(params.k)) throw new Error("vector k must be a finite safe integer");
+  if (typeof params.q !== "string" || !params.q.trim()) throw new Error("vector query must be a nonblank string");
   // Match the high-level search range before Atlas multiplication or fallback
   // retention, preserving the existing minimum-one behavior for zero/negative k.
   const k = Math.max(1, Math.min(200, params.k));

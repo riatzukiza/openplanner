@@ -1322,3 +1322,46 @@ exits1. Seven new targeted regressions also pass without weakened assertions.
 Full actual source/consumer outputs and input hashes are retained losslessly;
 new hosted/native evidence must bind the final committed head. No live maker,
 clock,gateway,cloud,board,publication,paid usage or spore is changed.
+
+
+## Exact470 native findings, causal RED44e4 and bounded GREEN — 2026-10-11
+
+Complete native pagination identifies Codex5482559650 (six roots) and
+CodeRabbit5482583386 (two roots) on470818c; the independent-width concern
+overlaps. These are finding-bearing COMMENTED reviews, not approval.
+CodeRabbit full6107145524 completed via6107146527 at08:37:12UTC.
+
+Eighteen real regression cases all fail on unchanged470 before repairs.
+RED44e4eecc998ac2200981cedd21c908e65f895ba5 preserves those failures.
+The working GREEN makes each graph index width attempt independent, uses a
+validated ambient fallback while preserving declared widths, admits structural
+graph text without derived content, gives derived previews their captured source
+expiry, rejects duplicate canonical graph embedding tuples before bulk writes,
+copies caller vectors before partition awaits, binds opened hydration paths to
+the previously checked paths, and rejects malformed direct queries before IO.
+
+All18 targeted cases and all20 existing source gates pass;SDK988/988,graph79/671,
+cache17/176,hydration13/108,JVM17/100,zero compiler/lint warnings. The actual
+disposable Mongo replacement/injected rollback passes and the negative graph
+runner exits1. Actual Knoxx1977/11459 passes in97.438seconds,zero compiler
+warnings;its disposable consumer snapshot is cleaned. It selects current working
+SDK packages via explicit links and retains74 package hashes,not a merged-source
+pin or live proof. The inherited private harness warning still names old
+RED5359;the captured actual source/bindings are44e4 workingGREEN. Concurrent
+source gates rebuild generated SDK outputs from the same unchanged source;the
+actual consumer passes. These are not independent isolated SDK copies.
+
+An initial GREEN compile fails on a misplaced declaration and an unknown extra
+field type;both implementation mistakes are corrected before successful gates,
+and the full failed output remains in the existing evidence bundle. The graph
+Atlas tests simulate actual driver boundaries;no live Atlas availability claim.
+Hydration remains Linux/procfs and fails closed on unavailable capability;exact
+path checks do not establish atomic filesystem ownership or runtime fencing.
+Captured source retention is an explicit internal derivation argument with
+owner/expiry validation;ordinary event.expiresAt fields remain ignored.
+
+All prior65 raw records remain intact;five complete new capture records make70.
+No original56 manifest rewrite,new source root,2041-file synchronization,live
+activation,maker/clock/gateway/cloud/model/grant/social/publication/deployment,
+board state,paid usage or spore change. B1 physical field,B2 persisted mood and
+liveB3 remain unfinished. Qualification must use the next actual published head.

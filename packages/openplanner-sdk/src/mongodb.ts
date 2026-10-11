@@ -180,16 +180,24 @@ async function ensureGraphNodeEmbeddingVectorSearchIndexes(
   models: EmbeddingModelConfig,
   ready: Record<number, string>,
 ): Promise<void> {
-  const dimensionsFor = (model: string): number => embeddingDimensionsForModel(models, model)
-    ?? Number(process.env.EMBED_PROVIDER_DIMENSIONS ?? DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS);
+  const configuredFallback = Number(process.env.EMBED_PROVIDER_DIMENSIONS ?? DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS);
+  const fallback = Number.isSafeInteger(configuredFallback) && configuredFallback > 0
+    ? configuredFallback : DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS;
+  if (fallback !== configuredFallback) console.warn("[mongodb] invalid EMBED_PROVIDER_DIMENSIONS; using default graph width:", fallback);
+  const dimensionsFor = (model: string): number => embeddingDimensionsForModel(models, model) ?? fallback;
   const defaultDimensions = dimensionsFor(models.defaultModel);
   const activeModels = new Set([models.defaultModel, ...Object.values(models.byProject), ...Object.values(models.bySource), ...Object.values(models.byKind)]);
   const dimensions = new Set([...activeModels].map(dimensionsFor));
   for (const width of dimensions) {
     const indexName = width === defaultDimensions ? "embedding_vector" : `embedding_vector_dims_${width}`;
-    await ensureGraphNodeEmbeddingVectorSearchIndex(collection, indexName, width);
-    // Advertise only actual queryable indexes. Unavailable Atlas capability stays visible.
-    ready[width] = indexName;
+    try {
+      await ensureGraphNodeEmbeddingVectorSearchIndex(collection, indexName, width);
+      // Advertise only actual queryable indexes. Unavailable Atlas capability stays visible.
+      ready[width] = indexName;
+    } catch (error) {
+      console.warn(`[mongodb] graph_node_embeddings vector index ${indexName} unavailable:`,
+        error instanceof Error ? error.message : String(error));
+    }
   }
 }
 
@@ -985,14 +993,27 @@ export async function upsertEvent(
   collection: Collection<EventDocument>,
   event: Omit<EventDocument, "_id" | "createdAt" | "updatedAt">,
   ttlSeconds = parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS"),
+  // Internal derivation passes its owning source's already-admitted retention.
+  // Ordinary caller-supplied event.expiresAt remains ignored.
+  sourceRetention?: { sourceEventId: string; expiresAt: Date | null },
 ): Promise<void> {
   if (typeof event.id !== "string" || !event.id.trim()) throw new Error("event ID must be a nonblank string");
+  if (sourceRetention && (event.source !== "openplanner-derive" || event.kind !== "graph.node"
+      || typeof sourceRetention.sourceEventId !== "string" || !sourceRetention.sourceEventId.trim()
+      || (event.extra as Record<string, unknown> | null | undefined)?.source_event_id !== sourceRetention.sourceEventId
+      || (sourceRetention.expiresAt !== null && (!(sourceRetention.expiresAt instanceof Date)
+        || !Number.isFinite(sourceRetention.expiresAt.getTime()))))) {
+    throw new Error("derived event retention must bind its admitted source and finite expiry");
+  }
   const now = new Date();
   const schemaVersion = event.schema_version ?? OPENPLANNER_SCHEMA_TARGETS.event;
   const state = event.migration_state ?? eventMigrationState(now);
   const { expiresAt: _callerExpiry, ...content } = event;
   const labels = labelsFromExtra(event.extra);
-  const expiresAt = eventRetentionExpiry(event.extra, ttlSeconds, now);
+  const normalExpiry = eventRetentionExpiry(event.extra, ttlSeconds, now);
+  const expiresAt = sourceRetention
+    ? sourceRetention.expiresAt === null ? undefined : new Date(sourceRetention.expiresAt.getTime())
+    : normalExpiry;
   await collection.updateOne(
     { _id: event.id },
     {
@@ -1003,7 +1024,7 @@ export async function upsertEvent(
         ...(expiresAt ? { expiresAt } : {}),
         updatedAt: now,
       },
-      ...(labels.length > 0 || ttlSeconds <= 0 ? { $unset: { expiresAt: "" } } : {}),
+      ...((sourceRetention ? !expiresAt : labels.length > 0 || ttlSeconds <= 0) ? { $unset: { expiresAt: "" } } : {}),
       $setOnInsert: {
         createdAt: now,
       },
@@ -1110,6 +1131,7 @@ export async function upsertGraphNodeEmbeddings(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  const identities = new Set<string>();
   for (const row of rows) {
     assertNonblankIdentifier(row.node_id, "graph embedding node_id");
     assertNonblankIdentifier(row.source_event_id, "graph embedding source_event_id");
@@ -1123,6 +1145,9 @@ export async function upsertGraphNodeEmbeddings(
         || !row.embedding.every(value => typeof value === "number" && Number.isFinite(value))) {
       throw new Error("Invalid graph embedding tuple or vector");
     }
+    const identity = JSON.stringify([row.node_id, row.embedding_model ?? null, row.embedding_dimensions, index]);
+    if (identities.has(identity)) throw new Error("Duplicate graph embedding tuple in batch");
+    identities.add(identity);
   }
   const now = new Date();
 

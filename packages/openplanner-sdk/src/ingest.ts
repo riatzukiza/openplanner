@@ -175,10 +175,19 @@ function planGeneratedEvents(event: EventEnvelopeV1) {
   const extra = (event.extra as Record<string, unknown> | undefined) ?? {};
   const nodeId = norm(extra.node_id)?.trim() ?? norm(event.source_ref?.message)?.trim() ?? "";
   const body = norm(event.text)?.trim() ?? "";
-  const prepared = event.kind === "graph.node" && nodeId && body ? prepareIndexDocument({
-    parentId: nodeId, text: body, forceChunking: false,
-    targetChunkTokens: 32_000, targetChunkChars: 180_000, overlapChars: 1_000,
-  }) : undefined;
+  let prepared: ReturnType<typeof prepareIndexDocument> | undefined;
+  if (event.kind === "graph.node" && nodeId && body) {
+    try {
+      prepared = prepareIndexDocument({
+        parentId: nodeId, text: body, forceChunking: false,
+        targetChunkTokens: 32_000, targetChunkChars: 180_000, overlapChars: 1_000,
+      });
+    } catch (error) {
+      // Structural text remains an admitted source, with no derived content.
+      // Other preparation failures retain their original failure semantics.
+      if (!(error instanceof Error) || error.message !== "index document normalized text must be nonempty") throw error;
+    }
+  }
   if (prepared) {
     if (prepared.chunkCount > 1) ids.push(...prepared.chunks.map(chunk => `graph.node:doc_chunk:${chunk.id}`));
     const hashes = new Set<string>();
@@ -533,7 +542,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       const nodeId = norm(extra.node_id)?.trim() ?? norm((sr as any).message)?.trim() ?? "";
       // Only admitted event text may influence an authority-hashed vector.
       const body = norm(ev.text)?.trim() ?? "";
-      if (nodeId && body) {
+      if (nodeId && body && plans.get(ev.id)!.prepared) {
         const label = String(extra.label ?? extra.path ?? (sr as any).message ?? nodeId).trim() || nodeId;
         const prepared = plans.get(ev.id)!.prepared!;
 
@@ -744,7 +753,11 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
 
   if (derivedGraphNodeOps.size > 0) {
     for (const operation of derivedGraphNodeOps.values()) {
-      await upsertEvent(mongo.events, operation.updateOne.update.$set, mongo.retention?.eventsTtlSeconds);
+      const derived = operation.updateOne.update.$set;
+      const sourceEventId = derived.extra.source_event_id;
+      await upsertEvent(mongo.events, derived, mongo.retention?.eventsTtlSeconds, {
+        sourceEventId, expiresAt: sourceExpiries.get(sourceEventId)!,
+      });
     }
   }
 
