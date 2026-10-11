@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ftsSearch, ilikeSearch, upsertGraphLayoutOverrides, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
@@ -2211,4 +2211,54 @@ test('Codex518: matching tenant aliases and plain source reference preserve exac
   const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[event]); await result.backgroundIndexing;
   assert.equal(mongo.events.rows.get(event.id).project,'owned-project');
   assert.ok([...mongo.graphLabelNodes.rows.values()].every(row=>row.tenant_id==='owned-tenant'));
+});
+
+// Native CodeRabbit5481823938: bounded cache reload and BSON hydration.
+test('CodeRabbit0f: JSONL cache reload preserves UTF-8 across chunks and large vectors',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-jsonl-reload-'));const path=join(dir,'cache.jsonl');
+  const key='outside-🧠'.repeat(12000), vector=Array.from({length:4096},(_,i)=>i/4096);
+  const bytes=JSON.stringify([key,vector])+'\n'+JSON.stringify(['second',[0,1]])+'\n';
+  try{await writeFile(path,bytes);const cache=new PersistentEmbeddingCache(path);
+    assert.equal(cache.size,2);assert.deepEqual((await cache.getMany([key,'second'])).get(key),vector);
+    assert.deepEqual((await cache.getMany(['second'])).get('second'),[0,1]);
+    assert.equal(await readFile(path,'utf8'),bytes,'loading is read-only');
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('CodeRabbit0f: JSONL reload keeps the bounded retained entry window',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-jsonl-bound-'));const path=join(dir,'cache.jsonl');
+  try{await writeFile(path,Array.from({length:10003},(_,i)=>JSON.stringify(['key-'+i,[i/10003]])).join('\n')+'\n');
+    const cache=new PersistentEmbeddingCache(path);assert.equal(cache.size,10000);
+    assert.equal(cache.has('key-0'),false);assert.equal(cache.has('key-2'),false);
+    assert.deepEqual((await cache.getMany(['key-3','key-10002'])).get('key-3'),[3/10003]);
+    assert.deepEqual((await cache.getMany(['key-10002'])).get('key-10002'),[10002/10003]);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('CodeRabbit0f: durable snapshots use independent JSONL entries and migrate small legacy arrays',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-jsonl-migrate-'));const path=join(dir,'cache.jsonl');
+  try{await writeFile(path,JSON.stringify([['legacy',[1,0]]]));const cache=new PersistentEmbeddingCache(path);
+    assert.deepEqual((await cache.getMany(['legacy'])).get('legacy'),[1,0]);
+    await cache.putMany([{key:'new',vector:[0,1]}]);await cache.flush();
+    const entries=(await readFile(path,'utf8')).trim().split('\n').map(line=>JSON.parse(line));
+    assert.deepEqual(entries,[['legacy',[1,0]],['new',[0,1]]]);
+    const restored=new PersistentEmbeddingCache(path);assert.equal(restored.size,2);
+    assert.deepEqual((await restored.getMany(['legacy','new'])).get('new'),[0,1]);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('CodeRabbit0f: oversized legacy cache is skipped without leaking a private path or blocking startup',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-private-large-cache-'));const path=join(dir,'PRIVATE-cache.jsonl');const warnings=[];
+  const warning=mock.method(console,'warn',(...args)=>warnings.push(args));
+  try{await writeFile(path,JSON.stringify([['legacy',[1,0]]])+' '.repeat(12*1024*1024));
+    let cache;assert.doesNotThrow(()=>{cache=new PersistentEmbeddingCache(path);});
+    assert.equal(cache.size,0);assert.equal(warnings.length,1);assert.match(warnings[0][0],/cache.*skip|skip.*cache/i);
+    assert.equal(warnings.flat().some(x=>String(x).includes(dir)||String(x).includes('PRIVATE')),false);
+    await cache.putMany([{key:'fresh',vector:[0,1]}]);await cache.flush();
+    assert.deepEqual((await new PersistentEmbeddingCache(path).getMany(['fresh'])).get('fresh'),[0,1]);
+  }finally{warning.mock.restore();await rm(dir,{recursive:true,force:true});}
+});
+test('CodeRabbit0f: real Mongo ObjectId vector identity does not block scoped source hydration',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-objectid-hydration-'));const text='An independently retained outside encounter.';
+  try{await writeFile(join(dir,'encounter.md'),text);await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+    const id=new ObjectId('0123456789abcdef01234567');
+    assert.equal(await hydrateVectorDocumentText({_id:id,project:'lake',source_text_redacted:true,source_ref:{source_path:'encounter.md',lake:'lake'}}),text);
+  });}finally{closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });

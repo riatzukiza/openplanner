@@ -131,5 +131,29 @@
       (is (= "direct/path" (.-sourcePath ref)))
       (is (= "direct/path" (.-sourcePath (hydration/row-to-document hydrated)))))))
 
+
+(deftest bson-storage-identities-do-not-shadow-usable-source-identities
+  (doseq [row [#js {:id "public" :_id #js {} :project "lake" :extra #js {:source_path "encounter.md"}}
+              #js {:id #js {} :_id #js {} :project "lake" :extra #js {:source_path "encounter.md"}}
+              #js {:id #js {} :_id "storage" :project "lake" :extra #js {:hostname "outside.example"}}
+              #js {:id "   " :_id "storage" :project "lake" :extra #js {:hostname "outside.example"}}]]
+    (let [result (try {:ref (hydration/document-source-ref row)}
+                     (catch :default error {:error error}))]
+      (is (nil? (:error result)) "a storage ObjectId must not reject a usable source")
+      (when-not (:error result)
+        (let [^js ref (:ref result)]
+          (is (some? ref))
+          (is (true? (hydration/document-needs-hydration row)))
+          (is (= "outside" (.-text (.-row (hydration/hydrate-document-row row "outside")))))
+          (is (= (if (and ref (.-sourcePath ref))
+                   "openplanner:source-ref:v2:[\"lake\",[\"path\",\"encounter.md\"]]"
+                   "openplanner:source-ref:v2:[\"lake\",[\"host-row\",\"outside.example\",\"storage\"]]")
+                 (hydration/document-cache-key row)))))))
+  (is (= {:ok nil}
+         (try {:ok (hydration/document-cache-key #js {:id #js {} :_id #js {} :extra #js {:hostname "outside.example"}})}
+              (catch :default error {:error error}))))
+  (is (= "openplanner:source-ref:v2:[null,[\"host-row\",\"outside.example\",\"public\"]]"
+         (hydration/document-cache-key #js {:id "public" :_id "storage" :extra #js {:hostname "outside.example"}}))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

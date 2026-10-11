@@ -811,3 +811,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-shared-review-runtime-consumption-20261011
   note: Owned gate consumes actual merged eta-mu7b5797df3af28e190a994860be758e5f791440b5 and Musee733f5b417a870a6c8480ae433d643ee1598af27 complete-page-before-stage/classify-before-publication/submission-recovery fixes. Supported review timeout120min, shared60..180 range and finite2attempt bound retained. Earlier missing review_submit is not timeout proof. Free model, agent pack4b4, host versions, secrets, permissions, actual diff gates and whole-input/current-head/native publisher guards unchanged. Source verification rawSHA424b4d79aab9dc6931cb2eb6a4dde0afaf2b87717a54239a8eaaf2e645eaec42. Exact74 hosted38108775015 and isolated consumer1977/11459 PASS; all8Codex5481717991 fixes settled on74 and body readback33102bytes/SHA0b1feff6c8df800d6c8091fd87b052558202a900c6aa641a83b5c23cacbf1fb7. New gate candidate needs fresh hosted full review; no upstream/oldhead approval or round transfer. Original56manifest and229 receipt/reflection prefixes preserved. GoalACTIVE,heartbeatPAUSED; no live/runtime/maker/clock/gateway/PM2/cloud/model/grant/social/publication/deployment/board/paid/spore mutation.
+
+- ts: 2026-10-11T04:21:18.117Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-coderabbit0f-cache-hydration-causal-red-20261011
+  note: Verified causal RED SHA256c213bf27f9aad2b09febc0a4fbb3af58a35e689ace05f6f732989cd89239be52. JSONL Unicode/chunk/4096vector, bounded10000entry loading, small legacy migration, actual12MiB oversized legacy cold-cache recovery and real Mongo ObjectId scoped hydration fail on unchanged0f production. The bounded12MiB fixture is not an860MB V8 allocation proof. Initial missing fixture bracket and uncaught hydration guard attempt remain archived; corrected only fixture syntax/error capture before verified RED, preserving assertions. All829 old SDK tests pass. Both production hashes unchanged. Actual0f hosted38109599598SUCCESS is distinct from current negative review and pending38109600298. No native approval/round, imported-scope expansion, live/runtime/board/deployment/social/paid mutation or spore.
