@@ -874,3 +874,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-current-canonical-pr-pack-face300-20261011
   note: Canonical fetch observed actualnewmergedface300; six PRpackdirectories43files installed from exact Git blobs after proving prior40files4b4byteidentical and privately backingup. Device branch/history/otherpaths preserved; no reset/full divergent pull. Current skill adds narrowly bound native positiveLGTM Handled disposition and explicit skipped-input rejection; no approval/cohort/required-check/identity waiver. Existing reviewer caller global_skills_ref advances4b4toface300; free model,120minute/twoattempt bounds, merged eta/Muse pins, fullinput/head/grants remain unchanged. Superseded0freview38109600298 actualcancelled04:40:15;949review38112003356 running with seven Codex findings now repaired54. No source approval transferred; currentconsumer/hostedCI/newheadreview/merge owed. Original236journal prefixes preserved; no broad source/runtime/board/social/deploy/paid/spore mutation.
+
+- ts: 2026-10-11T05:14:49.406Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-lossless-evidence-bundle-20261011
+  note: Official Essentials150 limit requires lossless packaging of three complete newly added evidence archives. Production/tests/workflow remain exact19; all source237 prefixes preserved. Current-head native review and hosted gates remain owed. No runtime/board/deployment/paid/spore mutation.
