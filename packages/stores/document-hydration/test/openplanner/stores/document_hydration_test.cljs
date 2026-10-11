@@ -118,5 +118,18 @@
       (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
             (hydration/document-source-ref row))))))
 
+(deftest document-source-path-aliases-preserve-provenance
+  (doseq [extra [#js {:source_path "direct/path"}
+                 #js {:path "direct/path"}
+                 #js {:metadata #js {:path "direct/path"}}
+                 #js {:metadata #js {:file_id "direct/path"}}]
+          encoded? [false true]]
+    (let [row #js {:id "owned-source" :project "lake" :text ""
+                   :extra (if encoded? (js/JSON.stringify extra) extra)}
+          ^js ref (hydration/document-source-ref row)
+          hydrated (.-row (hydration/hydrate-document-row row "outside information"))]
+      (is (= "direct/path" (.-sourcePath ref)))
+      (is (= "direct/path" (.-sourcePath (hydration/row-to-document hydrated)))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

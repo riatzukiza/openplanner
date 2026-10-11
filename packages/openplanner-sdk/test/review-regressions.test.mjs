@@ -18,7 +18,7 @@ import { cacheGet, cachePut } from '@open-hax/openplanner-document-hydration';
 import { splitSentences, deduplicateByHash } from '../dist/sentence-split.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
-import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, addMongoVectorParentLabel, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries, deleteMongoVectorEntriesByFilter } from '../dist/mongo-vectors.js';
+import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, addMongoVectorParentLabel, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries, deleteMongoVectorEntriesByFilter, listMongoVectorPartitions } from '../dist/mongo-vectors.js';
 import { createOpenPlannerSdk } from '../dist/sdk.js';
 import { createEmbeddingRuntime } from '../dist/embedding-runtime.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
@@ -2114,4 +2114,101 @@ for(const mode of ['native','cosine'])test(`Codex1a: enforced ${mode} Vexx out-o
     const vectors=await import(new URL(`../dist/mongo-vectors.js?bounded-score-enforced-${mode}`,import.meta.url).href);
     await withFetch(async(_url,init)=>({ok:true,json:async()=>({matches:JSON.parse(init.body).candidates.map(row=>({id:row.id,score:2}))})}),async()=>assert.rejects(streamingQuery(vectors,parentQueryFixture(mode,[vectorRow('best','best-parent',1),vectorRow('second','second-parent',.8)])),/unavailable/i));
   });
+});
+
+// Native Codex5481717991: legacy retention, scoped admission and cache ownership.
+for (const operation of ['create', 'remove-label']) test(`Codex518: legacy session ${operation} uses environment retention`, async () => {
+  await withEnv({MONGODB_EVENTS_TTL_SECONDS:'73'}, async () => {
+    const mongo=exactSessionFixture(); delete mongo.retention;
+    const sessions=createProtocols({mongo}).sessionManagement;
+    await sessions.createSession({session:'legacy-retention',extra:operation==='remove-label'?{openplanner_labels:{labels:['keep']}}:{}});
+    if (operation==='remove-label') await sessions.updateSession('legacy-retention',{'extra.openplanner_labels.labels':[]});
+    const stored=await sessions.getSession('legacy-retention');
+    assert.ok(stored.expiresAt instanceof Date);
+    assert.equal(stored.expiresAt.getTime()-stored.updatedAt.getTime(),73000);
+  });
+});
+test('Codex518: explicitly disabled connection retention overrides the environment', async () => {
+  await withEnv({MONGODB_EVENTS_TTL_SECONDS:'73'}, async () => {
+    const mongo=exactSessionFixture(); mongo.retention.eventsTtlSeconds=0;
+    const row=await createProtocols({mongo}).sessionManagement.createSession({session:'disabled-retention'});
+    assert.equal(row.expiresAt,undefined);
+  });
+});
+for (const similarity of [undefined,null,'0.5',NaN,Infinity,-Infinity,-1.01,1.01]) test(`Codex518: semantic batch rejects similarity ${String(similarity)} before any writes`, async () => {
+  let writes=0;
+  await assert.rejects(upsertGraphSemanticEdges({bulkWrite:async()=>{writes++;}},[
+    {source_node_id:'valid-a',target_node_id:'valid-b',similarity:.5},
+    {source_node_id:'invalid-a',target_node_id:'invalid-b',similarity}
+  ]),/similarity.*finite|similarity.*range|similarity.*-1/i);
+  assert.equal(writes,0);
+});
+test('Codex518: semantic cosine endpoints remain valid', async () => {
+  let ops;
+  assert.equal(await upsertGraphSemanticEdges({bulkWrite:async value=>{ops=value;}},[-1,0,1].map((similarity,i)=>({source_node_id:'a'+i,target_node_id:'b'+i,similarity}))),3);
+  assert.deepEqual(ops.map(op=>op.updateOne.update.$set.similarity),[-1,0,1]);
+});
+for (const tier of ['unknown','hot ',undefined,null,{},17]) for (const operation of ['list','upsert','delete','replace','single','query','batch'])
+test(`Codex518: direct ${operation} rejects tier ${JSON.stringify(tier)} before storage/provider access`, async () => {
+  const mongo=mongoFixture(); let effects=0;
+  mongo.vectorPartitions.find=()=>{effects++;throw new Error('unexpected partition access');};
+  mongo.hotVectors.findOne=async()=>{effects++;return null;};
+  mongo.hotVectors.bulkWrite=async()=>{effects++;};
+  const provider={generate:async texts=>{effects++;return texts.map(()=>[1,0]);}};
+  const actions={
+    list:()=>listMongoVectorPartitions(mongo,tier),
+    upsert:()=>upsertMongoVectorDocuments(mongo,tier,[entry()]),
+    delete:()=>deleteMongoVectorEntriesByFilter(mongo,tier,{parent_id:'parent'}),
+    replace:()=>replaceMongoVectorEntries(mongo,tier,'parent',[]),
+    single:()=>indexTextInMongoVectors({mongo,tier,parentId:'parent',text:'outside',metadata:{embedding_model:'fixture'},embeddingFunction:provider}),
+    query:()=>queryMongoVectorsByText({mongo,tier,q:'outside',k:1,getEmbeddingFunctionForModel:()=>provider}),
+    batch:()=>batchIndexTextsInMongoVectors({mongo,tier,items:[item('parent')],embeddingFunction:provider})
+  };
+  await assert.rejects(actions[operation](),/tier.*hot|unsupported.*tier/i);
+  assert.equal(effects,0);
+  assert.ok([...mongo.collections.values()].every(c=>c.calls.writes.length===0&&c.calls.indexes.length===0&&c.calls.deletes.length===0));
+});
+for (const operation of ['set','putMany']) test(`Codex518: embedding cache ${operation} owns vectors through reads and durable snapshots`, async () => {
+  const dir=await mkdtemp(join(tmpdir(),'embedding-owned-'));
+  try {
+    const path=join(dir,'cache.json'), cache=new PersistentEmbeddingCache(path), vector=[1,0];
+    if(operation==='set') cache.set('owned',{embedding:vector,cachedAt:0});
+    else await cache.putMany([{key:'owned',vector}]);
+    vector[0]=NaN;
+    const first=(await cache.getMany(['owned'])).get('owned'); assert.deepEqual(first,[1,0]);
+    first[0]=17;
+    assert.deepEqual((await cache.getMany(['owned'])).get('owned'),[1,0]);
+    await cache.flush(); assert.deepEqual(JSON.parse(await readFile(path,'utf8')),[['owned',[1,0]]]);
+  } finally { await rm(dir,{recursive:true,force:true}); }
+});
+for (const vector of [[],[NaN],[Infinity],[-Infinity],[1,'2'],Array(2)]) for (const operation of ['set','putMany'])
+test(`Codex518: embedding cache ${operation} rejects invalid vectors atomically ${JSON.stringify(vector)}`, async () => {
+  const cache=new PersistentEmbeddingCache(); await cache.putMany([{key:'retained',vector:[1,0]}]);
+  if(operation==='set') assert.throws(()=>cache.set('invalid',{embedding:vector,cachedAt:0}),/embedding.*finite|embedding.*nonempty/i);
+  else await assert.rejects(cache.putMany([{key:'first-new',vector:[0,1]},{key:'invalid',vector}]),/embedding.*finite|embedding.*nonempty/i);
+  assert.equal(cache.size,1); assert.deepEqual((await cache.getMany(['retained'])).get('retained'),[1,0]);
+});
+for (const source_ref of [[],['lake'],'lake',17,false,null,new Date(0)]) test(`Codex518: ingest rejects non-object source reference ${JSON.stringify(source_ref)} before batch effects`, async () => {
+  const mongo=mongoFixture(); let providers=0;
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[
+    ordinaryEvent('valid-first','Valid outside information.'),{...ordinaryEvent('invalid-source','Invalid scope information.'),source_ref}
+  ]),/source_ref.*plain.*object|source.reference.*object/i);
+  assert.equal(providers,0); assert.ok([...mongo.collections.values()].every(c=>c.calls.writes.length===0));
+});
+for (const parentId of ['', ' ', '\t',null,17,{}]) test(`Codex518: batch parent ${JSON.stringify(parentId)} rejects before any provider work`, async () => {
+  const mongo=mongoFixture(); let providers=0;
+  await assert.rejects(batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[item('valid-first'),item(parentId)],embeddingFunction:{generate:async texts=>{providers++;return texts.map(()=>[1,0]);}}}),/parent.*nonblank|string.*parent/i);
+  assert.equal(providers,0); assert.ok([...mongo.collections.values()].every(c=>c.calls.writes.length===0));
+});
+test('Codex518: conflicting tenant aliases reject the whole event batch before graph writes', async () => {
+  const mongo=mongoFixture(); let providers=0;
+  const event={...ordinaryEvent('conflicted-tenant','An outside encounter.'),extra:{tenant_id:'tenant-a',openplanner_labels:{tenant_id:'tenant-b',labels:['keep']}}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[ordinaryEvent('valid-first','Valid outside information.'),event]),/tenant.*agree|tenant.*conflict/i);
+  assert.equal(providers,0); assert.ok([...mongo.collections.values()].every(c=>c.calls.writes.length===0));
+});
+test('Codex518: matching tenant aliases and plain source reference preserve exact persisted scope', async () => {
+  const mongo=vectorDeletionFixture(); const event={...ordinaryEvent('matched-tenant','An outside encounter.'),source_ref:{project:'owned-project'},extra:{tenant_id:'owned-tenant',openplanner_labels:{tenant_id:'owned-tenant',labels:['keep']}}};
+  const result=await ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>texts.map(()=>[1,0])})},[event]); await result.backgroundIndexing;
+  assert.equal(mongo.events.rows.get(event.id).project,'owned-project');
+  assert.ok([...mongo.graphLabelNodes.rows.values()].every(row=>row.tenant_id==='owned-tenant'));
 });
