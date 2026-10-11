@@ -631,3 +631,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-938daf5-sixteen-boundaries-green-20261011
   note: Retain every new RED failure and prior assertion; one existing immutable-session fixture filter assertion strengthens to its real stored_id. Source ownership, realfile cache binding, typedsemantic identity, validated limits/filters/labels/scope/dimensions/TTL/workers, transactional replacement refusal, projectsession isolation, contiguous dual-budget chunks, no-op expiry, sharedSDKcacheclose. Unsupported transactions now explicitly refuse; no untransactional unsafe replay/livecompatibilityclaim. Actual failed intermediate outputs retained. No live/board/deploy/paid/spore.
+
+- ts: 2026-10-11T00:44:37.039Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-566ca4a-ten-boundaries-red-20261011
+  note: Causal ten-boundary RED. Corrected deletion fixture includes actual hot-tier argument;initial wrong-reason ninepasses/onefailure retained. Native display missing-line KeyError occurred after rawarchive and supplied no productionproof. Original210prefix/56manifest intact;no live/deploy/board/paid/spore.

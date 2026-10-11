@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
-import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples } from '../dist/mongodb.js';
+import { openMongoDB, ilikeSearch, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, enqueueMigrationJob } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
 import { safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
 import { EmbedProviderFunction, ParallelEmbeddingPool } from '../dist/embeddings.js';
@@ -18,7 +18,7 @@ import { cacheGet, cachePut } from '@open-hax/openplanner-document-hydration';
 import { splitSentences, deduplicateByHash } from '../dist/sentence-split.js';
 import { formatEmbeddingQueryText, formatEmbeddingPassageText } from '../dist/embedding-text.js';
 import { ftsSearchWithQuality, vectorSearchWithQuality } from '../dist/search-core.js';
-import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries } from '../dist/mongo-vectors.js';
+import { batchIndexTextsInMongoVectors, upsertMongoVectorDocuments, hydrateVectorDocumentText, removeMongoVectorParentLabel, indexTextInMongoVectors, queryMongoVectorsByText, replaceMongoVectorEntries, deleteMongoVectorEntriesByFilter } from '../dist/mongo-vectors.js';
 import { createOpenPlannerSdk } from '../dist/sdk.js';
 import { createEmbeddingRuntime } from '../dist/embedding-runtime.js';
 import { prepareIndexDocument } from '../dist/indexing.js';
@@ -1642,4 +1642,117 @@ for(const count of [0,-1,NaN,Infinity,1.5,Number.MAX_SAFE_INTEGER+1,'2'])test(`e
 test('embedding pool keeps the default and positive worker rotation',()=>{
   const pool=new ParallelEmbeddingPool('fixture','https://fixture.invalid',{workerCount:2});const a=pool.getWorker(),b=pool.getWorker();assert.notEqual(a,b);assert.equal(pool.getWorker(),a);
   assert.ok(new ParallelEmbeddingPool('fixture','https://fixture.invalid').getWorker());
+});
+
+// Native Codex5481359467: ten follow-up public storage boundaries.
+test('full session history preserves more than one thousand ascending events',async()=>{
+  const mongo=mongoFixture();const rows=Array.from({length:2002},(_,i)=>({_id:'event-'+i,session:'history',ts:new Date(1767225600000+i),text:'encounter '+i}));
+  mongo.events.find=()=>{let found=[...rows];return {sort(spec){found.sort((a,b)=>(a.ts-b.ts)*spec.ts);return this;},limit(n){found=found.slice(0,n);return this;},toArray:async()=>found};};
+  const result=await getSessionResponse({mongo},'history',{mode:'full'});
+  assert.equal(result.rows.length,2002);assert.equal(result.rows[0]._id,'event-0');assert.equal(result.rows.at(-1)._id,'event-2001');
+});
+
+test('projectless session markers remain exactly addressable alongside a scoped marker',async()=>{
+  const mongo=exactSessionFixture();const sessions=createProtocols({mongo}).sessionManagement;
+  const projectless=await sessions.createSession({session:'shared-projectless'});
+  const scoped=await sessions.createSession({session:'shared-projectless',project:'owned'});
+  await assert.rejects(sessions.getSession('shared-projectless'),/ambiguous/i);
+  assert.equal((await sessions.getSession('shared-projectless',{project:null}))._id,projectless._id);
+  await sessions.updateSession('shared-projectless',{mood:'curious'},{project:null});
+  assert.equal(mongo.events.rows.get(projectless._id).mood,'curious');assert.equal(mongo.events.rows.get(scoped._id).mood,undefined);
+  await sessions.closeSession('shared-projectless',{project:null});
+  assert.equal(mongo.events.rows.has(projectless._id),false);assert.equal(mongo.events.rows.has(scoped._id),true);
+});
+
+for(const unsupported of [{parent_id:{$gt:'x'}},{parent_id:{$eq:'x',$ne:'y'}},{parent_id:{$in:[{$ne:'x'}]}},{parent_id:{$in:[]}},{parent_id:null},{parent_id:NaN},{unknown:'x'},{$where:'true'},{'extra.scope':'x'}])
+  test('bulk vector deletion refuses the whole lossy predicate '+JSON.stringify(unsupported),async()=>{
+    const mongo=mongoFixture();let accessed=0;const original=mongo.db.collection;
+    mongo.db.collection=name=>{accessed++;return original(name);};
+    await assert.rejects(deleteMongoVectorEntriesByFilter(mongo,'hot',{project:'owned',...unsupported}),/filter|unsupported/i);
+    assert.equal(accessed,0);assert.equal(mongo.hotVectors.calls.deletes.length,0);assert.equal(mongo.compactVectors.calls.deletes.length,0);
+  });
+test('bulk vector deletion retains every admitted conjunct',async()=>{
+  const mongo=mongoFixture();const filter={project:'owned',parent_id:{$in:['first','second']},kind:{$ne:'excluded'}};
+  await deleteMongoVectorEntriesByFilter(mongo,'hot',filter);assert.deepEqual(mongo.hotVectors.calls.deletes[0],filter);assert.equal(mongo.compactVectors.calls.deletes.length,0);
+});
+
+for(const id of [{$ne:'victim'},42,null,undefined,'','   '])for(const batch of [false,true])
+  test(`public event admission rejects selector identity ${JSON.stringify(id)} batch=${batch} before any write`,async()=>{
+    const mongo=mongoFixture();const admission=createProtocols({mongo}).eventAdmission;
+    const bad={...ordinaryEvent('bad','outside'),id};
+    await assert.rejects(batch?admission.appendEvents([ordinaryEvent('good','outside'),bad]):admission.appendEvent(bad),/id.*nonblank.*string/i);
+    assert.equal(mongo.events.calls.writes.length,0);assert.equal(mongo.events.rows.size,0);
+  });
+
+for(const method of ['getTenant','updateTenant','deleteTenant','getPolicy','setPolicy'])for(const id of [{$ne:'victim'},42,null,undefined,'','   '])
+  test(`tenant ${method} rejects selector identity ${JSON.stringify(id)} before collection access`,async()=>{
+    const mongo=mongoFixture();let accessed=0;mongo.db.collection=()=>{accessed++;throw new Error('collection accessed before identity admission');};
+    await assert.rejects(createProtocols({mongo}).tenantManagement[method](id,{name:'change'}),/tenant.*nonblank.*string/i);assert.equal(accessed,0);
+  });
+
+test('embedding cache distinguishes colliding model and dimension tuple spellings',async()=>{
+  const first=makeEmbeddingCacheKey({model:'m::dimensions:3',text:'same encounter'});
+  const second=makeEmbeddingCacheKey({model:'m',dimensions:3,text:'same encounter'});
+  const cache=new PersistentEmbeddingCache();await cache.putMany([{key:first,vector:[1,0,0]},{key:second,vector:[0,1,0]}]);
+  assert.notEqual(first,second);assert.equal(cache.size,2);assert.deepEqual((await cache.getMany([first,second])).get(first),[1,0,0]);
+  assert.deepEqual((await cache.getMany([first,second])).get(second),[0,1,0]);
+});
+
+function migrationIdentityFixture(){
+  const rows=new Map();return {rows,async updateOne(filter,update){
+    const old=[...rows.values()].find(row=>Object.entries(filter).every(([key,value])=>row[key]===value));
+    const next={...(!old?update.$setOnInsert:{}),...old,...filter,...update.$set};rows.set(next._id,next);
+  }};
+}
+test('migration queue preserves distinct tuples containing delimiters and retry state',async()=>{
+  const collection=migrationIdentityFixture();const a={entity:'a',object_id:'b:c',trigger:'d'};const b={entity:'a:b',object_id:'c',trigger:'d'};
+  await enqueueMigrationJob(collection,a);await enqueueMigrationJob(collection,b);assert.equal(collection.rows.size,2);
+  const before=[...collection.rows.values()].find(row=>row.entity==='a');before.status='running';before.attempts=3;
+  await enqueueMigrationJob(collection,{...a,priority:4});assert.equal(collection.rows.size,2);
+  const after=[...collection.rows.values()].find(row=>row.entity==='a');assert.equal(after._id,before._id);assert.equal(after.createdAt,before.createdAt);assert.equal(after.status,'running');assert.equal(after.attempts,3);
+});
+test('migration enqueue retains a stored legacy job ID and creation time',async()=>{
+  const collection=migrationIdentityFixture();const legacy={_id:'legacy:opaque:id',entity:'a',object_id:'b',trigger:'c',createdAt:new Date(0),attempts:5,status:'failed'};
+  collection.rows.set(legacy._id,legacy);await enqueueMigrationJob(collection,{entity:'a',object_id:'b',trigger:'c',priority:2});
+  assert.equal(collection.rows.size,1);assert.equal(collection.rows.get(legacy._id).createdAt,legacy.createdAt);assert.equal(collection.rows.get(legacy._id).attempts,5);
+});
+
+test('session pages use stable project/session ordering when every timestamp ties',async()=>{
+  const mongo=mongoFixture();let calls=0;
+  const all=[{project:'b',session:'one'},{project:'a',session:'two'},{project:'a',session:'one'},{project:'c',session:'one'}].map(row=>({...row,last_ts:new Date(0),event_count:1}));
+  mongo.events.aggregate=pipeline=>({toArray:async()=>{
+    if(pipeline.some(stage=>stage.$count))return [{total:all.length}];
+    let rows=calls++%2?[...all].reverse():[...all];const spec=pipeline.find(stage=>stage.$sort).$sort;
+    rows.sort((a,b)=>{for(const [key,direction]of Object.entries(spec)){const comparison=a[key]instanceof Date?a[key]-b[key]:String(a[key]).localeCompare(String(b[key]));if(comparison)return comparison*direction;}return 0;});
+    const offset=pipeline.find(stage=>stage.$skip)?.$skip??0;const limit=pipeline.find(stage=>stage.$limit).$limit;return rows.slice(offset,offset+limit);
+  }});
+  const sessions=createProtocols({mongo}).sessionManagement;
+  const first=await sessions.listSessions({limit:2,offset:0}),second=await sessions.listSessions({limit:2,offset:2});
+  assert.deepEqual([...first.rows,...second.rows].map(row=>[row.project,row.session]),[['a','one'],['a','two'],['b','one'],['c','one']]);
+  assert.equal(new Set([...first.rows,...second.rows].map(row=>JSON.stringify([row.project,row.session]))).size,4);
+});
+
+for(const timestamp of ['not-a-date','',null,false,{},new Date(NaN)])for(const operation of ['single','batch','direct'])
+  test(`vector ${operation} rejects supplied invalid timestamp ${JSON.stringify(timestamp)} before provider/storage`,async()=>{
+    const mongo=mongoFixture();let generated=0;const embeddingFunction={generate:async texts=>{generated++;return texts.map(()=>[1,2]);}};
+    const metadata={embedding_model:'fixture',ts:timestamp};
+    const result=operation==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text:'outside',metadata,embeddingFunction})
+      :operation==='batch'?batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[{...item('parent'),metadata}],embeddingFunction})
+      :upsertMongoVectorDocuments(mongo,[{...entry(),metadata}]);
+    await assert.rejects(result,/timestamp|metadata.ts/i);assert.equal(generated,0);assert.equal(mongo.hotVectors.calls.writes.length,0);assert.equal(mongo.compactVectors.calls.writes.length,0);
+  });
+
+test('generated ownership preflight batches a large document and rejects a late collision before writes',async()=>{
+  const mongo=mongoFixture();const text=Array.from({length:310},(_,i)=>`Outside encounter number ${i} contains enough distinct creative words.`).join(' ');
+  const ev={...ordinaryEvent('batch-source',text),kind:'graph.node',source_ref:{project:'lake'},extra:{node_id:'batch-parent'}};
+  const prepared=prepareIndexDocument({parentId:'batch-parent',text,targetChunkTokens:32000,targetChunkChars:180000,overlapChars:1000});
+  const sentences=[...deduplicateByHash(splitSentences(prepared.normalizedText))].filter(([,s])=>s.tokens>3);assert.ok(sentences.length>256);
+  const hash=sentences.at(-1)[0];const conflict=`graph.node:sentence:sentence:${createHash('sha256').update(JSON.stringify(['lake',ev.id,hash])).digest('hex')}`;
+  mongo.events.rows.set(conflict,{_id:conflict,source:'caller',text:'protected outside ownership'});
+  let scalarGeneratedReads=0,providers=0;const batches=[];const original=mongo.events.findOne;
+  mongo.events.findOne=async filter=>{if(filter._id!==ev.id)scalarGeneratedReads++;return original(filter);};
+  mongo.events.find=filter=>{assert.ok(Array.isArray(filter._id?.$in));batches.push([...filter._id.$in]);const rows=[...mongo.events.rows.values()].filter(row=>filter._id.$in.includes(row._id));return {project(){return this;},toArray:async()=>rows};};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},[ev]),/derived.*ownership.*collision/i);
+  assert.equal(scalarGeneratedReads,0);assert.ok(batches.length>=2);assert.ok(batches.every(batch=>batch.length>0&&batch.length<=256));assert.equal(new Set(batches.flat()).size,batches.flat().length);
+  assert.equal(mongo.events.calls.writes.length,0);assert.equal(providers,0);assert.equal(mongo.events.rows.get(conflict).text,'protected outside ownership');
 });
