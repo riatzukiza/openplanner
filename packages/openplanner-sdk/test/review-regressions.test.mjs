@@ -2020,3 +2020,43 @@ for(const search of [ftsSearch,ilikeSearch])test(`direct ${search.name} returns 
  const compact=await search(c,'outside',{tier:'compact'});assert.equal(compact[0].tier,'compact');const hot=await search(c,'outside',{tier:'hot'});assert.equal(hot[0].tier,'hot');
  c.collectionName='compacted_memories';assert.equal((await search(c,'outside'))[0].tier,'compact');
 });
+
+// Actual native Codex5481623446 on309: metadata, identity and cross-copy transaction laws.
+for(const model of [undefined,null,'',' '])for(const replace of [false,true])test(`direct vector ${replace?'replace':'upsert'} refuses missing model ${String(model)} before effects`,async()=>{
+ const mongo=mongoFixture();const row={...entry('missing-model'),metadata:{embedding_model:model}};
+ await assert.rejects(replace?replaceMongoVectorEntries(mongo,'hot','parent',[row]):upsertMongoVectorDocuments(mongo,'hot',[row]),/embedding.model|model.*nonblank/i);
+ assert.equal(mongo.hotVectors.rows.size,0);assert.equal(mongo.vectorPartitions.rows.size,0);
+});
+for(const field of ['project','session','visibility'])test(`direct vector scope retains explicit empty ${field}`,async()=>{
+ const mongo=mongoFixture();const row=entry('empty-'+field);row.metadata[field]='';await upsertMongoVectorDocuments(mongo,'hot',[row]);assert.equal(mongo.hotVectors.rows.get(row.id)[field],'');
+});
+for(const fallback of [false,true])test(`legacy FTS identity backfill excludes _id with fallback=${fallback}`,async()=>{
+ const mongo=mongoFixture();const rows=[{_id:'legacy',ts:new Date(2),text:'outside',extra:{openplanner_labels:{quality:'good'}}},{id:'other',_id:'storage-other',ts:new Date(1),text:'outside',extra:{openplanner_labels:{quality:'neutral'}}}];
+ mongo.events.find=filter=>{if(fallback&&filter.$text)throw Error('FTS absent');let values=rows.filter(r=>filter['extra.openplanner_labels.quality']!=='good'||r.extra.openplanner_labels.quality==='good');values=values.filter(r=>!filter.id?.$nin?.includes(r.id));
+  if(filter.$expr){const expr=filter.$expr.$not[0].$in;assert.deepEqual(expr[0].$convert.input,{$ifNull:['$id','$_id']});values=values.filter(r=>!expr[1].$literal.includes(String(r.id??r._id)));}
+  return{sort(){return this},limit(n){values=values.slice(0,n);return this},toArray:async()=>values};};
+ const result=await ftsSearchWithQuality({mongo},{q:'outside',tier:'hot',quality:'good_then_not_bad',limit:2});assert.deepEqual(result.rows.map(r=>r.id??r._id),['legacy','other']);
+});
+test('direct session event scope retains explicitly empty kind',async()=>{
+ const mongo=mongoFixture();await createProtocols({mongo}).sessionManagement.getSessionEvents('shared',{project:'owned',kind:'',limit:10});assert.equal(mongo.events.calls.searches.at(-1).kind,'');
+});
+test('native vector projection retains schema metadata identical to cosine reads',async()=>{
+ const row={...vectorRow('schema','parent',1),schema_version:'fixture.v2',migration_state:'complete'};const mongo=parentQueryFixture('native',[row]);const c=mongo.db.collection('healthy_vectors');
+ c.aggregate=pipeline=>({toArray:async()=>{const projection=pipeline.find(s=>s.$project).$project;const doc=Object.fromEntries(Object.entries(row).filter(([k])=>projection[k]===1));doc.score=1;return[doc];}});
+ const native=await streamingQuery({queryMongoVectorsByText},mongo);assert.equal(native.metadatas[0][0].schema_version,'fixture.v2');assert.equal(native.metadatas[0][0].migration_state,'complete');
+});
+for(const operation of [addMongoVectorParentLabel,removeMongoVectorParentLabel])for(const failAt of [0,1,2,3])test(`${operation.name} rolls back all four copies after write failure ${failAt}`,async()=>{
+ const mongo=mongoFixture();const stores=[mongo.hotVectors,mongo.compactVectors,mongo.db.collection('label-hot'),mongo.db.collection('label-compact')];const token={};let ended=0;let active=false;
+ mongo.vectorPartitions.rows.set('label-hot',{_id:'label-hot',tier:'hot',collectionName:'label-hot',updatedAt:new Date()});mongo.vectorPartitions.rows.set('label-compact',{_id:'label-compact',tier:'compact',collectionName:'label-compact',updatedAt:new Date()});
+ for(const c of stores)c.rows.set('copy',{_id:'copy',parent_id:'parent',labels:['keep'],expiresAt:new Date(100)});
+ const before=stores.map(c=>structuredClone([...c.rows]));
+ const session={withTransaction:async work=>{active=true;try{return await work();}catch(error){stores.forEach((c,i)=>{c.rows.clear();for(const [id,row]of before[i])c.rows.set(id,row);});throw error;}finally{active=false;}},endSession:async()=>{ended++},token};mongo.client.startSession=()=>session;
+ stores.forEach((c,i)=>c.updateMany=async(_filter,_update,opts)=>{if(active)assert.equal(opts?.session,session,'all effects bind the same transaction session');if(i===failAt)throw Error('actual fixture write failure');c.rows.get('copy').labels=operation===addMongoVectorParentLabel?['keep','new']:[];c.rows.get('copy').expiresAt=null;});
+ await assert.rejects(operation(mongo,'parent',operation===addMongoVectorParentLabel?'new':'keep'),/actual fixture write failure/);assert.deepEqual(stores.map(c=>[...c.rows]),before);assert.equal(ended,1);
+});
+
+for(const operation of [addMongoVectorParentLabel,removeMongoVectorParentLabel])test(`${operation.name} refuses unavailable transactions without any untransactional replay`,async()=>{
+ const mongo=mongoFixture();let effects=0,ended=0;mongo.hotVectors.updateMany=mongo.compactVectors.updateMany=async()=>{effects++};
+ mongo.client.startSession=()=>({withTransaction:async()=>{throw Error('replica-set transaction unavailable')},endSession:async()=>{ended++}});
+ await assert.rejects(operation(mongo,'parent','keep'),/transaction unavailable/);assert.equal(effects,0);assert.equal(ended,1);
+});

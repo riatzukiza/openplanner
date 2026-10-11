@@ -105,5 +105,16 @@
     (is (= "mongo-b" (.-id b)))
     (is (= "public" (.-id explicit)))))
 
+
+(deftest document-reference-identities-never-coerce-runtime-values
+  (doseq [field ["content_hash" "source_path" "path" "url" "hostname" "lake"]
+          value [#js {} #js []]]
+    (let [extra #js {:source_path "/owned/source"} row #js {:id "owned" :text "" :extra extra}]
+      (aset extra field value)
+      (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
+            (hydration/document-cache-key row)))
+      (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
+            (hydration/document-source-ref row))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))

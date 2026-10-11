@@ -230,5 +230,14 @@
           (is (thrown-with-msg? js/Error #"key.*string|string.*key" (operation)))))
       (is (zero? @effects)))))
 
+
+(deftest cache-entry-schema-keeps-string-only-identity
+  (doseq [key [#js {} #js [] nil 42 "" " "]]
+    (is (thrown-with-msg? js/Error #"key.*string|string.*key"
+          (boundary/cache-entry-js #js {:key key :value "content" :nowMs 10})))
+    (is (false? (:valid? (schema/explain-cache-entry
+                          {:cache/key key :cache/value "content"
+                           :cache/created-at-ms 10 :cache/touched-at-ms 10}))))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))

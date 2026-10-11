@@ -748,3 +748,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-eight-followup-green-20261011
   note: Repair all8 actual Codex5481584632 findings inside original imported packages. Whole batches admit layout/semantic endpoints andforce scalar tuple before bulkWrite,retaining canonical undirected/legacy IDs andnull-versus-empty tuple distinctions. Session listing groups null/missing separately from explicit-empty project andretains exact empty filter. Explicit claim scope requires Object/null prototype,refusing runtime objects. Vector Date/legacy string timestamps normalize before parent/rank admission;invalid rows skipped andtruthful partial/count returned while healthy hits survive. Direct FTS/substring compact provenance uses explicit tier/customcollection binding,canonical compacted name fallback. Nonblank string cache identity guarded at public andmemory/LMDB/layered protocol boundaries before effects. All19 actual gates freshly executed:SDK686/686,graph71/468 zero fail/error andforced actualexit1,cache13/135,hydration8/27,JVM17/100,zero lint/compiler warnings. Original56manifest and222 journal/reflection prefixes intact. No reviewapproval/round/live/board/deployment/paid/spore claim;heartbeatPAUSED,goalACTIVE.
+
+- ts: 2026-10-11T02:42:34.871Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-eight-metadata-red-20261011
+  note: All8 actual Codex5481623446 findings reproduced on unchanged309 production. Original SDK709/686PASS23FAIL;strengthened exact-session andunsupported-transaction cases711/686PASS25FAIL. Cache14tests147assertions8FAIL0error;hydration9tests51assertions24FAIL0error;compilers0warnings. Covers mandatory vector model identity,legacy FTS effective storage-ID exclusion,cache-entry schema string identity,hydration reference string identities,exact empty session kind,Atlas schema metadata parity,exact empty vector scopes,andatomic label copies. Four-copy fault fixtures require rollback across every failure location andthe same session;unsupported transactions must produce zero writes/no untransactional replay. Original rawRED andstrengthened later SDKRED retained,old valid assertions unchanged. No production edits orreviewapproval/liveclaims.
