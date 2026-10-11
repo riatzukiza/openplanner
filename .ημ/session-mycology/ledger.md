@@ -1000,3 +1000,21 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-cr-8c-env-scope-green-20261011
   note: Host and Compose Mongo URIs are separated;Mongo adapter forwards scope presence/inference fields to the sole canonical boundary,including explicitnull/false/zero semantics. Actual causalRED and GREEN retained,no tests weakened;all250prior receipt bytes and52records unchanged. Old8c CI/review are historical and give no new-head approval. No runtime,maker,clock,board,deployment,paid or spore mutation;unique owned fixtures cleaned.
+
+- ts: 2026-10-11T08:00:35.948Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-env-scope-3719817-native-delivery-20261011
+  note: Full CR5482394213 completed onolder8c with two valid findings,no approval. CausalRED896→minimalGREEN371 now published;both roots canonicallyFixed. Dated canonical295threads0unresolved/1PASS2pending/no approvals/0cohorts;Codex accountquota/resetUNKNOWN. Superseded8c MiMo38121240984 actually cancelled after normal+379.502sec targeted force;current37138122675907 actually in progress with producerPASS/Musecompiling;no duplicate review. Current371 complete150input/all251receipts/all55raw/entirereflection CR brief prepared only;next no earlier08:29 with fresh cooldown evidence/no paidusage. Existing scope question superseded by original requiredconfiguration authority,no useranswerneeded. Prior251source/388root prefixes preserved;uncommitted observations not reviewheadchurn. GoalACTIVE/heartbeat humanPAUSED;no live/runtime/board/deployment/paid/spore mutation.
+
+- ts: 2026-10-11T08:12:16.509Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex371-three-red-20261011
+  note: Native Codex5482454712 exact371 restores current availability with three findings4240785122/5127/5130. Actual seven targeted SDK regressions: six fail, one passes, exit1; documented host config ignored; true directory/symlink swap returns outside secret; graph default width9 or1024 versus declared2. Full native review/inlines and actual RED outputs appended losslessly to existing evidence bundle58; original56 manifest and all historical252 receipt/reflection prefixes preserved. No runtime or review credit.

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, rm, symlink, mkdir } from 'node:fs/promises';
+import fsPromises, { mkdtemp, writeFile, readFile, rm, symlink, mkdir, rename, open as openFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { parseEnv } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join, parse } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
@@ -2535,4 +2537,77 @@ test('Codexed: default local Mongo seed uses direct discovery while explicit clu
    process.env.MONGODB_URI=explicit;assert.equal(loadConfig().mongodb.uri,explicit);
   }
  }finally{if(saved===undefined)delete process.env.MONGODB_URI;else process.env.MONGODB_URI=saved;}
+});
+
+
+// Native Codex5482454712: documented configuration, descriptor containment, model-width indexes.
+async function withEmbeddingEnv(values, work) {
+ const keys=[...new Set([...Object.keys(process.env).filter(k=>k.startsWith('EMBED_PROVIDER_')||k.startsWith('OLLAMA_')), ...Object.keys(values)])];
+ const saved=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+ for(const key of keys)delete process.env[key];Object.assign(process.env,values);
+ try{return await work();}finally{for(const key of keys){if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key];}}
+}
+test('Codex371: checked-in host env config reaches the SDK without container-only defaults',async()=>{
+ const documented=parseEnv(await readFile(new URL('../../../.env.example',import.meta.url),'utf8'));
+ await withEmbeddingEnv(documented,async()=>{
+  const config=loadConfig();assert.equal(config.embedProviderBaseUrl,documented.OLLAMA_BASE_URL);
+  assert.equal(config.embeddingModels.defaultModel,documented.OLLAMA_EMBED_MODEL);
+ });
+});
+test('Codex371: legacy Ollama endpoint, credentials, models and routing configure the SDK',async()=>{
+ await withEmbeddingEnv({OLLAMA_URL:'http://127.0.0.1:12345',OLLAMA_API_KEY:'fixture-only',OLLAMA_EMBED_MODEL:'default-legacy',OLLAMA_COMPACT_EMBED_MODEL:'compact-legacy',OLLAMA_EMBED_MODEL_BY_SOURCE:'outside=source-legacy',OLLAMA_EMBED_MODEL_BY_KIND:'post=kind-legacy',OLLAMA_EMBED_MODEL_BY_PROJECT:'character=project-legacy'},async()=>{
+  const config=loadConfig();assert.equal(config.embedProviderBaseUrl,'http://127.0.0.1:12345');assert.equal(config.embedProviderApiKey,'fixture-only');assert.equal(config.compactEmbedModel,'compact-legacy');
+  const runtime=createEmbeddingRuntime({...config,embedProviderCachePath:undefined});
+  assert.equal(runtime.hot.getModel({}),'default-legacy');assert.equal(runtime.hot.getModel({source:'outside'}),'source-legacy');assert.equal(runtime.hot.getModel({kind:'post'}),'kind-legacy');assert.equal(runtime.hot.getModel({project:'character'}),'project-legacy');
+ });
+});
+test('Codex371: explicit provider configuration takes precedence over every legacy alias',async()=>{
+ await withEmbeddingEnv({OLLAMA_BASE_URL:'http://legacy.invalid',OLLAMA_API_KEY:'legacy-only',OLLAMA_EMBED_MODEL:'legacy',OLLAMA_COMPACT_EMBED_MODEL:'legacy-compact',OLLAMA_EMBED_MODEL_BY_SOURCE:'outside=legacy',OLLAMA_EMBED_MODEL_BY_KIND:'post=legacy',OLLAMA_EMBED_MODEL_BY_PROJECT:'character=legacy',EMBED_PROVIDER_BASE_URL:'http://provider.invalid',EMBED_PROVIDER_API_KEY:'provider-only',EMBED_PROVIDER_MODEL:'provider',EMBED_PROVIDER_COMPACT_MODEL:'provider-compact',EMBED_PROVIDER_MODEL_BY_SOURCE:'outside=source-provider',EMBED_PROVIDER_MODEL_BY_KIND:'post=kind-provider',EMBED_PROVIDER_MODEL_BY_PROJECT:'character=project-provider'},async()=>{
+  const config=loadConfig();assert.equal(config.embedProviderBaseUrl,'http://provider.invalid');assert.equal(config.embedProviderApiKey,'provider-only');assert.equal(config.compactEmbedModel,'provider-compact');assert.equal(config.embeddingModels.defaultModel,'provider');assert.deepEqual(config.embeddingModels.bySource,{outside:'source-provider'});assert.deepEqual(config.embeddingModels.byKind,{post:'kind-provider'});assert.deepEqual(config.embeddingModels.byProject,{character:'project-provider'});
+ });
+});
+test('Codex371: a real directory replacement between containment and open cannot hydrate or cache outside bytes',async(t)=>{
+ const dir=await mkdtemp(join(tmpdir(),'hydration-descriptor-race-')),root=join(dir,'root'),inside=join(root,'owned'),outside=join(dir,'outside');
+ await mkdir(inside,{recursive:true});await mkdir(outside);await writeFile(join(inside,'source.txt'),'owned encounter');await writeFile(join(outside,'source.txt'),'outside secret');
+ const candidate=join(inside,'source.txt'),original=fsPromises.realpath;let swapped=false;
+ const interception=t.mock.method(fsPromises,'realpath',async function(file,...args){const resolved=await original.call(this,file,...args);if(file===candidate&&!swapped){await rename(inside,join(root,'retained-owned'));await symlink(outside,inside);swapped=true;}return resolved;});syncBuiltinESMExports();
+ try{await withEnv({OPENPLANNER_SOURCE_ROOT:root},async()=>{
+  const row={id:'descriptor-race',extra:{source_path:'owned/source.txt'}};
+  assert.equal(await loadHydrationSourceText(row),null);assert.equal(swapped,true);
+  interception.mock.restore();syncBuiltinESMExports();await rm(inside);await rename(join(root,'retained-owned'),inside);
+  assert.equal(await loadHydrationSourceText(row),'owned encounter');
+ });}finally{interception.mock.restore();syncBuiltinESMExports();await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+test('Codex371: descriptor reads retain the opened owned file after an actual parent swap and close both handles',async(t)=>{
+ const dir=await mkdtemp(join(tmpdir(),'hydration-opened-file-')),root=join(dir,'root'),inside=join(root,'owned'),outside=join(dir,'outside');
+ await mkdir(inside,{recursive:true});await mkdir(outside);await writeFile(join(inside,'source.txt'),'opened owned encounter');await writeFile(join(outside,'source.txt'),'outside secret');
+ const original=fsPromises.open;let swapped=false,closes=0;
+ const interception=t.mock.method(fsPromises,'open',async function(file,...args){const handle=await original.call(this,file,...args);const close=handle.close.bind(handle);handle.close=async()=>{closes++;return close();};if(file===join(inside,'source.txt')){const read=handle.readFile.bind(handle);handle.readFile=async(...options)=>{await rename(inside,join(root,'retained-owned'));await symlink(outside,inside);swapped=true;return read(...options);};}return handle;});syncBuiltinESMExports();
+ try{await withEnv({OPENPLANNER_SOURCE_ROOT:root},async()=>assert.equal(await loadHydrationSourceText({id:'opened-descriptor',extra:{source_path:'owned/source.txt'}}),'opened owned encounter'));assert.equal(swapped,true);assert.equal(closes,2);}
+ finally{interception.mock.restore();syncBuiltinESMExports();await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+function graphSearchIndexFixture(t) {
+ const mongo=mongoFixture(),indexes=new Map(),writes=[];
+ mongo.graphNodeEmbeddings.listSearchIndexes=name=>({toArray:async()=>indexes.has(name)?[{name,status:'READY',queryable:true,latestDefinition:indexes.get(name)}]:[]});
+ mongo.graphNodeEmbeddings.createSearchIndex=async({name,definition})=>{writes.push({name,definition});indexes.set(name,definition);};
+ mongo.graphNodeEmbeddings.updateSearchIndex=async(name,definition)=>{writes.push({name,definition});indexes.set(name,definition);};
+ t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);t.mock.method(MongoClient.prototype,'close',async()=>{});
+ return {mongo,indexes,writes};
+}
+test('Codex371: default and routed graph index widths derive from the active model contracts',async(t)=>{
+ const {indexes}=graphSearchIndexFixture(t);
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'small',EMBED_PROVIDER_MODEL_BY_PROJECT:'character=large',EMBED_PROVIDER_MODEL_DIMENSIONS:'small=2;large=3',EMBED_PROVIDER_DIMENSIONS:'9'},async()=>{
+  const connection=await openMongoDB(openingConfig);
+  assert.equal(indexes.get('embedding_vector').fields.find(f=>f.type==='vector').numDimensions,2);
+  assert.equal(indexes.get('embedding_vector_dims_3')?.fields.find(f=>f.type==='vector').numDimensions,3);
+  assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector',3:'embedding_vector_dims_3'});
+  for(const definition of indexes.values())for(const field of ['project','node_id','embedding_model','embedding_dimensions'])assert.ok(definition.fields.some(f=>f.type==='filter'&&f.path===field));
+ });
+});
+test('Codex371: programmatic SDK model overrides bind graph indexes to the same consumed runtime contract',async(t)=>{
+ const {indexes}=graphSearchIndexFixture(t);
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'ambient',EMBED_PROVIDER_MODEL_DIMENSIONS:'ambient=9'},async()=>{
+  const sdk=await createOpenPlannerSdk({config:{embedProviderCachePath:undefined,mongodb:openingConfig,embeddingModels:{defaultModel:'owned',bySource:{outside:'other'},byKind:{},byProject:{},dimensionsByModel:{owned:2,other:3}}}});
+  try{assert.equal(sdk.embeddingRuntime.hot.getEmbeddingDimensionsForModel('owned'),2);assert.equal(indexes.get('embedding_vector').fields.find(f=>f.type==='vector').numDimensions,2);assert.equal(indexes.get('embedding_vector_dims_3')?.fields.find(f=>f.type==='vector').numDimensions,3);assert.deepEqual(sdk.mongo.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector',3:'embedding_vector_dims_3'});}finally{await sdk.close();}
+ });
 });
