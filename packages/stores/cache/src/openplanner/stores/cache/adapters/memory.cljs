@@ -5,11 +5,11 @@
 
 (deftype MemoryLruCache [state recency max-entries default-ttl-ms]
   CacheEntryStore
-  (cache-get-entry [this k]
+  (cache-get-entry [this k] (core/checked-key k)
     (when-some [value (cache-get this k)]
       {:value value :expires-at-ms (schema/entry-expires-at (get @state k))}))
   CacheStore
-  (cache-get [_ k]
+  (cache-get [_ k] (core/checked-key k)
     (let [entry (get @state k)
           now (core/now-ms)]
       (cond
@@ -20,7 +20,7 @@
         (do (swap! state assoc k (assoc (schema/touch-entry entry nil) :cache/recency (swap! recency inc)))
             (schema/entry-value entry)))))
 
-  (cache-put! [_ k v opts]
+  (cache-put! [_ k v opts] (core/checked-key k)
     (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
           options (core/opts-map opts)
           entry (cond-> (assoc (schema/cache-entry {:key k :value v :ttl-ms ttl-ms})
@@ -38,12 +38,12 @@
           (swap! state dissoc victim)))
       true))
 
-  (cache-evict! [_ k]
+  (cache-evict! [_ k] (core/checked-key k)
     (let [present? (contains? @state k)]
       (swap! state dissoc k)
       present?))
 
-  (cache-touch! [_ k opts]
+  (cache-touch! [_ k opts] (core/checked-key k)
     (let [entry (get @state k)]
       (cond
         (nil? entry) false

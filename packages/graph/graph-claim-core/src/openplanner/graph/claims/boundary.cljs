@@ -68,6 +68,11 @@
 
 (defn normalize-edge-claim-scope
   [value]
+  (when (and (some? value)
+             (not (and (js-object? value)
+                       (let [prototype (js/Object.getPrototypeOf value)]
+                         (or (nil? prototype) (identical? prototype (.-prototype js/Object)))))))
+    (throw (ex-info "Explicit claim scope must be a plain object" {})))
   (when (js-object? value)
     (let [entries (->> (js/Object.entries value)
                        (array-seq)

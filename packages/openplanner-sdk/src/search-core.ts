@@ -115,10 +115,10 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
       : [["hot", ctx.mongo.events] as const, ["compact", ctx.mongo.compacted] as const];
     const results = await Promise.all(collections.map(async ([rowTier, collection]) => {
       try {
-        const rows = await ftsSearch(collection, q, options);
+        const rows = await ftsSearch(collection, q, { ...options, tier: rowTier });
         return { ftsEnabled: true, rows: rows.map((row): Record<string, unknown> => ({ ...row as Record<string, unknown>, tier: rowTier })) };
       } catch {
-        const rows = await ilikeSearch(collection, q, options);
+        const rows = await ilikeSearch(collection, q, { ...options, tier: rowTier });
         return { ftsEnabled: false, rows: rows.map((row): Record<string, unknown> => ({ ...row as Record<string, unknown>, tier: rowTier })) };
       }
     }));

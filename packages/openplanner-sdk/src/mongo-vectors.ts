@@ -18,6 +18,7 @@ type RawQueryResult = {
   distances: Array<Array<number | null>>;
   include: ["documents", "metadatas", "distances"];
   partial?: boolean;
+  discarded_invalid_timestamp_count?: number;
   unavailable_partitions?: string[];
   queried_partition_count?: number;
 };
@@ -361,6 +362,14 @@ async function queryPartitionWithVexxTopK(params: {
     matches.push({ doc, score: match.score });
   }
   return matches;
+}
+
+// Admit Date or legacy date strings before ranking/parent limits and metadata conversion.
+function normalizeQueryTimestamp(doc: MongoVectorDocument, onInvalid: (id: string) => void): MongoVectorDocument | null {
+  const value: unknown = doc.ts;
+  const ms = value instanceof Date ? value.getTime() : typeof value === "string" ? Date.parse(value) : NaN;
+  if (!Number.isFinite(ms)) { onInvalid(doc._id); return null; }
+  return { ...doc, ts: new Date(ms) };
 }
 
 function toMetadata(doc: MongoVectorDocument): Record<string, unknown> {
@@ -1097,10 +1106,13 @@ function uniqueParentRows(rows: Array<{ doc: MongoVectorDocument; score: number 
 
 // A failed redacted-source read is not a successful vector match. Hydrate in
 // rank order before parent admission/limit, allowing a lower accessible chunk.
-async function hydratedParentRows(rows: Array<{ doc: MongoVectorDocument; score: number }>, k: number): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
+async function hydratedParentRows(rows: Array<{ doc: MongoVectorDocument; score: number }>, k: number, onInvalidTimestamp: (id: string) => void): Promise<Array<{ doc: MongoVectorDocument; score: number }>> {
   const seen = new Set<string>();
   const admitted: Array<{ doc: MongoVectorDocument; score: number }> = [];
-  for (const entry of [...rows].sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))) {
+  for (let entry of [...rows].sort((left, right) => right.score - left.score || left.doc._id.localeCompare(right.doc._id))) {
+    const doc = normalizeQueryTimestamp(entry.doc, onInvalidTimestamp);
+    if (!doc) continue;
+    entry = { ...entry, doc };
     const parent = entry.doc.parent_id ?? entry.doc._id;
     if (seen.has(parent)) continue;
     let text: string;
@@ -1114,6 +1126,7 @@ async function hydratedParentRows(rows: Array<{ doc: MongoVectorDocument; score:
 }
 
 async function queryPartitionWithNativeVectorSearch(params: {
+  onInvalidTimestamp: (id: string) => void;
   collection: Collection<MongoVectorDocument>;
   partition: MongoVectorPartitionDocument;
   queryEmbedding: number[];
@@ -1194,7 +1207,7 @@ async function queryPartitionWithNativeVectorSearch(params: {
   const scored = rescored ?? rows
     .map((doc) => ({ doc, score: cosineSimilarity(params.queryEmbedding, doc.embedding ?? []) }))
     .filter((entry) => Number.isFinite(entry.score));
-  const admitted = await hydratedParentRows(scored, params.k);
+  const admitted = await hydratedParentRows(scored, params.k, params.onInvalidTimestamp);
   // Exhaustion at the native window may hide usable rows. The caller's full
   // cosine scan supplies additional candidates rather than empty top hits.
   if (admitted.length < params.k && rows.length >= Math.max(params.k * 20, 100)) {
@@ -1204,6 +1217,7 @@ async function queryPartitionWithNativeVectorSearch(params: {
 }
 
 async function queryPartitionWithCosineScan(params: {
+  onInvalidTimestamp: (id: string) => void;
   collection: Collection<MongoVectorDocument>;
   queryEmbedding: number[];
   k: number;
@@ -1219,6 +1233,9 @@ async function queryPartitionWithCosineScan(params: {
   const scan = async (accelerated: boolean): Promise<ScoredRow[] | null> => {
     const retained = new Map<string, ScoredRow>();
     const admit = async (entry: ScoredRow) => {
+      const doc = normalizeQueryTimestamp(entry.doc, params.onInvalidTimestamp);
+      if (!doc) return;
+      entry = { ...entry, doc };
       if (!Number.isFinite(entry.score)) return;
       const parent = entry.doc.parent_id ?? entry.doc._id;
       const current = retained.get(parent);
@@ -1300,6 +1317,7 @@ export async function queryMongoVectorsByText(params: {
 
   const rows: Array<{ doc: MongoVectorDocument; score: number }> = [];
   const queryEmbeddingsByPartitionKey = new Map<string, number[]>();
+  const invalidTimestampRows = new Set<string>();
   const unavailablePartitions: string[] = [];
   let availablePartitions = 0;
   const unavailablePhases = new Set<"embedding" | "execution">();
@@ -1329,15 +1347,18 @@ export async function queryMongoVectorsByText(params: {
         try {
           partitionRows = await queryPartitionWithNativeVectorSearch({
             collection, partition, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+            onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
           });
         } catch {
           partitionRows = await queryPartitionWithCosineScan({
             collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+            onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
           });
         }
       } else {
         partitionRows = await queryPartitionWithCosineScan({
           collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+            onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
         });
       }
 
@@ -1366,6 +1387,7 @@ export async function queryMongoVectorsByText(params: {
     distances: [sorted.map((entry) => Number.isFinite(entry.score) ? 1 - entry.score : null)],
     include: ["documents", "metadatas", "distances"],
     ...(unavailablePartitions.length > 0 ? { partial: true, unavailable_partitions: [...new Set(unavailablePartitions)] } : {}),
+    ...(invalidTimestampRows.size > 0 ? { partial: true, discarded_invalid_timestamp_count: invalidTimestampRows.size } : {}),
     queried_partition_count: availablePartitions,
   };
 }

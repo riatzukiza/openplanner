@@ -1,6 +1,13 @@
 (ns openplanner.stores.cache.core
   (:require [clojure.string :as str]))
 
+(defn checked-key
+  "Cache identity is a nonblank string; never coerce runtime objects into keys."
+  [value]
+  (when-not (and (string? value) (not (str/blank? value)))
+    (throw (ex-info "Cache key must be a nonblank string" {})))
+  value)
+
 (defn now-ms [] (.now js/Date))
 (defn promise [v] (js/Promise.resolve v))
 (defn pthen [v f] (.then (promise v) f))

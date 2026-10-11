@@ -739,3 +739,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-eight-followup-red-20261011
   note: Actual Codex5481584632 NEW8 reproduced on unchanged7e production. SDK686 tests639PASS47FAIL;cache13tests135assertions61FAIL0error;graph71tests468assertions4FAIL0error,forced runner5FAIL. Compilation zero warnings. Tests exercise whole-batch layout and semantic identity,force tuple scalars,projectless-versus-empty session grouping,explicit plain claim scope,legacy valid and unusable vector timestamps before rank limit,direct compact search provenance,and nonblank string cache keys before adapter effects. Prior valid assertions retained;original56 manifest and221 journal/reflection prefixes frozen. No approval/round/live/deploy/board/paid/spore claim.
+
+- ts: 2026-10-11T02:26:10.414Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-eight-followup-green-20261011
+  note: Repair all8 actual Codex5481584632 findings inside original imported packages. Whole batches admit layout/semantic endpoints andforce scalar tuple before bulkWrite,retaining canonical undirected/legacy IDs andnull-versus-empty tuple distinctions. Session listing groups null/missing separately from explicit-empty project andretains exact empty filter. Explicit claim scope requires Object/null prototype,refusing runtime objects. Vector Date/legacy string timestamps normalize before parent/rank admission;invalid rows skipped andtruthful partial/count returned while healthy hits survive. Direct FTS/substring compact provenance uses explicit tier/customcollection binding,canonical compacted name fallback. Nonblank string cache identity guarded at public andmemory/LMDB/layered protocol boundaries before effects. All19 actual gates freshly executed:SDK686/686,graph71/468 zero fail/error andforced actualexit1,cache13/135,hydration8/27,JVM17/100,zero lint/compiler warnings. Original56manifest and222 journal/reflection prefixes intact. No reviewapproval/round/live/board/deployment/paid/spore claim;heartbeatPAUSED,goalACTIVE.

@@ -37,18 +37,18 @@
 
 (deftype LayeredCache [layers]
   CacheEntryStore
-  (cache-get-entry [_ k] (lookup! layers k))
+  (cache-get-entry [_ k] (core/checked-key k) (lookup! layers k))
   CacheStore
-  (cache-get [_ k]
+  (cache-get [_ k] (core/checked-key k)
     (core/pthen (lookup! layers k) (fn [entry] (:value entry))))
 
-  (cache-put! [_ k v opts]
+  (cache-put! [_ k v opts] (core/checked-key k)
     (js/Promise.all (clj->js (map #(cache-put! % k v opts) layers))))
 
-  (cache-evict! [_ k]
+  (cache-evict! [_ k] (core/checked-key k)
     (js/Promise.all (clj->js (map #(cache-evict! % k) layers))))
 
-  (cache-touch! [_ k opts]
+  (cache-touch! [_ k opts] (core/checked-key k)
     (js/Promise.all (clj->js (map #(cache-touch! % k opts) layers))))
 
   (cache-cleanup! [_]

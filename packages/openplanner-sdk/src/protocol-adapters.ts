@@ -164,13 +164,13 @@ class MongoSessionManagement implements SessionManagement {
     const limit = Math.min(requestedLimit > 0 ? requestedLimit : 50, 500);
     const offset = Math.max(0, sessionPageInteger(opts.offset, 0));
     const match: Record<string, unknown> = { session: { $type: "string", $ne: "" } };
-    if (opts.project) match.project = opts.project;
+    if (opts.project !== undefined) match.project = opts.project;
 
     const groupedStages = [
       { $match: match },
       {
         $group: {
-          _id: { project: { $ifNull: ["$project", ""] }, session: { $ifNull: ["$session", ""] } },
+          _id: { project: { $ifNull: ["$project", null] }, session: "$session" },
           last_ts: { $max: "$ts" },
           event_count: { $sum: 1 },
         },

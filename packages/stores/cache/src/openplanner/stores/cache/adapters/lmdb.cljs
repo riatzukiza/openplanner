@@ -4,11 +4,11 @@
 
 (deftype LmdbTtlCache [^js db prefix default-ttl-ms]
   CacheEntryStore
-  (cache-get-entry [this k]
+  (cache-get-entry [this k] (core/checked-key k)
     (when-some [value (cache-get this k)]
       {:value value :expires-at-ms (core/jget (.get db (str prefix k)) "expiresAt")}))
   CacheStore
-  (cache-get [_ k]
+  (cache-get [_ k] (core/checked-key k)
     (let [key (str prefix k)
           entry (.get db key)
           now (core/now-ms)]
@@ -18,7 +18,7 @@
         (do (.remove db key) nil)
         :else (core/jget entry "value"))))
 
-  (cache-put! [_ k v opts]
+  (cache-put! [_ k v opts] (core/checked-key k)
     (let [ttl-ms (core/ttl-ms opts default-ttl-ms)
           now (core/now-ms)
           options (core/opts-map opts)
@@ -30,10 +30,10 @@
                                    :touchedAt now
                                    :expiresAt expires-at})))
 
-  (cache-evict! [_ k]
+  (cache-evict! [_ k] (core/checked-key k)
     (.remove db (str prefix k)))
 
-  (cache-touch! [_ k opts]
+  (cache-touch! [_ k opts] (core/checked-key k)
     (let [key (str prefix k)
           entry (.get db key)
           now (core/now-ms)]

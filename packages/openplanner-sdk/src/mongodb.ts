@@ -1028,6 +1028,7 @@ export async function upsertGraphLayoutOverrides(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  for (const row of rows) assertNonblankIdentifier(row.node_id, "layout node_id");
   const now = new Date();
 
   await collection.bulkWrite(
@@ -1150,6 +1151,10 @@ export async function upsertGraphSemanticEdges(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  for (const row of rows) {
+    assertNonblankIdentifier(row.source_node_id, "semantic source_node_id");
+    assertNonblankIdentifier(row.target_node_id, "semantic target_node_id");
+  }
   const now = new Date();
 
   await collection.bulkWrite(
@@ -1209,6 +1214,15 @@ export async function upsertGraphSemanticForceSamples(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  for (const row of rows) {
+    assertNonblankIdentifier(row.source_node_id, "force source_node_id");
+    assertNonblankIdentifier(row.target_node_id, "force target_node_id");
+    for (const field of ["field_profile", "embedding_model"] as const) {
+      if (row[field] !== undefined && row[field] !== null && typeof row[field] !== "string") {
+        throw new Error(`force ${field} must be a string or null`);
+      }
+    }
+  }
   const now = new Date();
 
   await collection.bulkWrite(
@@ -1337,6 +1351,8 @@ export async function ftsSearch(
   query: string,
   options: {
     limit?: number;
+    /** Bind custom compacted collection names explicitly; canonical name is inferred. */
+    tier?: "hot" | "compact";
     source?: string;
     kind?: string;
     project?: string;
@@ -1346,6 +1362,8 @@ export async function ftsSearch(
     excludeIds?: string[];
   } = {}
 ): Promise<unknown[]> {
+  const tier = options.tier ?? (collection.collectionName === "compacted_memories" ? "compact" : "hot");
+  if (tier !== "hot" && tier !== "compact") throw new Error("search tier must be hot or compact");
   const limit = options.limit ?? 20;
   const filter: Record<string, unknown> = {
     $text: { $search: query },
@@ -1380,7 +1398,7 @@ export async function ftsSearch(
     ...r,
     snippet: r.text,
     quality_label: (r.extra as any)?.openplanner_labels?.quality ?? null,
-    tier: "hot",
+    tier,
   }));
 }
 
@@ -1392,6 +1410,8 @@ export async function ilikeSearch(
   query: string,
   options: {
     limit?: number;
+    /** Bind custom compacted collection names explicitly; canonical name is inferred. */
+    tier?: "hot" | "compact";
     source?: string;
     kind?: string;
     project?: string;
@@ -1401,6 +1421,8 @@ export async function ilikeSearch(
     excludeIds?: string[];
   } = {}
 ): Promise<unknown[]> {
+  const tier = options.tier ?? (collection.collectionName === "compacted_memories" ? "compact" : "hot");
+  if (tier !== "hot" && tier !== "compact") throw new Error("search tier must be hot or compact");
   const limit = options.limit ?? 20;
   const filter: Record<string, unknown> = {
     text: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
@@ -1435,6 +1457,6 @@ export async function ilikeSearch(
     ...r,
     snippet: r.text,
     quality_label: (r.extra as any)?.openplanner_labels?.quality ?? null,
-    tier: "hot",
+    tier,
   }));
 }

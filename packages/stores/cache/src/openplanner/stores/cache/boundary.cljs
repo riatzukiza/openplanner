@@ -19,19 +19,19 @@
   [caches]
   (layered/create-layered-cache (if (array? caches) (array-seq caches) caches)))
 
-(defn cache-get-js [cache k] (cache/cache-get cache k))
+(defn cache-get-js [cache k] (cache/cache-get cache (core/checked-key k)))
 
 (defn cache-put-js
-  ([cache k v] (cache/cache-put! cache k v {}))
+  ([cache k v] (cache/cache-put! cache (core/checked-key k) v {}))
   ([cache k v ttl-ms]
-   (cache/cache-put! cache k v (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
+   (cache/cache-put! cache (core/checked-key k) v (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
 
-(defn cache-evict-js [cache k] (cache/cache-evict! cache k))
+(defn cache-evict-js [cache k] (cache/cache-evict! cache (core/checked-key k)))
 
 (defn cache-touch-js
-  ([cache k] (cache/cache-touch! cache k {}))
+  ([cache k] (cache/cache-touch! cache (core/checked-key k) {}))
   ([cache k ttl-ms]
-   (cache/cache-touch! cache k (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
+   (cache/cache-touch! cache (core/checked-key k) (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
 
 (defn cache-cleanup-js [cache] (cache/cache-cleanup! cache))
 (defn cache-stats-js [cache] (clj->js (cache/cache-stats cache)))
