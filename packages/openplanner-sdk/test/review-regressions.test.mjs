@@ -1716,6 +1716,13 @@ test('migration enqueue retains a stored legacy job ID and creation time',async(
   collection.rows.set(legacy._id,legacy);await enqueueMigrationJob(collection,{entity:'a',object_id:'b',trigger:'c',priority:2});
   assert.equal(collection.rows.size,1);assert.equal(collection.rows.get(legacy._id).createdAt,legacy.createdAt);assert.equal(collection.rows.get(legacy._id).attempts,5);
 });
+test('migration tuple selectors refuse operator or blank components before Mongo access',async()=>{
+  let writes=0;const storage={async updateOne(){writes++;throw new Error('unadmitted migration storage access');}};
+  for(const field of ['entity','object_id','trigger'])for(const value of [{$ne:'victim'},null,'   ']) {
+    await assert.rejects(enqueueMigrationJob(storage,{entity:'a',object_id:'b',trigger:'c',[field]:value}),/migration.*nonblank.*string/i);
+    assert.equal(writes,0);
+  }
+});
 
 test('session pages use stable project/session ordering when every timestamp ties',async()=>{
   const mongo=mongoFixture();let calls=0;
@@ -1738,7 +1745,7 @@ for(const timestamp of ['not-a-date','',null,false,{},new Date(NaN)])for(const o
     const metadata={embedding_model:'fixture',ts:timestamp};
     const result=operation==='single'?indexTextInMongoVectors({mongo,tier:'hot',parentId:'parent',text:'outside',metadata,embeddingFunction})
       :operation==='batch'?batchIndexTextsInMongoVectors({mongo,tier:'hot',items:[{...item('parent'),metadata}],embeddingFunction})
-      :upsertMongoVectorDocuments(mongo,[{...entry(),metadata}]);
+      :upsertMongoVectorDocuments(mongo,'hot',[{...entry(),metadata}]);
     await assert.rejects(result,/timestamp|metadata.ts/i);assert.equal(generated,0);assert.equal(mongo.hotVectors.calls.writes.length,0);assert.equal(mongo.compactVectors.calls.writes.length,0);
   });
 
