@@ -1,12 +1,18 @@
 (ns openplanner.stores.cache.adapters.lmdb
   (:require [openplanner.stores.cache.core :as core]
-            [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore cache-get]]))
+            [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore]]))
 
 (deftype LmdbTtlCache [^js db prefix default-ttl-ms]
   CacheEntryStore
-  (cache-get-entry [this k] (core/checked-key k)
-    (when-some [value (cache-get this k)]
-      {:value value :expires-at-ms (core/jget (.get db (str prefix k)) "expiresAt")}))
+  (cache-get-entry [_ k] (core/checked-key k)
+    (let [key (str prefix k)
+          entry (.get db key)
+          expires-at (core/jget entry "expiresAt")]
+      (cond
+        (nil? entry) nil
+        (and expires-at (< expires-at (core/now-ms))) (do (.remove db key) nil)
+        :else (when-some [value (core/jget entry "value")]
+                {:value value :expires-at-ms expires-at}))))
   CacheStore
   (cache-get [_ k] (core/checked-key k)
     (let [key (str prefix k)

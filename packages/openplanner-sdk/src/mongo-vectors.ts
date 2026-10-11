@@ -361,6 +361,7 @@ async function queryPartitionWithVexxTopK(params: {
     if (!value || typeof value !== "object") return null;
     const match = value as { id?: unknown; score?: unknown };
     if (typeof match.id !== "string" || typeof match.score !== "number" || !Number.isFinite(match.score)
+      || match.score < -1 || match.score > 1
       || seen.has(match.id)) return null;
     const doc = docsById.get(match.id);
     if (!doc) return null;
@@ -1019,6 +1020,7 @@ export async function indexTextInMongoVectors(params: {
   metadata: Record<string, unknown>;
   embeddingFunction: IEmbeddingFunction;
 }): Promise<void> {
+  assertNonblankIdentifier(params.parentId, "vector parent ID");
   validateVectorMetadata(params.metadata);
   let normalizedSource: string | undefined;
   const getNormalizedSource = () => normalizedSource ??=
@@ -1321,6 +1323,9 @@ export async function queryMongoVectorsByText(params: {
   getEmbeddingFunctionForModel: (model: string) => IEmbeddingFunction;
 }): Promise<RawQueryResult> {
   if (!Number.isSafeInteger(params.k)) throw new Error("vector k must be a finite safe integer");
+  // Match the high-level search range before Atlas multiplication or fallback
+  // retention, preserving the existing minimum-one behavior for zero/negative k.
+  const k = Math.max(1, Math.min(200, params.k));
   const queryText = formatEmbeddingQueryText(params.q);
   const partitions = await listMongoVectorPartitions(params.mongo, params.tier);
   if (partitions.length === 0) {
@@ -1358,18 +1363,18 @@ export async function queryMongoVectorsByText(params: {
       if (partition.searchIndexStatus === "ready") {
         try {
           partitionRows = await queryPartitionWithNativeVectorSearch({
-            collection, partition, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+            collection, partition, queryEmbedding, k, where: params.where, excludeParentIds: params.excludeParentIds,
             onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
           });
         } catch {
           partitionRows = await queryPartitionWithCosineScan({
-            collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+            collection, queryEmbedding, k, where: params.where, excludeParentIds: params.excludeParentIds,
             onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
           });
         }
       } else {
         partitionRows = await queryPartitionWithCosineScan({
-          collection, queryEmbedding, k: params.k, where: params.where, excludeParentIds: params.excludeParentIds,
+          collection, queryEmbedding, k, where: params.where, excludeParentIds: params.excludeParentIds,
             onInvalidTimestamp: id => invalidTimestampRows.add(JSON.stringify([partition.collectionName, id])),
         });
       }
@@ -1389,7 +1394,7 @@ export async function queryMongoVectorsByText(params: {
       unavailablePhases.size > 1 ? "mixed" : unavailablePhases.has("execution") ? "execution" : "embedding");
   }
 
-  const sorted = uniqueParentRows(rows, params.k);
+  const sorted = uniqueParentRows(rows, k);
   const documents = await Promise.all(sorted.map((entry) => hydrateVectorDocumentText(entry.doc)));
 
   return {

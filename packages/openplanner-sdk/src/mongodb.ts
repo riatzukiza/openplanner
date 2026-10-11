@@ -1028,7 +1028,13 @@ export async function upsertGraphLayoutOverrides(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
-  for (const row of rows) assertNonblankIdentifier(row.node_id, "layout node_id");
+  for (const row of rows) {
+    assertNonblankIdentifier(row.node_id, "layout node_id");
+    if (typeof row.x !== "number" || !Number.isFinite(row.x)
+        || typeof row.y !== "number" || !Number.isFinite(row.y)) {
+      throw new Error("layout coordinates must be finite numbers");
+    }
+  }
   const now = new Date();
 
   await collection.bulkWrite(

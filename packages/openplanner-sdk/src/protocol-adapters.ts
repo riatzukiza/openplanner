@@ -122,7 +122,7 @@ class MongoSessionManagement implements SessionManagement {
   async updateSession(sessionId: string, updates: any, opts: SessionScope = {}): Promise<any> {
     const stored = await this.getSession(sessionId, opts);
     if (!stored) return null;
-    const { _id, session, project: _project, kind, createdAt, expiresAt: _callerExpiry, ...mutable } = updates;
+    const { _id, id: _publicId, session, project: _project, kind, createdAt, expiresAt: _callerExpiry, ...mutable } = updates;
     const now = new Date();
     const retentionUpdate: Record<string, unknown> = {};
     if (["extra", "extra.openplanner_labels", "extra.openplanner_labels.labels", "expiresAt"]

@@ -192,7 +192,10 @@ function planGeneratedEvents(event: EventEnvelopeV1) {
       sentences.push({ hash, sent, nodeId: sentenceNodeId, eventId });
     }
   }
-  return { ids, prepared, sentences };
+  const embeddingIds = prepared ? [nodeId,
+    ...(prepared.chunkCount > 1 ? prepared.chunks.map(chunk => chunk.id) : []),
+    ...sentences.map(sentence => sentence.nodeId)] : [];
+  return { ids, prepared, sentences, nodeId, embeddingIds };
 }
 
 
@@ -212,7 +215,8 @@ export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]
   const plans = new Map([...unique.values()].map(event => [event.id, planGeneratedEvents(event)]));
   const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
   ingestTails.set(ctx.mongo, tails);
-  const reservedIds = new Set([...unique.keys(), ...[...plans.values()].flatMap(plan => plan.ids)]);
+  const reservedIds = new Set([...unique.keys(),
+    ...[...plans.values()].flatMap(plan => [...plan.ids, ...plan.embeddingIds])]);
   const predecessors = [...reservedIds].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
   let complete!: () => void;
   const terminal = new Promise<void>(resolve => { complete = resolve; });
@@ -475,7 +479,7 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       }
 
       projectedGraphEdges.push({
-        source_node_id: ev.id,
+        source_node_id: ev.kind === "graph.node" ? plans.get(ev.id)!.nodeId || ev.id : ev.id,
         target_node_id: labelId,
         edge_kind: "has_label",
         layer: null,
