@@ -847,3 +847,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex0f-six-findings-green-20261011
   note: GREEN actual rawSHA99a413bcb09341c87067f56b2cfbcac3eeb35033e06e6989eea941c4e35c6226. Numericforce batch validates finite[-1,1] similarity and finite supplied charge beforebulkWrite; finite charge2 remainsvalid. Canonical undirected semanticduplicates reject before writes. Shared source hydration includes validated migration_2.source_path after existingaliases. Vexx timeout spans fetch and body JSON/cancellation; real owned localstalls either fallbacktocorrectlocalranking or failwith exactpublicexecution-unavailable and partitionidentity. Non-null supplied eventextra must plainObject/nullprototype beforewholebatcheffects; existing absent/null behavior retained. Memory/schema and all LMDBget/get-entry/touch paths expire at now>=deadline. Verified RED27SDK/9cache/11hydrationfailures retained; all previousassertions stay. No approval/round/native settlement inferred; newheadconsumer/hostedreviews/settlements owed. Original56manifest and exact233prefixes intact; heartbeatPAUSED/goalACTIVE/no live/runtime/board/deployment/social/paid/spore mutation.
+
+- ts: 2026-10-11T04:53:04.403Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex949-seven-findings-red-20261011
+  note: RED rawSHAcd9f7175684f135d80b722a2e11c787fa9d8808ce1fa5e4f49ae062342279dd6. All862 prior SDK tests and71 prior graph tests still pass; positive dimensions/strict legacy timestamps/nested JSON controls retained. No assertion weakened. Native request6105501154 is valid actualwriter riatzukiza with pr-flow-review marker; initial readback assumed obsolete pr-flow-head and failed only its operator assertion. Native finding reader initial KeyError line corrected using optional native fields; original raw retained. A fixture-placement guard saw original header already at offset0 and exited before any edit; added tests were already at the end. No provider/request failure synthesized. Original56manifest and exact234 prefixes intact; no native approval/round/merge/liveB1B2B3/board/deploy/paid/spore claim.

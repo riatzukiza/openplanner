@@ -2309,3 +2309,38 @@ test('Codex0f: migration-only filesystem provenance hydrates exact retained text
     assert.equal(await loadHydrationSourceText({id:'legacy',project:'lake',text:'',extra:{migration_2:{source_path:'legacy.md'}}}),text);
   });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });
+// Native Codex5481938999: typed force tuples, graph owners and truthful query diagnostics.
+for(const reversed of [false,true])test(`Codex949: duplicate force identity refuses whole batch reversed=${reversed}`,async()=>{
+  const c=collection('force-preflight');const a={source_node_id:'a',target_node_id:'b',similarity:.2,field_profile:'field',embedding_model:'model'};
+  const b={...a,source_node_id:reversed?'b':'a',target_node_id:reversed?'a':'b',similarity:.8,charge:-.3};
+  await assert.rejects(upsertGraphSemanticForceSamples(c,[a,b]),/duplicate.*force.*identity/i);assert.equal(c.calls.writes.length,0);
+});
+for(const dimensions of [NaN,Infinity,-Infinity,0,-1,1.5,Number.MAX_SAFE_INTEGER+1,'2',false])test(`Codex949: force dimensions ${String(dimensions)} refuse before any write`,async()=>{
+  const c=collection('force-preflight');const good={source_node_id:'a',target_node_id:'b',similarity:.5,embedding_dimensions:2};
+  await assert.rejects(upsertGraphSemanticForceSamples(c,[good,{...good,target_node_id:'c',embedding_dimensions:dimensions}]),/force.*dimensions.*positive safe integer/i);assert.equal(c.calls.writes.length,0);
+});
+test('Codex949: distinct force model/profile tuples and nullable dimensions remain valid',async()=>{
+  const c=collection('forces');const a={source_node_id:'a',target_node_id:'b',similarity:.5};
+  const rows=[a,{...a,field_profile:'other',embedding_dimensions:null},{...a,embedding_model:'model',embedding_dimensions:2}];
+  assert.equal(await upsertGraphSemanticForceSamples(c,rows),3);assert.deepEqual(c.calls.writes.map(x=>x.update.$set.embedding_dimensions),[null,null,2]);
+});
+for(const ordinary of [false,true])for(const reverse of [false,true])test(`Codex949: conflicting embedding owners refuse all effects ordinary=${ordinary} reverse=${reverse}`,async()=>{
+  const mongo=vectorDeletionFixture();let providers=0;const first={...ordinaryEvent('owner-a','First outside information changes creative choices.'),kind:'graph.node',extra:{node_id:'shared-node'}};
+  const second=ordinary?ordinaryEvent('shared-node','Another outside encounter changes creative choices.'):{...ordinaryEvent('owner-b','Another outside encounter changes creative choices.'),kind:'graph.node',extra:{node_id:'shared-node'}};
+  await assert.rejects(ingestEvents({mongo,embeddingRuntime:eventRuntime({generate:async texts=>{providers++;return texts.map(()=>[1,0]);}})},reverse?[second,first]:[first,second]),/embedding.*ownership.*collision/i);
+  assert.equal(providers,0);for(const c of mongo.collections.values()){assert.equal(c.calls.writes.length,0);assert.equal(c.calls.deletes.length,0);}
+});
+for(const quality of ['any','good_then_not_bad'])test(`Codex949: ${quality} retains lower-level timestamp and partition diagnostics`,async()=>{
+  const mongo=parentQueryFixture('cosine',[{...vectorRow('bad-time','bad-time',1),ts:'not-a-date'},vectorRow('healthy','healthy',.9)]);
+  const embeddingRuntime=eventRuntime({generate:async()=>[[1,0]]});embeddingRuntime.hot.getEmbeddingFunctionForModel=()=>({generate:async()=>[[1,0]]});
+  const result=await vectorSearchWithQuality({mongo,embeddingRuntime},{q:'outside',k:2,tier:'hot',quality});
+  assert.deepEqual(result.ids,[['healthy']]);assert.equal(result.partial,true);assert.equal(result.discarded_invalid_timestamp_count,quality==='any'?1:2);assert.equal(result.queried_partition_count,quality==='any'?1:2);
+});
+for(const ts of ['2020','1/2/2020','2021-02-30T00:00:00Z','2026-01-01T24:00:00Z','2026-01-01T00:00:00+24:00'])test(`Codex949: legacy non-ISO timestamp ${ts} is discarded before rank limit`,async()=>{
+  const mongo=parentQueryFixture('cosine',[{...vectorRow('bad-time','bad-time',1),ts},vectorRow('healthy','healthy',.9)]);
+  const result=await streamingQuery({queryMongoVectorsByText},mongo);assert.deepEqual(result.ids,[['healthy']]);assert.equal(result.partial,true);assert.equal(result.discarded_invalid_timestamp_count,1);
+});
+for(const ts of ['2024-02-29T00:00:00Z','2026-01-01T00:00:00.123+05:30'])test(`Codex949: strict legacy ISO timestamp ${ts} retains its actual instant`,async()=>{
+  const mongo=parentQueryFixture('cosine',[{...vectorRow('legacy','legacy',1),ts}]);const result=await streamingQuery({queryMongoVectorsByText},mongo);
+  assert.deepEqual(result.ids,[['legacy']]);assert.equal(result.metadatas[0][0].ts,new Date(ts).toISOString());assert.equal(result.discarded_invalid_timestamp_count,undefined);
+});

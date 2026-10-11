@@ -413,3 +413,38 @@
         (is (thrown-with-msg? js/Error #"projection.*time|time.*projection" (mongo/project-mongo-edge-claims-js #js [claim] opts)))))
     (is (some? (boundary/project-edge-claim-js claim #js {:now 0})))
     (is (some? (boundary/project-edge-claim-js claim #js {})))))
+;; Native Codex5481938999: complete JSON scope admission and injective tuple identity.
+(deftest nested-runtime-scope-values-never-acquire-claim-authority
+  (let [cycle #js {}]
+    (aset cycle "again" cycle)
+    (doseq [value [(js/Date.) (js/Map.) (js/Set.) (js/RegExp. "x")
+                   #js {:missing js/undefined} #js {:method (fn [] true)}
+                   #js {:number js/NaN} #js {:number js/Infinity}
+                   #js {:symbol (js/Symbol "scope")} cycle
+                   #js [#js {:nested (js/Date.)}]]]
+      (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                       :status "active" :scope #js {:nested value}}]
+        (is (thrown-with-msg? js/Error #"scope.*JSON|JSON.*scope"
+              (boundary/build-edge-claim-id-js claim)))
+        (is (thrown-with-msg? js/Error #"scope.*JSON|JSON.*scope"
+              (boundary/normalize-edge-claim-input-js claim)))
+        (is (thrown-with-msg? js/Error #"scope.*JSON|JSON.*scope"
+              (boundary/project-edge-claim-js claim)))))))
+
+(deftest valid-nested-json-scope-preserves-values-and-key-order-independent-identity
+  (let [a #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                :scope #js {:nested #js {:z #js [nil true 2 "x"] :a #js {:x "y"}}}}
+        b #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                :scope #js {:nested #js {:a #js {:x "y"} :z #js [nil true 2 "x"]}}}]
+    (is (= (boundary/build-edge-claim-id-js a) (boundary/build-edge-claim-id-js b)))
+    (is (= (js->clj (aget a "scope"))
+           (js->clj (aget (boundary/normalize-edge-claim-input-js a) "scope"))))))
+
+(deftest unrestricted-claim-strings-cannot-collide-through-tuple-delimiters
+  (let [a #js {:source_node_id "a\nb" :target_node_id "c" :relation_kind "related"}
+        b #js {:source_node_id "a" :target_node_id "b\nc" :relation_kind "related"}]
+    (is (not= (boundary/build-edge-claim-id-js a) (boundary/build-edge-claim-id-js b))))
+  (let [a {:source-node-id "a" :target-node-id "b\nc" :relation-kind "d"
+           :direction :directed :scope-json "{}"}
+        b (assoc a :target-node-id "b" :relation-kind "c\nd")]
+    (is (not= (claims/claim-id-material a) (claims/claim-id-material b)))))
