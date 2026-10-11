@@ -1018,3 +1018,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex371-three-red-20261011
   note: Native Codex5482454712 exact371 restores current availability with three findings4240785122/5127/5130. Actual seven targeted SDK regressions: six fail, one passes, exit1; documented host config ignored; true directory/symlink swap returns outside secret; graph default width9 or1024 versus declared2. Full native review/inlines and actual RED outputs appended losslessly to existing evidence bundle58; original56 manifest and all historical252 receipt/reflection prefixes preserved. No runtime or review credit.
+
+- ts: 2026-10-11T08:17:39.830Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codex371-three-green-20261011
+  note: Provider settings explicitly win over documented Ollama fallbacks;Linux procfs validates opened root/file descriptors, reads same file and closes both; unsupported descriptor capability fails closed;descriptor cache identityv4 includesdev/inode. Active option-merged model contracts share dimension resolver with Mongo,default embedding_vector and routed per-width queryable index map retain prior rows/indexes;actualAtlas availability unverified. Full source/consumer native-boundary evidence retained in62records;original56 manifestSHA and150changedpaths unchanged;receipt253/earlier and reflection prefixes immutable. Receipt candidate initially failed canonical missing-field validation before any append;required fields added and253 validated;nohistorical rewrite. No live,board,maker,publication,paid or spore mutation.

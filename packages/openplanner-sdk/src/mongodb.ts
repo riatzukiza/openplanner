@@ -14,6 +14,8 @@ import { MongoClient, Db, Collection, IndexDirection } from "mongodb";
 import { createHash } from "node:crypto";
 import { assertNonblankIdentifier } from "./types.js";
 import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS, type MigrationState } from "./schema-versions.js";
+import { loadConfig } from "./config.js";
+import { embeddingDimensionsForModel, type EmbeddingModelConfig } from "./embedding-models.js";
 
 // Default TTL: 30 days in seconds (disabled if 0)
 const DEFAULT_EVENTS_TTL_SECONDS = 0;
@@ -148,9 +150,9 @@ async function waitForQueryableSearchIndex(
 
 async function ensureGraphNodeEmbeddingVectorSearchIndex(
   collection: Collection<any>,
+  indexName: string,
+  dimensions: number,
 ): Promise<void> {
-  const indexName = "embedding_vector";
-  const dimensions = Number(process.env.EMBED_PROVIDER_DIMENSIONS ?? DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS);
   if (!Number.isSafeInteger(dimensions) || dimensions <= 0) {
     throw new Error("graph embedding dimensions must be a positive safe integer");
   }
@@ -171,6 +173,24 @@ async function ensureGraphNodeEmbeddingVectorSearchIndex(
   }
 
   await waitForQueryableSearchIndex(collection, indexName, dimensions);
+}
+
+async function ensureGraphNodeEmbeddingVectorSearchIndexes(
+  collection: Collection<any>,
+  models: EmbeddingModelConfig,
+  ready: Record<number, string>,
+): Promise<void> {
+  const dimensionsFor = (model: string): number => embeddingDimensionsForModel(models, model)
+    ?? Number(process.env.EMBED_PROVIDER_DIMENSIONS ?? DEFAULT_GRAPH_NODE_EMBEDDING_DIMENSIONS);
+  const defaultDimensions = dimensionsFor(models.defaultModel);
+  const activeModels = new Set([models.defaultModel, ...Object.values(models.byProject), ...Object.values(models.bySource), ...Object.values(models.byKind)]);
+  const dimensions = new Set([...activeModels].map(dimensionsFor));
+  for (const width of dimensions) {
+    const indexName = width === defaultDimensions ? "embedding_vector" : `embedding_vector_dims_${width}`;
+    await ensureGraphNodeEmbeddingVectorSearchIndex(collection, indexName, width);
+    // Advertise only actual queryable indexes. Unavailable Atlas capability stays visible.
+    ready[width] = indexName;
+  }
 }
 
 export interface MongoConfig {
@@ -599,6 +619,8 @@ export interface MongoConnection {
   vectorPartitions: Collection<MongoVectorPartitionDocument>;
   graphLayoutOverrides: Collection<GraphLayoutOverrideDocument>;
   graphNodeEmbeddings: Collection<GraphNodeEmbeddingDocument>;
+  /** Queryable graph indexes keyed by vector width; filter queries by model and scope. */
+  graphNodeEmbeddingVectorIndexes?: Readonly<Record<number, string>>;
   graphSemanticEdges: Collection<GraphSemanticEdgeDocument>;
   graphSemanticForceSamples: Collection<GraphSemanticForceSampleDocument>;
   graphSemanticFieldCells: Collection<GraphSemanticFieldCellDocument>;
@@ -619,7 +641,7 @@ export interface MongoConnection {
 /**
  * Connect to MongoDB and create indexes.
  */
-export async function openMongoDB(config: MongoConfig): Promise<MongoConnection> {
+export async function openMongoDB(config: MongoConfig, embeddingModels?: EmbeddingModelConfig): Promise<MongoConnection> {
   const eventsTtl = config.eventsTtlSeconds ?? DEFAULT_EVENTS_TTL_SECONDS;
   const compactedTtl = config.compactedTtlSeconds ?? DEFAULT_COMPACTED_TTL_SECONDS;
   assertRetentionTtl(eventsTtl);
@@ -714,8 +736,9 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
     await graphNodeEmbeddings.createIndex({ source_event_id: 1, embedding_model: 1, embedding_dimensions: 1 });
     await graphNodeEmbeddings.createIndex({ project: 1, updated_at: -1 as IndexDirection });
     await graphNodeEmbeddings.createIndex({ updated_at: -1 as IndexDirection });
+    const graphNodeEmbeddingVectorIndexes: Record<number, string> = {};
     try {
-      await ensureGraphNodeEmbeddingVectorSearchIndex(graphNodeEmbeddings);
+      await ensureGraphNodeEmbeddingVectorSearchIndexes(graphNodeEmbeddings, embeddingModels ?? loadConfig().embeddingModels, graphNodeEmbeddingVectorIndexes);
     } catch (error) {
       console.warn("[mongodb] graph_node_embeddings vector index unavailable:", error instanceof Error ? error.message : String(error));
     }
@@ -887,6 +910,7 @@ export async function openMongoDB(config: MongoConfig): Promise<MongoConnection>
       vectorPartitions,
       graphLayoutOverrides,
       graphNodeEmbeddings,
+      graphNodeEmbeddingVectorIndexes,
       graphSemanticEdges,
       graphSemanticForceSamples,
       graphSemanticFieldCells,

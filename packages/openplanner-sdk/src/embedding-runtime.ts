@@ -1,6 +1,6 @@
 import type { OpenPlannerConfig } from "./config.js";
 import { PersistentEmbeddingCache } from "./embedding-cache.js";
-import { resolveEmbeddingModel } from "./embedding-models.js";
+import { embeddingDimensionsForModel, resolveEmbeddingModel } from "./embedding-models.js";
 import { EmbedProviderFunction, ParallelEmbeddingPool } from "./embeddings.js";
 
 export type EmbeddingRuntime = {
@@ -32,14 +32,8 @@ export function createEmbeddingRuntime(cfg: OpenPlannerConfig): EmbeddingRuntime
   const parallelPoolCache = new Map<string, ParallelEmbeddingPool>();
   const persistentCache = new PersistentEmbeddingCache(cfg.embedProviderCachePath);
 
-  const getEmbeddingDimensionsForModel = (model: string): number | undefined => {
-    const contracts = cfg.embeddingModels.dimensionsByModel;
-    const dimensions = contracts && Object.hasOwn(contracts, model) ? contracts[model] : undefined;
-    if (dimensions !== undefined && (!Number.isInteger(dimensions) || dimensions <= 0)) {
-      throw new Error("Embedding model dimensions must be positive integers");
-    }
-    return dimensions;
-  };
+  const getEmbeddingDimensionsForModel = (model: string): number | undefined =>
+    embeddingDimensionsForModel(cfg.embeddingModels, model);
 
   const makeEmbeddingFunction = (model: string, opts?: { maxConcurrentBatches?: number }): EmbedProviderFunction => new EmbedProviderFunction(model, cfg.embedProviderBaseUrl, {
     apiKey: cfg.embedProviderApiKey,

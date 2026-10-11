@@ -13,6 +13,16 @@ export type EmbeddingModelConfig = {
   dimensionsByModel?: Readonly<Record<string, number>>;
 };
 
+/** The provider validator and graph index adapter consume this same contract. */
+export function embeddingDimensionsForModel(config: EmbeddingModelConfig, model: string): number | undefined {
+  const contracts = config.dimensionsByModel;
+  const dimensions = contracts && Object.hasOwn(contracts, model) ? contracts[model] : undefined;
+  if (dimensions !== undefined && (!Number.isSafeInteger(dimensions) || dimensions <= 0)) {
+    throw new Error("Embedding model dimensions must be positive safe integers");
+  }
+  return dimensions;
+}
+
 export function parseModelDimensions(raw: string | undefined): Record<string, number> {
   if (!raw?.trim()) return {};
   let entries: Record<string, unknown>;

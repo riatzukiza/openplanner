@@ -69,18 +69,18 @@ export function loadConfig(): OpenPlannerConfig {
   const host = mustGet("OPENPLANNER_HOST", "127.0.0.1");
   const port = Number(mustGet("OPENPLANNER_PORT", "7777"));
   const apiKey = mustGet("OPENPLANNER_API_KEY", "change-me");
-  const embedProviderBaseUrl = mustGet("EMBED_PROVIDER_BASE_URL", "http://host.docker.internal:8789");
-  const embedProviderApiKey = process.env.EMBED_PROVIDER_API_KEY ?? process.env.OPEN_HAX_OPENAI_PROXY_AUTH_TOKEN ?? undefined;
-  const defaultEmbedModel = mustGet("EMBED_PROVIDER_MODEL", "qwen3-embedding:0.6b");
-  const compactEmbedModel = mustGet("EMBED_PROVIDER_COMPACT_MODEL", defaultEmbedModel);
+  const embedProviderBaseUrl = mustGet("EMBED_PROVIDER_BASE_URL", process.env.OLLAMA_BASE_URL ?? process.env.OLLAMA_URL ?? "http://127.0.0.1:8789");
+  const embedProviderApiKey = process.env.EMBED_PROVIDER_API_KEY ?? process.env.OLLAMA_API_KEY ?? process.env.OPEN_HAX_OPENAI_PROXY_AUTH_TOKEN ?? undefined;
+  const defaultEmbedModel = mustGet("EMBED_PROVIDER_MODEL", process.env.OLLAMA_EMBED_MODEL ?? "qwen3-embedding:0.6b");
+  const compactEmbedModel = mustGet("EMBED_PROVIDER_COMPACT_MODEL", process.env.OLLAMA_COMPACT_EMBED_MODEL ?? defaultEmbedModel);
   const embedProviderBatchWindowMs = parsePositiveInt(process.env.EMBED_PROVIDER_BATCH_WINDOW_MS, 50);
   const embedProviderMaxBatchItems = parsePositiveInt(process.env.EMBED_PROVIDER_MAX_BATCH_ITEMS, 256);
   const embedProviderCachePath = mustGet("EMBED_PROVIDER_CACHE_PATH", path.join(dataDir, "cache", "embed-provider-cache.jsonl"));
   const embeddingModels: EmbeddingModelConfig = {
     defaultModel: defaultEmbedModel,
-    bySource: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_SOURCE),
-    byKind: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_KIND),
-    byProject: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_PROJECT),
+    bySource: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_SOURCE ?? process.env.OLLAMA_EMBED_MODEL_BY_SOURCE),
+    byKind: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_KIND ?? process.env.OLLAMA_EMBED_MODEL_BY_KIND),
+    byProject: parseModelMap(process.env.EMBED_PROVIDER_MODEL_BY_PROJECT ?? process.env.OLLAMA_EMBED_MODEL_BY_PROJECT),
     dimensionsByModel: parseModelDimensions(process.env.EMBED_PROVIDER_MODEL_DIMENSIONS),
   };
   const semanticCompaction: SemanticCompactionConfig = {

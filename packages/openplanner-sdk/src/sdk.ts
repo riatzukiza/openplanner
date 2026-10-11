@@ -55,7 +55,7 @@ export async function createOpenPlannerSdk(options: OpenPlannerSdkOptions = {}):
   };
 
   const embeddingRuntime = createEmbeddingRuntime(config);
-  const mongo = await openMongoDB(config.mongodb);
+  const mongo = await openMongoDB(config.mongodb, config.embeddingModels);
   let protocols: Protocols;
   try { protocols = createProtocols({ mongo }); }
   catch (error) { await closeMongoDB(mongo); throw error; }

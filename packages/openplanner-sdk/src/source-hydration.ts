@@ -1,4 +1,5 @@
-import { readFile, realpath } from "node:fs/promises";
+import { open as openFile, readlink, realpath, type FileHandle } from "node:fs/promises";
+import { constants } from "node:fs";
 import path from "node:path";
 import { open } from "lmdb";
 import {
@@ -128,19 +129,36 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
 
   const candidate = sourceFilePathWithinRoot(row, configuredRoot);
   if (!candidate) return null;
+  // Linux exposes the kernel's opened-file identity through procfs. Hosts without
+  // that capability fail closed rather than falling back to a pathname race.
+  if (process.platform !== "linux") return null;
+  let rootHandle: FileHandle | undefined;
+  let fileHandle: FileHandle | undefined;
   try {
     const [root, filePath] = await Promise.all([realpath(configuredRoot), realpath(candidate)]);
     if (!withinRoot(root, filePath)) return null;
-    // Caller hashes are not physical file identity; aliases share the resolved path.
-    const fileCacheKey = "openplanner:hydration-file:v3:" + JSON.stringify([cacheKey, filePath]);
+    rootHandle = await openFile(root, constants.O_RDONLY | constants.O_DIRECTORY);
+    fileHandle = await openFile(filePath, constants.O_RDONLY | constants.O_NONBLOCK);
+    const [openedRoot, openedFile, fileStat] = await Promise.all([
+      readlink(`/proc/self/fd/${rootHandle.fd}`),
+      readlink(`/proc/self/fd/${fileHandle.fd}`),
+      fileHandle.stat(),
+    ]);
+    if (!fileStat.isFile() || openedRoot.endsWith(" (deleted)") || openedFile.endsWith(" (deleted)")
+        || !withinRoot(openedRoot, openedFile)) return null;
+    // Validate and read the same descriptor. A later path swap cannot retarget it.
+    const fileCacheKey = "openplanner:hydration-file:v4:" + JSON.stringify([cacheKey, openedFile, fileStat.dev, fileStat.ino]);
     const hydrationCache = await getHydrationCache();
     const cached = await cacheGet(hydrationCache, fileCacheKey);
     if (typeof cached === "string") return cached;
-    const text = await readFile(filePath, "utf8");
+    const text = await fileHandle.readFile("utf8");
     await cachePut(hydrationCache, fileCacheKey, text);
     return text;
   } catch {
     return null;
+  } finally {
+    try { await fileHandle?.close(); }
+    finally { await rootHandle?.close(); }
   }
 }
 

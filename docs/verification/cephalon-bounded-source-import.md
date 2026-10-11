@@ -1278,3 +1278,47 @@ and150 changed-input limit stay intact;no path exclusions/paid usage. Current
 hosted/native review qualification must bind the newly committed GREEN head;
 older8c CI/completed finding-bearing CR/MiMo execution do not transfer approval.
 No live/runtime/board/deployment/physical field/persisted mood proof is claimed.
+
+
+## Native Codex5482454712: configuration, descriptor and graph-width repair
+
+Actual current-head review5482454712 on3719817 restores Codex availability;
+its three roots4240785122/4240785127/4240785130 are confirmed defects.
+The seven new SDK regressions on unchanged production371 give6fail1pass/exit1:
+the copied host example is ignored, a real directory rename/symlink replacement
+returns outside bytes, and graph widths are9/1024 instead of the declared2.
+RED5359d58 preserves the full native review/inlines and causal outputs.
+
+The SDK now accepts documented OLLAMA endpoint/API-key/default/compact/routing
+variables as fallbacks. Explicit EMBED_PROVIDER values win, including explicit
+empty routing maps. The default host endpoint is127.0.0.1:8789; Compose already
+passes its own container endpoint. This changes no live model or credential.
+
+Source hydration opens root and file descriptors, checks the kernel's procfs
+paths and regular-file identity, then reads and finally closes those same
+handles. A replacement before open is refused; replacement after open retains
+the actual opened owned file. Cache identity includes descriptor dev/inode and
+uses a new v4 namespace. Linux with accessible /proc/self/fd is the supported
+secure hydration adapter. Other platforms or unavailable procfs fail closed
+with null; there is no insecure pathname fallback. This is source-boundary
+verification, not an atomic filesystem ownership/fencing guarantee.
+
+The runtime's embedding dimension resolver is shared with graph index creation.
+The actual SDK option-merged model configuration reaches Mongo rather than
+re-reading ambient models. The default width retains embedding_vector; other
+active routed widths get embedding_vector_dims_<width>. The connection's
+optional graphNodeEmbeddingVectorIndexes map advertises only queryable indexes,
+keyed by width. Atlas callers select that map entry for their query vector and
+still filter by project/node/model/dimensions. EMBED_PROVIDER_DIMENSIONS remains
+a legacy fallback only for models without a declared width. Prior indexes and
+stored rows are retained. Real Atlas availability is not proved by index API
+fixtures; ordinary Mongo still reports unsupported search capability visibly.
+
+All20 existing bounded source gates freshly pass on working GREEN over causal
+RED5359d58: SDK970/970,graph79tests671assertions,cache17/176,hydration13/108,
+JVM17/100;zero compiler/lint warnings. Actual copied-env Compose rendering and
+owned real Mongo replacement/injected rollback pass;the actual graph negative
+exits1. Seven new targeted regressions also pass without weakened assertions.
+Full actual source/consumer outputs and input hashes are retained losslessly;
+new hosted/native evidence must bind the final committed head. No live maker,
+clock,gateway,cloud,board,publication,paid usage or spore is changed.
