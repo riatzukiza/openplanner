@@ -12,6 +12,7 @@
 
 import { MongoClient, Db, Collection, IndexDirection } from "mongodb";
 import { createHash } from "node:crypto";
+import { assertNonblankIdentifier } from "./types.js";
 import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS, type MigrationState } from "./schema-versions.js";
 
 // Default TTL: 30 days in seconds (disabled if 0)
@@ -905,10 +906,12 @@ export async function enqueueMigrationJob(
     priority?: number;
   },
 ): Promise<void> {
+  for (const field of ["entity", "object_id", "trigger"] as const) assertNonblankIdentifier(job[field], `migration.${field}`);
   const now = new Date();
-  const id = `${job.entity}:${job.object_id}:${job.trigger}`;
+  const identity = { entity: job.entity, object_id: job.object_id, trigger: job.trigger };
+  const id = "migration-job:" + createHash("sha256").update(JSON.stringify(Object.values(identity))).digest("hex");
   await collection.updateOne(
-    { _id: id },
+    identity,
     {
       $set: {
         entity: job.entity,
@@ -920,6 +923,7 @@ export async function enqueueMigrationJob(
         updatedAt: now,
       },
       $setOnInsert: {
+        _id: id,
         status: "queued",
         attempts: 0,
         createdAt: now,

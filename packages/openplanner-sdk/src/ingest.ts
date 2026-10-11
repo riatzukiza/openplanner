@@ -12,6 +12,7 @@ import type { MongoConnection } from "./mongodb.js";
 import { prepareIndexDocument } from "./indexing.js";
 import { indexTextInMongoVectors, replaceMongoVectorEntries } from "./mongo-vectors.js";
 import type { EventEnvelopeV1 } from "./types.js";
+import { assertNonblankIdentifier } from "./types.js";
 import { splitSentences, deduplicateByHash, computeTextHash } from "./sentence-split.js";
 import { formatEmbeddingPassageText } from "./embedding-text.js";
 import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS } from "./schema-versions.js";
@@ -68,9 +69,7 @@ function validIsoTimestamp(value: unknown): value is string {
 export function validateEvent(ev: EventEnvelopeV1) {
   if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
   for (const field of ["id", "source", "kind"] as const) {
-    if (typeof ev[field] !== "string" || !ev[field].trim()) {
-      throw new Error(`event.${field} must be a nonblank string`);
-    }
+    assertNonblankIdentifier(ev[field], `event.${field}`);
   }
   if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
   for (const field of ["project", "session", "message", "turn"] as const) {
@@ -258,9 +257,17 @@ async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[
       throw new Error(`derived event identity collision: ${derivedId}`);
     }
     generatedOwners.set(derivedId, event.id);
-    const previous = await mongo.events.findOne({ _id: derivedId });
-    if (previous && (previous.source !== "openplanner-derive" || (previous.extra as Record<string, unknown> | undefined)?.source_event_id !== event.id)) {
-      throw new Error(`derived event identity ownership collision: ${derivedId}`);
+  }
+  const generatedIds = [...generatedOwners.keys()];
+  for (let offset = 0; offset < generatedIds.length; offset += 256) {
+    const previousRows = await mongo.events.find({ _id: { $in: generatedIds.slice(offset, offset + 256) } })
+      .project({ _id: 1, source: 1, "extra.source_event_id": 1 }).toArray();
+    for (const previous of previousRows) {
+      const owner = generatedOwners.get(previous._id);
+      if (owner !== undefined && (previous.source !== "openplanner-derive"
+          || (previous.extra as Record<string, unknown> | undefined)?.source_event_id !== owner)) {
+        throw new Error(`derived event identity ownership collision: ${previous._id}`);
+      }
     }
   }
 

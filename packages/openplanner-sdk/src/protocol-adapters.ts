@@ -9,6 +9,7 @@
 
 import { createHash } from "node:crypto";
 import { upsertEvent, eventRetentionExpiry, type MongoConnection } from "./mongodb.js";
+import { assertNonblankIdentifier } from "./types.js";
 
 /**
  * The minimal context protocol implementations need. The REST API passes its
@@ -25,7 +26,8 @@ export interface EventAdmission {
   queryEvents(filter: any): Promise<any[]>;
 }
 
-export interface SessionScope { project?: string; }
+/** Undefined is unscoped; null selects only projectless markers. */
+export interface SessionScope { project?: string | null; }
 
 export interface SessionManagement {
   createSession(opts: any): Promise<any>;
@@ -66,11 +68,13 @@ class MongoEventAdmission implements EventAdmission {
   constructor(private ctx: ProtocolContext) {}
 
   async appendEvent(event: any): Promise<any> {
+    assertNonblankIdentifier(event?.id, "event.id");
     await upsertEvent(this.ctx.mongo.events, event, this.ctx.mongo.retention?.eventsTtlSeconds);
     return event;
   }
 
   async appendEvents(events: any[]): Promise<any[]> {
+    for (const event of events) assertNonblankIdentifier(event?.id, "event.id");
     for (const event of events) await this.appendEvent(event);
     return events;
   }
@@ -104,7 +108,8 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async getSession(sessionId: string, opts: SessionScope = {}): Promise<any> {
-    assertOptionalSessionString(opts.project, "project");
+    assertNonblankIdentifier(sessionId, "session");
+    if (opts.project !== null) assertOptionalSessionString(opts.project, "project");
     const filter = { session: sessionId, kind: "session", ...(opts.project === undefined ? {} : { project: opts.project }) };
     const first = await this.ctx.mongo.events.findOne(filter);
     if (first && opts.project === undefined) {
@@ -145,7 +150,7 @@ class MongoSessionManagement implements SessionManagement {
       { _id: stored._id },
       { $set: { ...mutable, session: sessionId, kind: "session", updatedAt: now }, ...retentionUpdate }
     );
-    return this.getSession(sessionId, stored.project === undefined || stored.project === null ? opts : { project: stored.project });
+    return this.getSession(sessionId, { project: stored.project ?? null });
   }
 
   async closeSession(sessionId: string, opts: SessionScope = {}): Promise<void> {
@@ -179,7 +184,7 @@ class MongoSessionManagement implements SessionManagement {
           event_count: "$event_count",
         },
       },
-      { $sort: { last_ts: -1 } },
+      { $sort: { last_ts: -1, project: 1, session: 1 } },
     ];
 
     const [rawRows, totalRows] = await Promise.all([
@@ -199,10 +204,12 @@ class MongoSessionManagement implements SessionManagement {
   }
 
   async getSessionEvents(sessionId: string, opts: any): Promise<any[]> {
+    assertNonblankIdentifier(sessionId, "session");
     assertOptionalSessionString(opts.project, "project");
     assertOptionalSessionString(opts.kind, "kind");
     const requestedLimit = sessionPageInteger(opts.limit, 1000);
-    const limit = Math.min(requestedLimit > 0 ? requestedLimit : 1000, 1000);
+    if (opts.mode !== undefined && opts.mode !== "full") throw new Error("session event mode must be full when supplied");
+    const limit = Math.min(requestedLimit > 0 ? requestedLimit : 1000, opts.mode === "full" ? 100001 : 1000);
     const filter: Record<string, unknown> = { session: sessionId };
     if (opts.project) filter.project = opts.project;
     if (opts.kind) filter.kind = opts.kind;
@@ -232,6 +239,7 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async getTenant(tenantId: string): Promise<any | null> {
+    assertNonblankIdentifier(tenantId, "tenant_id");
     return this.collection().findOne({ tenant_id: tenantId });
   }
 
@@ -250,6 +258,7 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async updateTenant(tenantId: string, updates: any): Promise<any | null> {
+    assertNonblankIdentifier(tenantId, "tenant_id");
     const { _id: _storageId, tenant_id: _tenantId, created_at: _createdAt, ...mutable } = updates;
     const result = await this.collection().findOneAndUpdate(
       { tenant_id: tenantId },
@@ -260,6 +269,7 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async deleteTenant(tenantId: string): Promise<boolean> {
+    assertNonblankIdentifier(tenantId, "tenant_id");
     await this.ctx.mongo.db.collection("km_labels").deleteMany({ tenant_id: tenantId });
     await this.policiesCollection().deleteOne({ tenant_id: tenantId });
     const result = await this.collection().deleteOne({ tenant_id: tenantId });
@@ -267,10 +277,12 @@ class MongoTenantManagement implements TenantManagement {
   }
 
   async getPolicy(tenantId: string): Promise<any | null> {
+    assertNonblankIdentifier(tenantId, "tenant_id");
     return this.policiesCollection().findOne({ tenant_id: tenantId });
   }
 
   async setPolicy(tenantId: string, policy: any): Promise<any> {
+    assertNonblankIdentifier(tenantId, "tenant_id");
     const now = new Date();
     const doc = {
       ...policy,

@@ -14,9 +14,9 @@ export function makeEmbeddingCacheKey(params: {
   dimensions?: number;
 }): string {
   const digest = createHash("sha256").update(params.text, "utf8").digest("hex");
-  const modelContract = params.dimensions === undefined ? params.model
-    : `${params.model}::dimensions:${params.dimensions}`;
-  return `${modelContract}::${digest}`;
+  const tuple = JSON.stringify([params.model, params.dimensions ?? null, digest]);
+  // A versioned key deliberately misses ambiguous historical cache entries.
+  return "embedding-cache:v2:" + createHash("sha256").update(tuple, "utf8").digest("hex");
 }
 
 export class PersistentEmbeddingCache {

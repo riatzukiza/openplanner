@@ -1,3 +1,8 @@
+/** Runtime identity admission shared by envelope and direct protocol writers. */
+export function assertNonblankIdentifier(value: unknown, field: string): asserts value is string {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${field} must be a nonblank string`);
+}
+
 export type BlobRef = {
   blob: string; // sha256 hex
   mime: string;

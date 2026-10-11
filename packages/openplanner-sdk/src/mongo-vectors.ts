@@ -73,9 +73,13 @@ function getFlatCollection(mongo: MongoConnection, tier: MongoVectorTier): Colle
 }
 
 function asDate(value: unknown): Date {
-  if (value instanceof Date) return value;
-  const parsed = new Date(String(value ?? new Date().toISOString()));
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  if (value === undefined) return new Date();
+  if (!(value instanceof Date) && typeof value !== "string" && typeof value !== "number") {
+    throw new Error("vector metadata.ts must be a valid timestamp when supplied");
+  }
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(parsed.getTime())) throw new Error("vector metadata.ts must be a valid timestamp when supplied");
+  return parsed;
 }
 
 function toStringOrNull(value: unknown): string | null {
@@ -103,6 +107,7 @@ function toStringArray(value: unknown): string[] {
 }
 
 function validateVectorMetadata(metadata: Record<string, unknown>): void {
+  asDate(metadata.ts);
   for (const field of ["source", "kind", "project", "session", "visibility", "author", "role", "model", "quality_label", "embedding_model", "title", "seed_id"]) {
     toStringOrNull(metadata[field]);
   }
@@ -224,46 +229,49 @@ function sourceRedactionMetadata(params: {
 }
 
 function normalizeScalarFilterValue(value: unknown): unknown {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
-  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value)) return value;
+  if (value instanceof Date && Number.isFinite(value.getTime())) return value;
   return undefined;
 }
 
 function buildMongoFilter(where: Record<string, unknown> | undefined): Filter<MongoVectorDocument> {
   const filter: Filter<MongoVectorDocument> = {};
-  if (!where) return filter;
+  if (where === undefined) return filter;
+  if (!where || typeof where !== "object" || Array.isArray(where)) throw new Error("vector filter must be an object");
 
   for (const [key, rawValue] of Object.entries(where)) {
-    if (rawValue === undefined || key === "search_tier" || key.startsWith("$") || key.includes(".")) continue;
-    if (!FILTERABLE_PATH_SET.has(key)) continue;
+    if (!FILTERABLE_PATH_SET.has(key)) throw new Error(`unsupported vector filter field: ${key}`);
+
+    const scalar = normalizeScalarFilterValue(rawValue);
+    if (scalar !== undefined) {
+      (filter as Record<string, unknown>)[key] = scalar;
+      continue;
+    }
 
     if (typeof rawValue === "object" && rawValue !== null && !Array.isArray(rawValue)) {
       const record = rawValue as Record<string, unknown>;
-      if (Array.isArray(record.$in)) {
+      if (Object.keys(record).length !== 1) throw new Error(`unsupported vector filter value for ${key}`);
+      if (Array.isArray(record.$in) && record.$in.length > 0
+          && record.$in.every(value => normalizeScalarFilterValue(value) !== undefined)) {
         (filter as Record<string, unknown>)[key] = { $in: record.$in };
         continue;
       }
       if (Object.prototype.hasOwnProperty.call(record, "$eq")) {
         const normalized = normalizeScalarFilterValue(record.$eq);
-        if (normalized !== undefined) {
-          (filter as Record<string, unknown>)[key] = normalized;
-        }
+        if (normalized === undefined) throw new Error(`unsupported vector filter value for ${key}`);
+        (filter as Record<string, unknown>)[key] = normalized;
         continue;
       }
       if (Object.prototype.hasOwnProperty.call(record, "$ne")) {
         const normalized = normalizeScalarFilterValue(record.$ne);
-        if (normalized !== undefined) {
-          (filter as Record<string, unknown>)[key] = { $ne: normalized };
-        }
+        if (normalized === undefined) throw new Error(`unsupported vector filter value for ${key}`);
+        (filter as Record<string, unknown>)[key] = { $ne: normalized };
         continue;
       }
-      continue;
+      throw new Error(`unsupported vector filter value for ${key}`);
     }
 
-    const normalized = normalizeScalarFilterValue(rawValue);
-    if (normalized !== undefined) {
-      (filter as Record<string, unknown>)[key] = normalized;
-    }
+    throw new Error(`unsupported vector filter value for ${key}`);
   }
 
   return filter;
@@ -915,6 +923,19 @@ async function replaceMongoVectorParents(
   parentIds: ReadonlyArray<string>,
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
+  // Empty graph cleanup is a no-op only after inspecting every storage copy.
+  // Actual destructive replacements still require the transaction below.
+  if (entries.length === 0) {
+    const filter = parentIds.length === 1 ? { parent_id: parentIds[0] } : { parent_id: { $in: [...parentIds] } };
+    let owned = await getFlatCollection(mongo, tier).findOne(filter, { projection: { _id: 1 } });
+    if (!owned) {
+      for (const partition of await listMongoVectorPartitions(mongo, tier)) {
+        owned = await mongo.db.collection<MongoVectorDocument>(partition.collectionName).findOne(filter, { projection: { _id: 1 } });
+        if (owned) break;
+      }
+    }
+    if (!owned) return;
+  }
   const now = new Date();
   const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
   const groups = new Map<string, { model: string; dimensions: number; documents: MongoVectorDocument[] }>();

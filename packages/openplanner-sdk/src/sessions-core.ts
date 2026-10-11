@@ -1,7 +1,7 @@
 /**
  * Session listing/detail cores extracted from the REST API's /v1/sessions
- * handlers. Response shapes are byte-identical to the REST bodies so direct
- * SDK consumers (knoxx) and REST clients see the same data.
+ * handlers. SDK and REST adapters can share these cores. Full history preserves
+ * the historical 100,000-row cap and adds an independently observed has_more.
  */
 import { createProtocols } from "./protocol-adapters.js";
 import type { MongoConnection } from "./mongodb.js";
@@ -98,10 +98,13 @@ export async function getSessionResponse(
     return { ok: true, session: sessionId, rows: jsonSafe(normalizeSessionRows(rows)), storageBackend: "mongodb" as const };
   }
 
+  const cap = 100000;
   const rows = await protocols.sessionManagement.getSessionEvents(sessionId, {
     project,
-    limit: 100000,
+    limit: cap + 1,
+    mode: "full",
     sort: "asc",
   });
-  return { ok: true, session: sessionId, rows: jsonSafe(normalizeSessionRows(rows)), storageBackend: "mongodb" as const };
+  return { ok: true, session: sessionId, rows: jsonSafe(normalizeSessionRows(rows.slice(0, cap))),
+    limit: cap, has_more: rows.length > cap, storageBackend: "mongodb" as const };
 }

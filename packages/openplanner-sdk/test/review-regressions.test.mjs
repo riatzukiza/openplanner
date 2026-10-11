@@ -1777,7 +1777,13 @@ test('standalone empty vector cleanup lets every graph/empty event and deferred 
   const empty=ordinaryEvent('empty-without-vectors','');
   const result=await ingestEvents({mongo,embeddingRuntime:{}},[edge,empty]);await result.backgroundIndexing;
   assert.equal(result.count,2);assert.ok(mongo.events.rows.has(edge.id));assert.ok(mongo.events.rows.has(empty.id));
-  assert.equal(result.projectedGraphEdges,1);assert.ok(mongo.graphEdges.calls.writes.length>0);assert.equal(started,0);
+  // The ordinary fixture also owns its keep-label projection. Both deferred
+  // relations must survive cleanup; counting only the explicit edge hid it.
+  assert.equal(result.projectedGraphEdges,2);assert.equal(mongo.graphEdges.rows.size,2);
+  const relations=[...mongo.graphEdges.rows.values()];
+  assert.ok(relations.some(row=>row.source_node_id==='a'&&row.target_node_id==='b'&&row.edge_kind==='related'&&row.data.source_event_id===edge.id));
+  assert.ok(relations.some(row=>row.source_node_id===empty.id&&row.edge_kind==='has_label'&&row.data.label==='keep'&&row.data.source_event_id===empty.id&&typeof row.target_node_id==='string'&&row.target_node_id.length>0));
+  assert.equal(started,0);
 });
 for(const location of ['flat','partition'])test(`owned vector cleanup in ${location} retains the required transaction and old row on standalone refusal`,async()=>{
   const mongo=mongoFixture();let started=0;const row={_id:'owned-chunk',parent_id:'owned-parent',text:'existing'};
