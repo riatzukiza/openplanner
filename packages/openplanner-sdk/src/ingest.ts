@@ -72,6 +72,10 @@ export function validateEvent(ev: EventEnvelopeV1) {
     assertNonblankIdentifier(ev[field], `event.${field}`);
   }
   if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
+  if (ev.source_ref !== undefined && (ev.source_ref === null || typeof ev.source_ref !== "object"
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(ev.source_ref)))) {
+    throw new Error("source_ref must be a plain object when supplied");
+  }
   for (const field of ["project", "session", "message", "turn"] as const) {
     const value = ev.source_ref?.[field];
     if (value !== undefined && typeof value !== "string") {
@@ -83,6 +87,10 @@ export function validateEvent(ev: EventEnvelopeV1) {
   const extra = ev.extra ?? {};
   for (const labels of [extra, extra.openplanner_labels as Record<string, unknown> | undefined]) {
     if (labels && Object.hasOwn(labels, "tenant_id")) assertNonblankIdentifier(labels.tenant_id, "label tenant_id");
+  }
+  const nestedTenant = (extra.openplanner_labels as Record<string, unknown> | undefined)?.tenant_id;
+  if (extra.tenant_id !== undefined && nestedTenant !== undefined && extra.tenant_id !== nestedTenant) {
+    throw new Error("tenant identity aliases must agree");
   }
   const supplied = ev.kind === "graph.edge" ? ["source_node_id", "target_node_id", "edge_type", "edge_kind"]
     : ev.kind === "graph.node" ? ["node_id"] : [];

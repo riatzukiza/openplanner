@@ -130,7 +130,7 @@
          :kind (public-kind (jget row "kind"))
          :visibility (normalize-visibility (jget extra "visibility"))
          :source (some-> (jget row "source") str)
-         :sourcePath (some-> (jget extra "source_path") str)
+         :sourcePath (:sourcePath (source-ref-map row))
          :domain (some-> (jget extra "domain") str)
          :language (or (some-> (jget extra "language") str) "en")
          :createdBy (some-> (jget extra "created_by") str)

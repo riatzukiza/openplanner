@@ -11,6 +11,12 @@ import { assertNonblankIdentifier } from "./types.js";
 
 export type MongoVectorTier = "hot" | "compact";
 
+function assertVectorTier(value: unknown): asserts value is MongoVectorTier {
+  if (value !== "hot" && value !== "compact") {
+    throw new Error("vector tier must be hot or compact");
+  }
+}
+
 type RawQueryResult = {
   ids: string[][];
   documents: string[][];
@@ -673,6 +679,7 @@ export async function listMongoVectorPartitions(
   tier: MongoVectorTier,
   session?: ClientSession,
 ): Promise<MongoVectorPartitionDocument[]> {
+  assertVectorTier(tier);
   return mongo.vectorPartitions.find({ tier }, { session }).sort({ updatedAt: -1 }).toArray();
 }
 
@@ -754,6 +761,7 @@ export async function upsertMongoVectorDocuments(
   tier: MongoVectorTier,
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
+  assertVectorTier(tier);
   if (entries.length === 0) return;
 
   assertUniqueVectorIds(entries);
@@ -837,6 +845,7 @@ export async function deleteMongoVectorEntriesByFilter(
   tier: MongoVectorTier,
   where: Record<string, unknown>,
 ): Promise<void> {
+  assertVectorTier(tier);
   const filter = buildMongoFilter(where);
   if (Object.keys(filter).length === 0) {
     throw new Error("deleteMongoVectorEntriesByFilter requires at least one supported filter field");
@@ -953,6 +962,7 @@ export async function replaceMongoVectorEntries(
   parentId: string,
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
+  assertVectorTier(tier);
   await replaceMongoVectorParents(mongo, tier, [parentId], entries);
 }
 
@@ -1020,6 +1030,7 @@ export async function indexTextInMongoVectors(params: {
   metadata: Record<string, unknown>;
   embeddingFunction: IEmbeddingFunction;
 }): Promise<void> {
+  assertVectorTier(params.tier);
   assertNonblankIdentifier(params.parentId, "vector parent ID");
   validateVectorMetadata(params.metadata);
   let normalizedSource: string | undefined;
@@ -1322,6 +1333,7 @@ export async function queryMongoVectorsByText(params: {
   excludeParentIds?: string[];
   getEmbeddingFunctionForModel: (model: string) => IEmbeddingFunction;
 }): Promise<RawQueryResult> {
+  assertVectorTier(params.tier);
   if (!Number.isSafeInteger(params.k)) throw new Error("vector k must be a finite safe integer");
   // Match the high-level search range before Atlas multiplication or fallback
   // retention, preserving the existing minimum-one behavior for zero/negative k.
@@ -1452,6 +1464,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   embeddingFunction: IEmbeddingFunction;
   config?: BatchIndexConfig;
 }): Promise<{ indexed: number; failed: Array<{ id: string; error: string }> }> {
+  assertVectorTier(params.tier);
   const { items, embeddingFunction, config = {} } = params;
   const concurrency = config.concurrency ?? 16;
   const embeddingBatchSize = config.embeddingBatchSize ?? 256;
@@ -1466,6 +1479,7 @@ export async function batchIndexTextsInMongoVectors(params: {
   // Duplicate parents would reuse chunk identities and pair another text's vector.
   const seenParentIds = new Set<string>();
   for (const item of items) {
+    assertNonblankIdentifier(item.id, "vector parent ID");
     validateVectorMetadata(item.metadata);
     if (seenParentIds.has(item.id)) throw new Error(`Duplicate vector parent ID: ${item.id}`);
     seenParentIds.add(item.id);

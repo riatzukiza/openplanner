@@ -51,8 +51,9 @@ function labelsFromExtra(extra: unknown): string[] {
 }
 
 /** The event writer and session adapter share the same retention decision. */
-export function eventRetentionExpiry(extra: unknown, ttlSeconds: number, now: Date): Date | undefined {
-  return labelsFromExtra(extra).length > 0 ? undefined : ttlExpiryFromNow(ttlSeconds, now);
+export function eventRetentionExpiry(extra: unknown, ttlSeconds: number | undefined, now: Date): Date | undefined {
+  return labelsFromExtra(extra).length > 0 ? undefined
+    : ttlExpiryFromNow(ttlSeconds ?? parsePositiveIntEnv("MONGODB_EVENTS_TTL_SECONDS"), now);
 }
 
 function stableJson(value: unknown): string {
@@ -1160,6 +1161,10 @@ export async function upsertGraphSemanticEdges(
   for (const row of rows) {
     assertNonblankIdentifier(row.source_node_id, "semantic source_node_id");
     assertNonblankIdentifier(row.target_node_id, "semantic target_node_id");
+    if (typeof row.similarity !== "number" || !Number.isFinite(row.similarity)
+        || row.similarity < -1 || row.similarity > 1) {
+      throw new Error("semantic similarity must be a finite number in the range [-1, 1]");
+    }
   }
   const now = new Date();
 

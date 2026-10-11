@@ -92,7 +92,7 @@ class MongoSessionManagement implements SessionManagement {
     assertOptionalSessionString(opts.project, "project");
     const { expiresAt: _callerExpiry, _id: _callerId, ...content } = opts;
     const now = new Date();
-    const expiresAt = eventRetentionExpiry(content.extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
+    const expiresAt = eventRetentionExpiry(content.extra, this.ctx.mongo.retention?.eventsTtlSeconds, now);
     const existing = await this.ctx.mongo.events.findOne({ session: content.session, kind: "session", project: content.project ?? null });
     if (existing) return existing; // Preserve an already stored legacy marker on retry.
     const markerId = "session-marker:" + createHash("sha256").update(JSON.stringify(["session", content.project ?? null, content.session])).digest("hex");
@@ -135,7 +135,7 @@ class MongoSessionManagement implements SessionManagement {
         extra = { ...extra, openplanner_labels: { ...extra?.openplanner_labels,
           labels: mutable["extra.openplanner_labels.labels"] } };
       }
-      const managedExpiry = eventRetentionExpiry(extra, this.ctx.mongo.retention?.eventsTtlSeconds ?? 0, now);
+      const managedExpiry = eventRetentionExpiry(extra, this.ctx.mongo.retention?.eventsTtlSeconds, now);
       if (["extra", "extra.openplanner_labels", "extra.openplanner_labels.labels"]
         .some(key => Object.hasOwn(mutable, key))) {
         // Persist one canonical parent path; Mongo refuses parent/child $set collisions.

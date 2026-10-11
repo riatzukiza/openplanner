@@ -19,6 +19,18 @@ export function makeEmbeddingCacheKey(params: {
   return "embedding-cache:v2:" + createHash("sha256").update(tuple, "utf8").digest("hex");
 }
 
+function ownedEmbedding(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error("cache embedding must be a nonempty finite number array");
+  }
+  for (const coordinate of value) {
+    if (typeof coordinate !== "number" || !Number.isFinite(coordinate)) {
+      throw new Error("cache embedding must contain finite numbers");
+    }
+  }
+  return [...value];
+}
+
 export class PersistentEmbeddingCache {
   private map = new Map<string, number[]>();
   private readonly maxEntries = 10000;
@@ -50,7 +62,7 @@ export class PersistentEmbeddingCache {
     for (const key of keys) {
       const entry = this.map.get(key);
       if (entry) {
-        result.set(key, entry);
+        result.set(key, [...entry]);
         this.map.delete(key);
         this.map.set(key, entry);
       }
@@ -66,8 +78,9 @@ export class PersistentEmbeddingCache {
   }
 
   set(key: string, value: EmbeddingCacheEntry): void {
+    const vector = ownedEmbedding(value.embedding);
     this.map.delete(key);
-    this.map.set(key, value.embedding);
+    this.map.set(key, vector);
     this.trimToLimit();
     this.scheduleFlush();
   }
@@ -91,7 +104,9 @@ export class PersistentEmbeddingCache {
   }
 
   async putMany(entries: Array<{ key: string; vector: number[] }>): Promise<void> {
-    for (const { key, vector } of entries) {
+    // Validate and copy the whole batch before mutating any retained entry.
+    const owned = entries.map(({ key, vector }) => ({ key, vector: ownedEmbedding(vector) }));
+    for (const { key, vector } of owned) {
       this.map.delete(key);
       this.map.set(key, vector);
     }
