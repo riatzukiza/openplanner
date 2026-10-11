@@ -1188,3 +1188,38 @@ owned added-only capture, bounded-source-verification-20261010.json, is moved
 losslessly into the existing bundle with original path, source Git blob/mode,
 complete bytes/hash and retained Git history. This offsets the new verifier
 path; all150 review inputs remain included, prior40 records remain unchanged.
+
+## Documented Mongo topology: complete source GREEN
+
+Ordinary RED753cf15 adds the failing actual-source contract. Compose now starts
+its documented Mongo service with replicaSet openplanner and an idempotent
+initializing health command that requires a writable primary. Its default
+application URI binds that replica; the example local SDK URI uses direct
+connection through the published port. Explicit URI overrides remain available.
+The original required-configuration authorization covers these source files;
+the earlier pending interpretation is superseded without rewriting old records.
+
+All20 freshly executed required gates PASS, including the actual rendered
+Compose command/health and documented client URI. The new uniquely owned
+non-root bounded tmpfs Mongo fixture uses cached image9fae371f, verifies repeated
+health, actual SDK nonempty upsert/replacement in both flat and partition stores,
+and an injected production replacement failure after deletes. Its real session
+rolls back both stores and keeps the previous replacement. Only the fixture
+client port is adapted. Initial startup ECONNREFUSED during a readiness retry
+is retained; eventual health and transaction checks pass. Cleanup removes only
+the exact owned container. No application/backend/gateway/clock starts.
+
+SDK963/963, graph77/605, hydration13/108, cache17/176 and JVM17/100 pass with
+zero compiler/lint warnings; the intentional graph negative still exits1.
+Existing actual Knoxx1977/11459 consumer evidence remains bound to the same73
+loaded package hashes, unchanged by these configuration files and the separate
+source fixture. It supplies compatibility evidence, not a live maker proof.
+Source247 receipt/reflection prefixes and all44 earlier complete evidence
+records remain intact;47 full records are now retained. Three original
+added-only evidence paths are retained inside the bundle with complete original
+bytes, hashes, Git blob IDs/modes and source commits: bounded-source-verification,
+bounded-import-staged-hygiene and bounded-import-lint-baseline (all20261010).
+Their original blobs/history remain recoverable. Original56 manifest is
+unchanged; all150 current review inputs remain included, without exclusions
+or paid usage. Current-head hosted gates/review/settlement/merge remain owed.
+B1 physical-field persistence, B2 consumed mood and live B3 remain unfinished.

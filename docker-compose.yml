@@ -28,7 +28,7 @@ services:
       # Storage backend: duckdb (default) or mongodb
       OPENPLANNER_STORAGE_BACKEND: "${OPENPLANNER_STORAGE_BACKEND:-duckdb}"
       # MongoDB configuration (used when STORAGE_BACKEND=mongodb)
-      MONGODB_URI: "${MONGODB_URI:-mongodb://mongodb:27017}"
+      MONGODB_URI: "${MONGODB_URI:-mongodb://mongodb:27017/?replicaSet=openplanner}"
       MONGODB_DB: "${MONGODB_DB:-openplanner}"
       MONGODB_EVENTS_COLLECTION: "${MONGODB_EVENTS_COLLECTION:-events}"
       MONGODB_COMPACTED_COLLECTION: "${MONGODB_COMPACTED_COLLECTION:-compacted_memories}"
@@ -85,6 +85,7 @@ services:
   # MongoDB - shared with Cephalon Hive for unified perception storage
   mongodb:
     image: mongo:7
+    command: ["mongod", "--replSet", "openplanner", "--bind_ip_all"]
     ports:
       - "${OPENPLANNER_MONGODB_PORT:-27017}:27017"
     environment:
@@ -92,7 +93,7 @@ services:
     volumes:
       - openplanner-mongodb-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { if (!db.adminCommand({hello: 1}).setName) rs.initiate({_id: \"openplanner\", members: [{_id: 0, host: \"mongodb:27017\"}]}); } catch (e) { if (e.code !== 23) throw e; } quit(db.adminCommand({hello: 1}).isWritablePrimary ? 0 : 1);"]
       interval: 30s
       timeout: 10s
       retries: 3

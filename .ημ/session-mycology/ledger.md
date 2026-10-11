@@ -964,3 +964,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-config-authority-correction-red-20261011
   note: Earlier pending two-file scope interpretation overlooked original authorization explicitly including required configuration. Corrected by append,not history rewrite;necessary Mongo source config remains existing B3 dependency. Original246 journal prefixes/40 raw records preserved;42 records now retained. New required CI fixture will prove actual checked-in service command/health/client URI and SDK transaction rollback using only uniquely owned source fixture. No live/runtime/board/paid/spore mutation or review credit.
+
+- ts: 2026-10-11T07:23:42.538Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-config-full-green-20261011
+  note: Original authorization includes necessary configuration;earlier scope pause superseded append-only. Documented replica source and direct local example now agree with SDK atomic transactions. Initial expected readiness retry ECONNREFUSED retained,eventual checks pass;owned fixture cleaned. All247 journal prefixes/44 bundle records preserved;47 full records/150 review inputs/original56 hash unchanged. No live/runtime/board/deployment/paid/spore mutation;native qualification still owed.
