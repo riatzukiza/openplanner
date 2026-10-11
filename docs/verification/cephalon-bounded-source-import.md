@@ -1133,3 +1133,37 @@ The proposed SDK change targets only the default localhost seed; explicit
 multi-host, SRV and explicitly non-direct URI overrides retain their exact
 provided values. This component alone does not fix or settle the documented
 standalone server's transaction failure; the root scope decision is outstanding.
+
+## P1 default SDK seed: authorized package component GREEN
+
+Ordinary RED `9bd2049f69b01684db7c11db5a3acd1c356be190` reproduces the
+default local-seed discovery failure. The SDK now defaults to
+`mongodb://localhost:27017/?directConnection=true`; explicit supplied cluster,
+SRV and non-direct URI values remain untouched. This package-level correction
+supersedes the earlier dated observation that the default URI was unchanged.
+
+All19 freshly executed bounded gates PASS: SDK963/963; graph77/605;
+hydration13/108; cache17/176; JVM17/100; zero compiler/lint warnings. The
+intentionally injected graph assertion still yields exit1. A real isolated
+replica advertises the reserved unresolvable hostname
+`cephalon-owned-seed.invalid:27017`; actual loadConfig uses only an adjusted
+fixture port and now connects to its writable primary and performs an actual
+atomic SDK vector write. The owned container is removed. This validates the
+local single-seed default, not the unchanged documented standalone service.
+
+The existing Knoxx consumer passes1977 tests/11459 assertions in90.738seconds
+with zero failures/errors/compiler warnings. The same73 package-input hashes
+match all19 execution and consumer execution, and both heads/working package
+bytes remain unchanged. Only the owned temporary snapshot was cleaned. Four
+complete captures append to the existing36-record bundle, preserving all
+prior records/full raw bytes/provenance; the bundle now retains40 records.
+Original56 selection remains byte-identical and all150 changed review inputs
+remain included. Source245 journal/reflection prefixes are retained.
+
+The root docker-compose.yml/.env.example scope question is still pending and
+neither file was edited. This in-package component does not settle P1's actual
+standalone transaction error20. The complete candidate remains local/unpushed
+while that root decision is pending. Native PR3 stays ed91509; its eight
+conversations remain unresolved and existing MiMo38117099081 remains live in
+the latest fresh capture. No approval, merge, deployment, physical-field/mood
+admission or live B3 completion is claimed.

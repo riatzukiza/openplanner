@@ -97,7 +97,7 @@ export function loadConfig(): OpenPlannerConfig {
   const compactedTtlSeconds = parsePositiveInt(process.env.MONGODB_COMPACTED_TTL_SECONDS, 0);
 
   const mongodb: MongoConfig = {
-    uri: mustGet("MONGODB_URI", "mongodb://localhost:27017"),
+    uri: mustGet("MONGODB_URI", "mongodb://localhost:27017/?directConnection=true"),
     dbName: mustGet("MONGODB_DB", "openplanner"),
     eventsCollection: mustGet("MONGODB_EVENTS_COLLECTION", "events"),
     compactedCollection: mustGet("MONGODB_COMPACTED_COLLECTION", "compacted_memories"),
