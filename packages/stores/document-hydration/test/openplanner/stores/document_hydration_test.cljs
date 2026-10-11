@@ -1,5 +1,6 @@
 (ns openplanner.stores.document-hydration-test
   (:require [cljs.test :as t :refer [async deftest is run-tests]]
+            [openplanner.stores.cache.core :as core]
             [openplanner.stores.document-hydration :as hydration]))
 
 (defmethod t/report [:cljs.test/default :summary] [m]
@@ -32,14 +33,16 @@
       (is (= "code" (.-kind doc))))))
 
 (deftest memory-lru-cache-ttl-and-eviction-test
-  (let [cache (hydration/create-memory-lru-cache #js {:maxEntries 1 :defaultTtlMs 5})]
-    (hydration/cache-put-js cache "a" "A")
-    (is (= "A" (hydration/cache-get-js cache "a")))
-    (hydration/cache-put-js cache "b" "B")
-    (is (nil? (hydration/cache-get-js cache "a")))
-    (is (= "B" (hydration/cache-get-js cache "b")))
-    (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 8)
-    (is (nil? (hydration/cache-get-js cache "b")))))
+  (let [clock (atom 1000)]
+    (with-redefs [core/now-ms #(deref clock)]
+      (let [cache (hydration/create-memory-lru-cache #js {:maxEntries 1 :defaultTtlMs 5})]
+        (hydration/cache-put-js cache "a" "A")
+        (is (= "A" (hydration/cache-get-js cache "a")))
+        (hydration/cache-put-js cache "b" "B")
+        (is (nil? (hydration/cache-get-js cache "a")))
+        (is (= "B" (hydration/cache-get-js cache "b")))
+        (reset! clock 1008)
+        (is (nil? (hydration/cache-get-js cache "b")))))))
 
 (deftest layered-cache-promotes-lower-layer-hit-test
   (async done

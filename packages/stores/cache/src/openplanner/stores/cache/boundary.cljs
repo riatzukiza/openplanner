@@ -22,16 +22,16 @@
 (defn cache-get-js [cache k] (cache/cache-get cache k))
 
 (defn cache-put-js
-  ([cache k v] (cache-put-js cache k v nil))
+  ([cache k v] (cache/cache-put! cache k v {}))
   ([cache k v ttl-ms]
-   (cache/cache-put! cache k v (cond-> {} ttl-ms (assoc :ttlMs ttl-ms)))))
+   (cache/cache-put! cache k v (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
 
 (defn cache-evict-js [cache k] (cache/cache-evict! cache k))
 
 (defn cache-touch-js
-  ([cache k] (cache-touch-js cache k nil))
+  ([cache k] (cache/cache-touch! cache k {}))
   ([cache k ttl-ms]
-   (cache/cache-touch! cache k (cond-> {} ttl-ms (assoc :ttlMs ttl-ms)))))
+   (cache/cache-touch! cache k (cond-> {} (some? ttl-ms) (assoc :ttlMs ttl-ms)))))
 
 (defn cache-cleanup-js [cache] (cache/cache-cleanup! cache))
 (defn cache-stats-js [cache] (clj->js (cache/cache-stats cache)))

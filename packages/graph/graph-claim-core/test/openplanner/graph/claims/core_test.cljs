@@ -266,9 +266,12 @@
 
 (deftest lifecycle-evidence-retains-only-nonblank-string-identities
   (doseq [action ["support" "refute"]]
+    (is (thrown-with-msg? js/Error #"evidence"
+          (lifecycle/transition-plan-js action
+            #js {:event_ids #js [42 #js {:id "malformed"} nil true #js ["array"]
+                                "" "  " " valid " "valid" "other"]})))
     (let [result (lifecycle/transition-plan-js action
-                  #js {:event_ids #js [42 #js {:id "malformed"} nil true #js ["array"]
-                                      "" "  " " valid " "valid" "other"]})]
+                  #js {:event_ids #js [" valid " "valid" "other"]})]
       (is (= ["valid" "other"] (js->clj (aget result "eventIds")))))))
 
 (deftest default-policy-and-projection-share-expiration-boundary

@@ -47,14 +47,16 @@
     (is (true? (aget (boundary/explain-projection-envelope-js envelope) "valid")))))
 
 (deftest memory-lru-cache-ttl-and-eviction-test
-  (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 1 :defaultTtlMs 5})]
-    (boundary/cache-put-js cache "a" "A")
-    (is (= "A" (boundary/cache-get-js cache "a")))
-    (boundary/cache-put-js cache "b" "B")
-    (is (nil? (boundary/cache-get-js cache "a")))
-    (is (= "B" (boundary/cache-get-js cache "b")))
-    (js/Atomics.wait (js/Int32Array. (js/SharedArrayBuffer. 4)) 0 0 8)
-    (is (nil? (boundary/cache-get-js cache "b")))))
+  (let [clock (atom 1000)]
+    (with-redefs [core/now-ms #(deref clock)]
+      (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 1 :defaultTtlMs 5})]
+        (boundary/cache-put-js cache "a" "A")
+        (is (= "A" (boundary/cache-get-js cache "a")))
+        (boundary/cache-put-js cache "b" "B")
+        (is (nil? (boundary/cache-get-js cache "a")))
+        (is (= "B" (boundary/cache-get-js cache "b")))
+        (reset! clock 1008)
+        (is (nil? (boundary/cache-get-js cache "b")))))))
 
 (deftest layered-cache-promotes-lower-layer-hit-test
   (async done
@@ -204,11 +206,11 @@
       (doseq [cache [(boundary/create-memory-lru-cache #js {})
                     (boundary/create-lmdb-cache #js {:db db})]]
         (is (thrown-with-msg? js/Error #"TTL|ttl"
-              (boundary/cache-put-js cache "invalid" "value" #js {:ttlMs ttl})))
+              (boundary/cache-put-js cache "invalid" "value" ttl)))
         (is (nil? (boundary/cache-get-js cache "invalid")))))
     (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 0})
                   (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 0})]]
-      (boundary/cache-put-js cache "zero" "retained" #js {:ttlMs 0})
+      (boundary/cache-put-js cache "zero" "retained" 0)
       (is (= "retained" (boundary/cache-get-js cache "zero"))))))
 
 (defn -main []

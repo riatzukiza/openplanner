@@ -173,7 +173,12 @@
                (status-set-from-js (jget opts "statuses"))
                claims/projectable-statuses)
    :include-expired? (true? (jget opts "includeExpired"))
-   :now-ms (or (parse-ms (jget opts "now")) (.now js/Date))})
+   :now-ms (if (and (js-object? opts) (js/Object.hasOwn opts "now"))
+             (let [ms (parse-ms (jget opts "now"))]
+               (if (and (number? ms) (js/Number.isFinite ms))
+                 ms
+                 (throw (js/Error. "projection now must be a valid timestamp"))))
+             (.now js/Date))})
 
 (defn- claim-id-from-js
   "Generate only when neither alias was supplied; malformed explicit IDs stay invalid."

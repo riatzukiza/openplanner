@@ -61,7 +61,7 @@
   [opts]
   (let [db (core/jget opts "db")
         prefix (or (core/jget opts "prefix") "")
-        default-ttl-ms (or (core/jget opts "defaultTtlMs") (* 5 60 60 1000))]
+        default-ttl-ms (core/default-ttl-ms opts)]
     (when-not db
       (throw (js/Error. "createLmdbCache requires an open LMDB database handle")))
-    (LmdbTtlCache. db prefix (long default-ttl-ms))))
+    (LmdbTtlCache. db prefix default-ttl-ms)))

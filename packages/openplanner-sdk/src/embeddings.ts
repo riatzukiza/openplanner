@@ -37,16 +37,17 @@ async function isOverflowResponse(response: Response): Promise<boolean> {
 }
 
 function averageEmbeddings(embeddings: number[][]): number[] {
-  if (embeddings.length === 0) return [];
-  if (embeddings.length === 1) return embeddings[0]!;
-  const dims = embeddings[0]!.length;
+  const dims = embeddings[0]?.length ?? 0;
+  if (dims === 0 || embeddings.some(embedding => embedding.length !== dims)) {
+    throw new Error("Embedding fragment dimensions must agree and be nonzero");
+  }
   const sum = new Array(dims).fill(0);
   for (const emb of embeddings) {
     for (let i = 0; i < dims; i++) {
-      sum[i] += emb[i] ?? 0;
+      sum[i] += emb[i]! / embeddings.length;
     }
   }
-  return sum.map((s) => s / embeddings.length);
+  return sum;
 }
 
 export class EmbedProviderFunction implements IEmbeddingFunction {

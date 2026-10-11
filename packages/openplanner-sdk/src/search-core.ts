@@ -37,11 +37,13 @@ function boundedSearchLimit(value: unknown): number {
 }
 
 export function qualityMode(value: unknown): QualityMode {
-  const normalized = String(value ?? "good_then_not_bad").trim().toLowerCase().replace(/-/g, "_");
+  if (value === undefined) return "good_then_not_bad";
+  if (typeof value !== "string") throw new Error("Unsupported quality mode");
+  const normalized = value.trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "good" || normalized === "not_bad" || normalized === "any" || normalized === "good_then_not_bad") {
     return normalized;
   }
-  return "good_then_not_bad";
+  throw new Error("Unsupported quality mode");
 }
 
 function rowId(row: unknown): string {
@@ -95,7 +97,7 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
 
   const lim = boundedSearchLimit(limit);
   const tier = searchTier(body.tier);
-  const mode = qualityMode(body.quality ?? (body as any).output_quality);
+  const mode = qualityMode(body.quality === undefined ? (body as any).output_quality : body.quality);
 
   const runFts = async (quality: "good" | "not_bad" | "any", remainingLimit = lim, excludeIds: string[] = []) => {
     const options = {
@@ -120,9 +122,13 @@ export async function ftsSearchWithQuality(ctx: SearchContext, body: FtsSearchRe
         return { ftsEnabled: false, rows: rows.map((row): Record<string, unknown> => ({ ...row as Record<string, unknown>, tier: rowTier })) };
       }
     }));
+    const tsMs = (row: Record<string, unknown>): number => {
+      const ts = row.ts;
+      const ms = ts instanceof Date ? ts.getTime() : Date.parse(String(ts ?? ""));
+      return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+    };
     const sorted = results.flatMap(result => result.rows).sort((a, b) =>
-      new Date(String(b.ts ?? "")).getTime() - new Date(String(a.ts ?? "")).getTime()
-      || rowId(a).localeCompare(rowId(b)));
+      (tsMs(b) - tsMs(a)) || rowId(a).localeCompare(rowId(b)));
     const seen = new Set<string>();
     const rows = sorted.filter(row => {
       const id = rowId(row);
@@ -186,7 +192,7 @@ export async function vectorSearchWithQuality(ctx: SearchContext, body: VectorSe
   const tier = searchTier(body.tier);
   const includeHot = tier !== "compact";
   const includeCompact = tier !== "hot";
-  const mode = qualityMode(body.quality ?? (body as any).output_quality);
+  const mode = qualityMode(body.quality === undefined ? (body as any).output_quality : body.quality);
 
   const embeddingRuntime = ctx.embeddingRuntime;
 

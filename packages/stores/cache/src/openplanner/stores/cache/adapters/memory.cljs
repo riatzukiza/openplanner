@@ -79,4 +79,4 @@
        (throw (js/Error. "maxEntries must be a non-negative safe integer")))
      (MemoryLruCache. (atom {}) (atom 0)
                       capacity
-                      (long (or (:defaultTtlMs opts) (:default-ttl-ms opts) (* 5 60 60 1000)))))))
+                      (core/default-ttl-ms opts)))))

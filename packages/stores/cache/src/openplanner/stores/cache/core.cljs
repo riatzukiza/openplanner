@@ -23,10 +23,24 @@
   [opts]
   (if (obj? opts) (js->clj opts :keywordize-keys true) (or opts {})))
 
+(defn- ttl-option
+  [opts fields fallback]
+  (if-let [field (first (filter #(if (map? opts)
+                                 (contains? opts %)
+                                 (and (obj? opts) (js/Object.hasOwn opts (name %)))) fields))]
+    (if (map? opts) (get opts field) (jget opts (name field)))
+    fallback))
+
+(defn- checked-ttl-ms
+  [value]
+  (when-not (and (number? value) (js/Number.isFinite value) (<= 0 value))
+    (throw (js/Error. "Cache TTL must be a finite non-negative number")))
+  value)
+
 (defn ttl-ms
   [opts default-ttl-ms]
-  (let [opts (opts-map opts)]
-    (long (or (:ttlMs opts)
-              (:ttl-ms opts)
-              default-ttl-ms
-              0))))
+  (checked-ttl-ms (ttl-option opts [:ttlMs :ttl-ms] (or default-ttl-ms 0))))
+
+(defn default-ttl-ms
+  [opts]
+  (checked-ttl-ms (ttl-option opts [:defaultTtlMs :default-ttl-ms] (* 5 60 60 1000))))

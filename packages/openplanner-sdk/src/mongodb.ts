@@ -993,6 +993,7 @@ export async function upsertCompactedMemory(
   memory: Omit<CompactedMemoryDocument, "_id" | "createdAt" | "updatedAt">,
   ttlSeconds = parsePositiveIntEnv("MONGODB_COMPACTED_TTL_SECONDS"),
 ): Promise<void> {
+  assertNonblankIdentifier(memory.id, "compacted memory id");
   const now = new Date();
   const { expiresAt: _callerExpiry, ...content } = memory;
   const labels = labelsFromExtra(memory.extra);
@@ -1075,6 +1076,20 @@ export async function upsertGraphNodeEmbeddings(
   }>,
 ): Promise<number> {
   if (rows.length === 0) return 0;
+  for (const row of rows) {
+    assertNonblankIdentifier(row.node_id, "graph embedding node_id");
+    assertNonblankIdentifier(row.source_event_id, "graph embedding source_event_id");
+    const index = row.chunk_index ?? 0;
+    if ((row.embedding_model != null && typeof row.embedding_model !== "string")
+        || !Number.isSafeInteger(row.embedding_dimensions) || row.embedding_dimensions <= 0
+        || !Number.isSafeInteger(index) || index < 0
+        || !Number.isSafeInteger(row.chunk_count) || row.chunk_count <= index
+        || (row.project != null && typeof row.project !== "string")
+        || !Array.isArray(row.embedding) || row.embedding.length !== row.embedding_dimensions
+        || !row.embedding.every(value => typeof value === "number" && Number.isFinite(value))) {
+      throw new Error("Invalid graph embedding tuple or vector");
+    }
+  }
   const now = new Date();
 
   await collection.bulkWrite(
@@ -1302,6 +1317,18 @@ export async function upsertGraphEdges(
   return rows.length;
 }
 
+function applyExactSearchFilters(
+  filter: Record<string, unknown>,
+  options: { source?: string; kind?: string; project?: string; session?: string; visibility?: string },
+): void {
+  for (const field of ["source", "kind", "project", "session", "visibility"] as const) {
+    const value = options[field];
+    if (value === undefined) continue;
+    if (typeof value !== "string") throw new Error("search filter " + field + " must be a string");
+    filter[field === "visibility" ? "extra.visibility" : field] = value;
+  }
+}
+
 /**
  * Full-text search on events.
  */
@@ -1324,11 +1351,7 @@ export async function ftsSearch(
     $text: { $search: query },
   };
 
-  if (options.source) filter.source = options.source;
-  if (options.kind) filter.kind = options.kind;
-  if (options.project) filter.project = options.project;
-  if (options.session) filter.session = options.session;
-  if (options.visibility) filter["extra.visibility"] = options.visibility;
+  applyExactSearchFilters(filter, options);
   if (options.quality === "good") filter["extra.openplanner_labels.quality"] = "good";
   if (options.quality === "not_bad") filter["extra.openplanner_labels.quality"] = { $ne: "bad" };
   if (options.excludeIds?.length) filter.id = { $nin: options.excludeIds };
@@ -1383,11 +1406,7 @@ export async function ilikeSearch(
     text: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
   };
 
-  if (options.source) filter.source = options.source;
-  if (options.kind) filter.kind = options.kind;
-  if (options.project) filter.project = options.project;
-  if (options.session) filter.session = options.session;
-  if (options.visibility) filter["extra.visibility"] = options.visibility;
+  applyExactSearchFilters(filter, options);
   if (options.quality === "good") filter["extra.openplanner_labels.quality"] = "good";
   if (options.quality === "not_bad") filter["extra.openplanner_labels.quality"] = { $ne: "bad" };
   if (options.excludeIds?.length) filter.id = { $nin: options.excludeIds };

@@ -64,10 +64,10 @@ function parsePairList(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const entry of entries) {
     const eq = entry.indexOf("=");
-    if (eq <= 0) continue;
+    if (eq <= 0) throw new Error("Invalid embedding model routing map");
     const key = normKey(entry.slice(0, eq));
     const value = normKey(entry.slice(eq + 1));
-    if (!key || !value) continue;
+    if (!key || !value) throw new Error("Invalid embedding model routing map");
     Object.defineProperty(out, key, { value, enumerable: true, writable: true, configurable: true });
   }
   return out;
@@ -75,14 +75,14 @@ function parsePairList(raw: string): Record<string, string> {
 
 function parseJsonObject(raw: string): Record<string, string> {
   const parsed: unknown = JSON.parse(raw);
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("Invalid embedding model routing map");
 
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(parsed)) {
-    if (typeof v !== "string") continue;
+    if (typeof v !== "string") throw new Error("Invalid embedding model routing map");
     const key = normKey(k);
     const value = normKey(v);
-    if (!key || !value) continue;
+    if (!key || !value) throw new Error("Invalid embedding model routing map");
     Object.defineProperty(out, key, { value, enumerable: true, writable: true, configurable: true });
   }
   return out;
@@ -97,7 +97,7 @@ export function parseModelMap(raw: string | undefined): Record<string, string> {
     try {
       return parseJsonObject(input);
     } catch {
-      return parsePairList(input);
+      throw new Error("Invalid embedding model routing map");
     }
   }
 

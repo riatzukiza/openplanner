@@ -10,13 +10,10 @@
 
 (defn- event-ids-from-js
   [value]
-  (if (array? value)
-    (->> (array-seq value)
-         (keep #(when (string? %) (.trim %)))
-         (filter seq)
-         distinct
-         vec)
-    []))
+  (when-not (and (array? value)
+                 (every? #(and (string? %) (seq (.trim %))) (array-seq value)))
+    (throw (js/Error. "Lifecycle evidence IDs must be an array of nonblank strings")))
+  (->> (array-seq value) (map #(.trim %)) distinct vec))
 
 (defn- jget
   [obj k]

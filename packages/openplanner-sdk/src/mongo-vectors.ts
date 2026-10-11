@@ -723,6 +723,15 @@ function toMongoVectorDocument(entry: MongoVectorEntry, tier: MongoVectorTier, n
   };
 }
 
+function assertUniqueVectorIds(entries: ReadonlyArray<MongoVectorEntry>): void {
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    assertNonblankIdentifier(entry.id, "vector id");
+    if (ids.has(entry.id)) throw new Error("Duplicate vector id in batch");
+    ids.add(entry.id);
+  }
+}
+
 export async function upsertMongoVectorDocuments(
   mongo: MongoConnection,
   tier: MongoVectorTier,
@@ -730,6 +739,7 @@ export async function upsertMongoVectorDocuments(
 ): Promise<void> {
   if (entries.length === 0) return;
 
+  assertUniqueVectorIds(entries);
   const now = new Date();
   const documents = entries.map((entry) => toMongoVectorDocument(entry, tier, now, vectorTtlSeconds(mongo, tier)));
   const flatCollection = getFlatCollection(mongo, tier);
@@ -933,6 +943,7 @@ async function replaceMongoVectorParents(
   entries: ReadonlyArray<MongoVectorEntry>,
 ): Promise<void> {
   for (const parentId of parentIds) assertNonblankIdentifier(parentId, "vector parentId");
+  assertUniqueVectorIds(entries);
   const parents = new Set(parentIds);
   if (entries.some(entry => !parents.has(entry.parentId))) throw new Error("replacement entry parentId must belong to the requested parents");
   // Empty graph cleanup is a no-op only after inspecting every storage copy.
