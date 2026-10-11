@@ -712,3 +712,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-1e7f755-ten-guards-red-20261011
   note: 10native5481523582COMMENTEDfindings,notapproval. Initialnewcachetestafterlexicalrun-tests macro ranonlyexisting11/47PASS;ownednewtest movedbeforeunchangedmain,actual12/73/24fail0error;oldassertionsretained. DirectcompactedID/graphtuple,emptyexactFTS,quality,duplicatevectors,lifecycleevidence,projectiontime,TTLroutingandfragmentdimensionsreproduced. Source218prefix/56manifestpreserved. CurrentCodeRabbitfull6104333850 pending;old2bMiMoactuallycancelled after434secgrace,current1eMiMoinprogress;no live/board/deploy/paid/spore.
+
+- ts: 2026-10-11T02:00:32.027Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-1e7f755-coderabbit-date-red-20261011
+  note: Native full CodeRabbit6104333850 completed via6104334695 at01:57:16UTC,5481545352 COMMENTED two real findings;no body-only item markers. BSONDate merging precision reproduced with four new tests:actual638/634PASS4FAIL with ten Codex SDK guards prepared and date comparator unchanged. New cache tests passed options object to scalar TTL argument; corrected only newly authored calls to numeric TTL and retained earlier outputs. Actual corrected numeric RED12tests73assertions24FAIL0error on unchanged cache production. New deterministic-clock fixture repair preserves all prior TTL/eviction assertions. No approval/round/live claim;original56 and219 journal prefixes preserved.

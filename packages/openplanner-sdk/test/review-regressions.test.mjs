@@ -1975,3 +1975,10 @@ test('Codex1e: overflow fragments must have equal dimensions and cannot poison t
     const provider=new EmbedProviderFunction('fixture','http://fixture.invalid',{batchWindowMs:1,cache:new PersistentEmbeddingCache()});await assert.rejects(provider.generate(['ab']),/dimension/i);failing=false;assert.deepEqual(await provider.generate(['ab']),[[0,0,1]]);assert.ok(requests>=5);
   });
 });
+
+// Native CodeRabbit5481545352/4239918959: BSON Date precision survives tier merging.
+for (const fallback of [false,true]) for (const quality of ['any','good_then_not_bad']) test(`CodeRabbit1e: ${fallback?'substring':'FTS'} ${quality} preserves BSON milliseconds before the limit`,async()=>{
+  const mongo=mongoFixture();const row=(id,ts)=>({id,ts:new Date(ts),extra:{openplanner_labels:{quality:'good'}}});
+  mongo.events=collection('events',[row('a-older','2026-10-11T00:00:00.100Z')]);mongo.compacted=collection('compacted',[row('z-newer','2026-10-11T00:00:00.900Z')]);mongo.events.failText=fallback;mongo.compacted.failText=fallback;
+  const result=await ftsSearchWithQuality({mongo},{q:'outside',tier:'both',quality,limit:1});assert.deepEqual(result.rows.map(row=>row.id),['z-newer']);assert.equal(result.ftsEnabled,!fallback);
+});
