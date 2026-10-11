@@ -901,3 +901,12 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-bounded-codex0b-eight-findings-green-20261011
   note: Eight reviewed source defects repaired; source and actual consumer fixture gates pass. Native fresh-head review, hosted execution and qualification remain owed. No runtime/board/deployment/publication/model/grant/paid/spore change.
+
+- ts: 2026-10-11T06:02:29.219Z
+  task: Bounded Codex review repair
+  p-efficiency: 0.8
+  p-friction: 0.25
+  p-skill-candidate: 0.12
+  spore: none
+  receipt-refs: cephalon-bounded-codexd128-four-findings-red-20261011
+  note: Persist verified RED before minimal GREEN. Preserve valid ISO date-only, finite zero clocks, configured filesystem-root access and complete Unicode code points.

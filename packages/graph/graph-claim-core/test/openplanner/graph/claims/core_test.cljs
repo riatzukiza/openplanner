@@ -448,3 +448,31 @@
            :direction :directed :scope-json "{}"}
         b (assoc a :target-node-id "b" :relation-kind "c\nd")]
     (is (not= (claims/claim-id-material a) (claims/claim-id-material b)))))
+
+(deftest claim-timestamps-reject-non-iso-and-impossible-calendar-values
+  (doseq [value ["2021" "02/01/2021" "2021-02-30" "2021-02-30T00:00:00Z"
+                 "2023-02-29T00:00:00Z" "2021-04-31T00:00:00Z"
+                 "2021-01-01T24:00:00Z" "2021-01-01T00:60:00Z"
+                 "2021-01-01T00:00:60Z" "2021-01-01T00:00:00+24:00"
+                 "2021-01-01T00:00:00+00:60" "2021-01-01T00:00:00"]]
+    (let [claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                     :status "active" :validUntil value}]
+      (is (false? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now 0})))
+      (is (thrown-with-msg? js/Error #"valid timestamp"
+            (boundary/projection-options-from-js #js {:now value})))
+      (is (thrown-with-msg? js/Error #"valid timestamp"
+            (mongo/project-mongo-edge-claims-js #js [claim] #js {:now value}))))))
+
+(deftest claim-timestamps-preserve-iso-dates-instants-and-numeric-date-inputs
+  (doseq [value ["2024-02-29" "2024-02-29T12:34:56Z"
+                 "2024-02-29T12:34:56.123Z" "2024-02-29T12:34:56+05:30"
+                 "+002024-02-29T12:34:56Z" 1000 (js/Date. 1000)]]
+    (let [ms (if (string? value) (js/Date.parse value)
+              (if (number? value) value (.getTime value)))
+          claim #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                     :status "active" :validUntil value}]
+      (is (true? (aget (boundary/explain-edge-claim-js claim) "valid?")))
+      (is (= ms (:now-ms (boundary/projection-options-from-js #js {:now value}))))
+      (is (some? (boundary/project-edge-claim-js claim #js {:now (dec ms)})))
+      (is (nil? (boundary/project-edge-claim-js claim #js {:now ms}))))))

@@ -3,7 +3,7 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, rm, symlink, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, parse } from 'node:path';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
@@ -2420,4 +2420,41 @@ for(const key of ['latestDefinition','definition'])test(`Codex0b: graph index re
  t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);
  t.mock.method(Date,'now',()=>{clock+=1000;return clock;});t.mock.method(globalThis,'setTimeout',resolve=>{sleeps++;queueMicrotask(resolve);return {unref(){},ref(){}};});
  await withEnv({EMBED_PROVIDER_DIMENSIONS:'2'},async()=>openMongoDB(openingConfig));assert.equal(updates,1);assert.equal(polls,3);assert.equal(sleeps,1);
+});
+
+test('Codexd128: explicit filesystem root admits its owned hydration fixture through both containment checks',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'openplanner-filesystem-root-'));
+ try{const file=join(dir,'outside.txt');await writeFile(file,'root-scoped outside encounter');
+  await withEnv({OPENPLANNER_SOURCE_ROOT:parse(dir).root},async()=>{
+   const row={id:'filesystem-root',extra:{source_path:file}};
+   assert.equal(safeSourceFilePath(row),file);
+   assert.equal(await loadHydrationSourceText(row),'root-scoped outside encounter');
+  });
+ }finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+for(const [name,params,text] of [
+ ['default',{},'a'+'😀'.repeat(9000)],
+ ['odd chars',{targetChunkChars:5,targetChunkTokens:10,overlapChars:0},'a'+'😀'.repeat(20)],
+ ['overlap',{targetChunkChars:7,targetChunkTokens:10,overlapChars:3},'a'+'😀'.repeat(20)],
+ ['token bound',{targetChunkChars:40,targetChunkTokens:2,overlapChars:3},'a'+'😀'.repeat(20)],
+ ['BMP',{targetChunkChars:5,targetChunkTokens:10,overlapChars:1},'αβγδεζηθικλ'],
+])test(`Codexd128: Unicode chunk boundaries preserve code points and offsets ${name}`,()=>{
+ const result=prepareIndexDocument({parentId:'unicode',text,forceChunking:true,...params});
+ assert.ok(result.chunks.length>1);
+ let previous=-1;
+ for(const chunk of result.chunks){
+  assert.equal(chunk.text.isWellFormed(),true);
+  assert.equal(Buffer.from(chunk.text,'utf8').toString('utf8'),chunk.text);
+  assert.equal(chunk.text,result.normalizedText.slice(chunk.charStart,chunk.charEnd));
+  assert.ok(chunk.charStart>previous);previous=chunk.charStart;
+  assert.ok(chunk.text.length<=(params.targetChunkChars??16000));
+  assert.ok(Math.ceil(chunk.text.length/4)<=(params.targetChunkTokens??4000));
+ }
+ assert.equal(result.chunks[0].charStart,0);
+ assert.equal(result.chunks.at(-1).charEnd,result.normalizedText.length);
+});
+test('Codexd128: a one-code-unit budget cannot split an astral code point',()=>{
+ assert.throws(()=>prepareIndexDocument({parentId:'tiny',text:'😀',forceChunking:true,targetChunkChars:1,targetChunkTokens:1,overlapChars:0}),/budget|code point/i);
+ const valid=prepareIndexDocument({parentId:'tiny',text:'ab',forceChunking:true,targetChunkChars:1,targetChunkTokens:1,overlapChars:0});
+ assert.deepEqual(valid.chunks.map(x=>x.text),['a','b']);
 });

@@ -278,5 +278,19 @@
         (is (nil? (boundary/cache-get-js cache "touch"))))
       (finally (set! core/now-ms original)))))
 
+(deftest cache-timestamps-must-stay-finite-through-serialization
+  (doseq [value [js/Infinity js/-Infinity js/NaN -1]]
+    (is (false? (schema/valid-ms? value))))
+  (doseq [value [0 1 0.5 js/Number.MAX_VALUE]]
+    (is (true? (schema/valid-ms? value))))
+  (doseq [[now ttl] [[js/Infinity 1] [1 js/Infinity]
+                    [js/Number.MAX_VALUE js/Number.MAX_VALUE]]]
+    (let [entry (schema/cache-entry {:key "finite" :value "value" :now-ms now :ttl-ms ttl})]
+      (is (false? (:valid? (schema/explain-cache-entry entry))))))
+  (let [entry (schema/cache-entry {:key "finite" :value "value" :now-ms 0 :ttl-ms 1})]
+    (is (:valid? (schema/explain-cache-entry entry)))
+    (is (= 0 (:cache/created-at-ms entry)))
+    (is (= 1 (:cache/expires-at-ms entry)))))
+
 (defn -main []
   (run-tests 'openplanner.stores.cache-test))
