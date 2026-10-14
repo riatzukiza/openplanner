@@ -15,7 +15,7 @@ import TurndownService from 'turndown';
 import { createProtocols } from '../dist/protocol-adapters.js';
 import { openMongoDB, ftsSearch, ilikeSearch, upsertGraphLayoutOverrides, reconcileManagedTtl, upsertEvent, upsertCompactedMemory, upsertGraphNodeEmbeddings, upsertGraphSemanticEdges, upsertGraphSemanticForceSamples, upsertGraphEdges, enqueueMigrationJob } from '../dist/mongodb.js';
 import { makeEmbeddingCacheKey, PersistentEmbeddingCache } from '../dist/embedding-cache.js';
-import { sourceRoot, safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache } from '../dist/source-hydration.js';
+import { sourceRoot, safeSourceFilePath, loadHydrationSourceText, getHydrationCache, closeHydrationCache, hydrateRowFromSourceCache } from '../dist/source-hydration.js';
 import { EmbedProviderFunction, ParallelEmbeddingPool } from '../dist/embeddings.js';
 import { cacheGet, cachePut } from '@open-hax/openplanner-document-hydration';
 import { splitSentences, deduplicateByHash } from '../dist/sentence-split.js';
@@ -2779,6 +2779,8 @@ for(const invalid of [
     await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
       assert.equal(await loadHydrationSourceText(valid),'Valid outside encounter');
       assert.equal(await loadHydrationSourceText(row),null,'malformed identity refuses only this source read');
+      assert.equal(await hydrateRowFromSourceCache(row),row,'direct row hydration preserves a malformed row as a miss');
+      assert.equal((await hydrateRowFromSourceCache(valid)).text,'Valid outside encounter','later valid direct hydration still succeeds');
       assert.equal(await loadHydrationSourceText(valid),'Valid outside encounter','later valid source reads still work');
     });
   } finally {await closeHydrationCache();await rm(dir,{recursive:true,force:true});}

@@ -1171,3 +1171,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk309-source-identity-and-compose-green-20261014
   note: Exact suggested bounded try/catch returns null for malformed key after source-root disabled check, preserving descriptor and sourcehash guards. Real exports aggregation retains valid peer; existing ranked-query candidate catch remains and no whole-query priorfailure is fabricated. Add explicit2s Mongo startup interval supportedbyEngine25+/Compose2.20.2+, current29.9/5.6; officialDocker defaultis5s duringstartperiod, so native30s firstprobe premiseis corrected without refusing harmless supportedrefinement. No new configmirror test or live startupduration claim. First full SDK run mistakenlyused rootcwd and failedone existing childimport resolution999/1000; correct packagecwd rerun1000/1000 with source/assertions unchanged, both logs preserved. No live service/container/maker/board/heartbeat/provider/auth/grant/social/deployment/paid/spore action. Own appendonly268prefix stays intact; newhead requiresfresh native reviews/checks, no approvaltransfer.
+
+- ts: 2026-10-14T23:39:04.796Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing SDK full-review finding4277369008
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk329-direct-hydration-identity-red-20261014
+  note: Direct documentNeedsHydration evaluates identity before guardedloader. New assertions require originalrowobject on malformedidentity and continuedvalidhydration. Initial operator patch usedwrongcwdpath and ranold5pass suite; itsassertionfailed andlogretained, notcausalRED. Correctedactualpatchproduced5causalfailures. No package/route/runtime/paidmodel/credential/deployment change.
