@@ -1161,3 +1161,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk309-malformed-source-identity-red-20261014
   note: Five real temporary-file cases cover nonstring project/lake/hash/path/hostname source identities; direct exported vector-hydration Promise.all case proves an invalid project can reject that aggregation beside an otherwise valid peer. This is exported loader/aggregation RED, not a claim that the full ranked query failed: its earlier hydration admission already catches malformed candidates. Compose start_interval finding is separately a supported timing refinement; currentEngine29 defaults5s during startup rather than claimed30s and no artificial configurationRED is asserted. Preserve all formertests/receipt prefixes; no provider/auth/runtime/board/social/deployment action.
+
+- ts: 2026-10-14T22:23:00.855Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing bounded B3 graph source
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk309-source-identity-and-compose-green-20261014
+  note: Exact suggested bounded try/catch returns null for malformed key after source-root disabled check, preserving descriptor and sourcehash guards. Real exports aggregation retains valid peer; existing ranked-query candidate catch remains and no whole-query priorfailure is fabricated. Add explicit2s Mongo startup interval supportedbyEngine25+/Compose2.20.2+, current29.9/5.6; officialDocker defaultis5s duringstartperiod, so native30s firstprobe premiseis corrected without refusing harmless supportedrefinement. No new configmirror test or live startupduration claim. First full SDK run mistakenlyused rootcwd and failedone existing childimport resolution999/1000; correct packagecwd rerun1000/1000 with source/assertions unchanged, both logs preserved. No live service/container/maker/board/heartbeat/provider/auth/grant/social/deployment/paid/spore action. Own appendonly268prefix stays intact; newhead requiresfresh native reviews/checks, no approvaltransfer.

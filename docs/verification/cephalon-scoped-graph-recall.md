@@ -6,6 +6,28 @@ tested over held SDK collection ports; live identity/storage qualification and
 automatic Knoxx prompt delivery remain unfinished. Passing this package does not complete
 B3, the full recall story, physical field persistence or the separate mood model.
 
+## Current hydration and Compose startup boundaries
+
+The shared source loader treats a malformed source identity as a null hydration
+miss. It retains the disabled-source-root check before key generation and the
+existing descriptor containment and source-hash checks. The exported vector
+hydration adapter therefore returns an empty result for the malformed source
+while a valid peer still reads its actual file. The regression exercises these
+exports; it does not claim that the whole ranked search previously rejected,
+because that path already catches malformed candidates before admission.
+
+The Mongo healthcheck explicitly uses a two-second startup interval, retaining
+its thirty-second steady interval, twenty-second start period and existing
+writable-primary check. This Compose configuration requires Compose 2.20.2 or
+later and Docker Engine 25 or later, as documented by
+[Docker Compose](https://docs.docker.com/reference/compose-file/services/#healthcheck)
+and the [Docker healthcheck reference](https://docs.docker.com/reference/dockerfile/#healthcheck).
+Current Engine 29.9.0 / Compose 5.6.0 support it. On a current engine, an absent
+startup interval defaults to five seconds during the start period; the earlier
+review's thirty-second first-probe premise is not the current engine behavior.
+The explicit two-second interval is a supported refinement, not a measured
+future readiness bound or a live service change.
+
 ## Run the actual library
 
 From `packages/graph/graph-claim-core`:

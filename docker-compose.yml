@@ -98,6 +98,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+      start_interval: 2s
     restart: unless-stopped
     profiles:
       - mongodb

@@ -124,7 +124,12 @@ export function safeSourceFilePath(row: Record<string, unknown>): string | undef
 export async function loadHydrationSourceText(row: Record<string, unknown>): Promise<string | null> {
   const configuredRoot = sourceRoot();
   if (!configuredRoot) return null;
-  const cacheKey = documentCacheKey(row);
+  let cacheKey: string | null = null;
+  try {
+    cacheKey = documentCacheKey(row);
+  } catch {
+    return null;
+  }
   if (!cacheKey) return null;
 
   const candidate = sourceFilePathWithinRoot(row, configuredRoot);
