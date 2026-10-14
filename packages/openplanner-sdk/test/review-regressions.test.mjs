@@ -2762,3 +2762,37 @@ test('Review22: optional LMDB write failure retains the validated source text',a
     });
   } finally {put?.mock.restore();await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });
+
+// Current309 CodeRabbit4276864994: source-key rejection is a bounded miss.
+for(const invalid of [
+  {project:17},
+  {extra:{source_path:'source.txt',lake:false}},
+  {extra:{source_path:'source.txt',content_hash:{invalid:true}}},
+  {extra:{source_path:['source.txt']}},
+  {extra:{source_path:'source.txt',metadata:{hostname:42}}},
+])test('Review309: malformed source identity is a hydration miss '+JSON.stringify(invalid),async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-hydration-identity-'));
+  const valid={id:'valid-source',project:'lake',extra:{source_path:'source.txt'}};
+  const row={...valid,...invalid};
+  try {await writeFile(join(dir,'source.txt'),'Valid outside encounter');
+    await withEnv({OPENPLANNER_SOURCE_ROOT:''},async()=>assert.equal(await loadHydrationSourceText(row),null,'disabled hydration does not evaluate a malformed key'));
+    await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+      assert.equal(await loadHydrationSourceText(valid),'Valid outside encounter');
+      assert.equal(await loadHydrationSourceText(row),null,'malformed identity refuses only this source read');
+      assert.equal(await loadHydrationSourceText(valid),'Valid outside encounter','later valid source reads still work');
+    });
+  } finally {await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});
+
+test('Review309: direct vector hydration aggregation retains a valid peer beside malformed identity',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-vector-hydration-identity-'));
+  const valid={_id:'valid-vector',project:'lake',text:'',source_text_redacted:true,source_ref:{source_path:'source.txt'}};
+  try {await writeFile(join(dir,'source.txt'),'Valid outside encounter');
+    await withEnv({OPENPLANNER_SOURCE_ROOT:dir},async()=>{
+      assert.deepEqual(await Promise.all([
+        hydrateVectorDocumentText({...valid,_id:'malformed-vector',project:17}),
+        hydrateVectorDocumentText(valid),
+      ]),['','Valid outside encounter']);
+    });
+  } finally {await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
+});

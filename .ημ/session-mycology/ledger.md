@@ -1151,3 +1151,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-native763-retention-fixture-stable-clock-20261014
   note: Real hosted failure is preserved, not rerun-until-flaky-pass. The fixture froze Date so independent realclock sampling cannotconsume1ms between expiration and update fields. All assertions and retention policy remainunchanged. Commentary describing a remaining-time assertion was imprecise; actualsource has a saved-record anchor and separateproduction samples, nowdocumentedcorrectly. This in-scope owningtest repair is distinct from pendinghuman reviewerthroughput scope. NativeHTTP500 beforeverifiedrequest isnot a failed providerreview, quotaexclusion or authorpermission failure; no duplicateblindinvite. New currenthead needs fresh ownreviews/hostedCI and priorapproval doesn'ttransfer. No newfixturewarningrepair outsideexistingSDKscope, no runtime/maker/auth/paid/social/deployment/spore change. GoalACTIVE/heartbeatPAUSED/B1B2B3live0of3.
+
+- ts: 2026-10-14T22:20:30.000Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing bounded B3 graph source
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk309-malformed-source-identity-red-20261014
+  note: Five real temporary-file cases cover nonstring project/lake/hash/path/hostname source identities; direct exported vector-hydration Promise.all case proves an invalid project can reject that aggregation beside an otherwise valid peer. This is exported loader/aggregation RED, not a claim that the full ranked query failed: its earlier hydration admission already catches malformed candidates. Compose start_interval finding is separately a supported timing refinement; currentEngine29 defaults5s during startup rather than claimed30s and no artificial configurationRED is asserted. Preserve all formertests/receipt prefixes; no provider/auth/runtime/board/social/deployment action.
