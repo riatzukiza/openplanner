@@ -435,12 +435,18 @@ for(const batch of [false,true])test(`${batch?'batch':'single'} vector indexing 
     if(batch)await batchIndexTextsInMongoVectors({...params,items:[item('formatted','outside content')]});else{const {indexTextInMongoVectors}=await import('../dist/mongo-vectors.js');await indexTextInMongoVectors({...params,parentId:'formatted',text:'outside content',metadata:{embedding_model:'fixture'}});}
   });assert.deepEqual(texts,['passage: outside content']);assert.equal([...mongo.hotVectors.rows.values()][0].text,'outside content');
 });
-test('background indexing cannot settle after a timeout while its underlying task can still write',async()=>{
+test('Review7e: late hot-vector success retains ownership and completed stored vectors',async()=>{
   const mongo=mongoFixture();let release;let entered;const started=new Promise(resolve=>{entered=resolve;});const held=new Promise(resolve=>{release=resolve;});let settled=false;let warned=0;
+  const deleteMany=mongo.hotVectors.deleteMany.bind(mongo.hotVectors);
+  mongo.hotVectors.deleteMany=async(filter,...args)=>{
+    await deleteMany(filter,...args);
+    const parents=typeof filter.parent_id==='string'?[filter.parent_id]:filter.parent_id?.$in??[];
+    for(const [id,row]of mongo.hotVectors.rows)if(parents.includes(row.parent_id))mongo.hotVectors.rows.delete(id);
+  };
   const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return {generate:async()=>{entered();await held;return [[1,2]];}};},getBackgroundEmbeddingFunctionForModel(){return {generate:async texts=>texts.map(()=>[1,2])};}}};
   const originalTimer=globalThis.setTimeout;
   const timer=mock.method(globalThis,'setTimeout',(fn,ms,...args)=>originalTimer(fn,ms===30_000?5:ms,...args));
-  try{const result=await ingestEvents({mongo,embeddingRuntime,log:{warn(){warned++;}}},[{schema:'openplanner.event.v1',id:'slow',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory'}]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));const premature=settled;release();await result.backgroundIndexing;assert.equal(premature,false);assert.ok(warned>0);assert.ok(mongo.hotVectors.calls.writes.length>0);
+  try{const result=await ingestEvents({mongo,embeddingRuntime,log:{warn(){warned++;}}},[{schema:'openplanner.event.v1',id:'slow',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'memory'}]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));const premature=settled;release();await result.backgroundIndexing;assert.equal(premature,false);assert.ok([...mongo.hotVectors.rows.values()].some(row=>row.parent_id==='slow'),'late completed vectors remain independently readable');assert.equal(warned,0,'successful work is not logged as failed');assert.ok(mongo.hotVectors.calls.writes.length>0);
   }finally{release?.();timer.mock.restore();}
 });
 
@@ -2680,4 +2686,33 @@ for(const q of ['', ' \n\t ', null, 23])test('Review470: malformed direct vector
  const mongo=mongoFixture();let storage=0,providers=0;mongo.vectorPartitions.find=()=>{storage++;throw new Error('storage must not run');};
  await assert.rejects(queryMongoVectorsByText({mongo,tier:'hot',q,k:1,getEmbeddingFunctionForModel:()=>{providers++;throw new Error('provider must not run');}}),/query.*nonblank|string.*nonblank|nonblank.*query/i);
  assert.equal(storage,0);assert.equal(providers,0);
+});
+
+// Native current review5523742593: preserve real late outcomes and current file versions.
+test('Review7e: late graph embedding success is stored after retaining ownership',async(t)=>{
+  const mongo=mongoFixture();let release,entered,settled=false;const started=new Promise(resolve=>{entered=resolve;});const held=new Promise(resolve=>{release=resolve;});const warnings=[];
+  const runtime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return {generate:async texts=>texts.map(()=>[1,2])};},getBackgroundEmbeddingFunctionForModel(){return {generate:async texts=>{entered();await held;return texts.map(()=>[1,2]);}};}}};
+  const originalTimer=globalThis.setTimeout;const timer=t.mock.method(globalThis,'setTimeout',(fn,ms,...args)=>originalTimer(fn,ms===30_000?5:ms,...args));
+  try{const result=await ingestEvents({mongo,embeddingRuntime:runtime,log:{warn(obj,msg){warnings.push({obj,msg});}}},[ordinaryEvent('late-graph','An outside encounter supplies stored graph memory.')]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));assert.equal(settled,false,'timeout threshold is not terminal ownership');release();await result.backgroundIndexing;assert.ok([...mongo.graphNodeEmbeddings.rows.values()].some(row=>row.source_event_id==='late-graph'),'real successful graph result reaches its owning store');assert.equal(warnings.length,0);}
+  finally{release?.();timer.mock.restore();}
+});
+
+test('Review7e: late provider rejection reports the actual error after ownership terminates',async(t)=>{
+  const mongo=mongoFixture();let fail,entered,settled=false;const started=new Promise(resolve=>{entered=resolve;});const held=new Promise((_,reject)=>{fail=reject;});const failure=new Error('fixture provider failed after the observation threshold');const warnings=[];
+  const runtime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return {generate:async()=>{entered();await held;return [[1,2]];}};},getBackgroundEmbeddingFunctionForModel(){return {generate:async texts=>texts.map(()=>[1,2])};}}};
+  const originalTimer=globalThis.setTimeout;const timer=t.mock.method(globalThis,'setTimeout',(fn,ms,...args)=>originalTimer(fn,ms===30_000?5:ms,...args));
+  try{const result=await ingestEvents({mongo,embeddingRuntime:runtime,log:{warn(obj,msg){warnings.push({obj,msg});}}},[ordinaryEvent('late-failure','memory')]);result.backgroundIndexing.then(()=>{settled=true;});await started;await new Promise(resolve=>originalTimer(resolve,25));assert.equal(settled,false);fail(failure);await result.backgroundIndexing;const observed=warnings.find(row=>row.obj.eventId==='late-failure');assert.ok(observed);assert.equal(observed.obj.err,failure,'the underlying rejection is not replaced by a timer error');assert.equal([...mongo.hotVectors.rows.values()].some(row=>row.parent_id==='late-failure'),false);}
+  finally{fail?.(failure);timer.mock.restore();}
+});
+
+for(const persistent of [false,true])test(`Review7e: in-place file versions refresh hydration persistent=${persistent}`,async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'hydration-version-7e-')),file=join(dir,'source.txt');
+  try{await closeHydrationCache();await withEnv({OPENPLANNER_SOURCE_ROOT:dir,OPENPLANNER_HYDRATION_LMDB_PATH:persistent?join(dir,'cache'):''},async()=>{
+    const row={id:'stable-file-version',project:'lake',extra:{source_path:'source.txt',content_hash:'unchanged-caller-reference'}};
+    await writeFile(file,'first retained source');const before=await fsPromises.stat(file);assert.equal(await loadHydrationSourceText(row),'first retained source');
+    await writeFile(file,'second retained source has appended text');await fsPromises.utimes(file,new Date(before.mtimeMs+1000),new Date(before.mtimeMs+1000));const appended=await fsPromises.stat(file);assert.equal(appended.ino,before.ino);
+    if(persistent)await closeHydrationCache();assert.equal(await loadHydrationSourceText(row),'second retained source has appended text','same inode/path must not reuse the prior version');
+    const equalSize='SECOND RETAINED SOURCE HAS APPENDED TEXT';assert.equal(Buffer.byteLength(equalSize),appended.size);await writeFile(file,equalSize);await fsPromises.utimes(file,new Date(before.mtimeMs+2000),new Date(before.mtimeMs+2000));assert.equal((await fsPromises.stat(file)).ino,before.ino);
+    if(persistent)await closeHydrationCache();assert.equal(await loadHydrationSourceText(row),equalSize,'mtime changes invalidate same-size rewrites too');
+  });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });

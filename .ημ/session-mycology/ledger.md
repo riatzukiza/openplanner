@@ -1091,3 +1091,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-qualified-context-consumer-pins-20261014
   note: The accepted one-point consumer changes only reusableworkflow selector to riatzukiza/eta-mu at actual qualifiede4 and matching Muse pin toa9. Current OpenCode1.18.31/Node22.20/free-route model/120min/customdiffstat+hygiene/agentsface300/permissions/secrets remain the original plan configuration. The old actual failed consumer trace is causal RED for the shared transport source repair; source RED/GREEN and prompt fix already qualified in owning Muse/ETA. No new mirror test of two declarative pins is added. Local YAML/byte preparation is not actualconsumer execution, functional review or approval. Preserve owned three dated observations with this concrete pin change, no earlier :repo rewrites or raw/evidence/56file removals. New own hosted source/review/checks/full150input qualification and exact authorizedMERGE remain required before consumerDone/epic closure. Historical033c CodeRabbit approval does not transfer. NativeCodeRabbit/Codex availability must be freshly read, no unchanged duplicate quota invite/paid credits/identity alias. B1 B2 B3 remain0of3; goalACTIVE/heartbeatPAUSED; no modelauth/runtime/maker/gateway/clock/social/deployment/newagent/spore change.
+
+- ts: 2026-10-14T20:18:20.454Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing finite B3 SDK recall source delivery
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-7e-three-native-findings-red-20261014
+  note: Actual RED failures are missing late completed hot vectors, unstored late graph vectors, replaced underlying rejection, and stale in-place file text in memory and reopened LMDB. Capture preceded production corrections. This ordinary RED commit stages only tests and append-only evidence; working source corrections remain unstaged for separate GREEN commit. No live provider/Mongo/maker/runtime/board/social/deployment proof or change; full150 inputs/original56/70 retained raw records stay intact. GoalACTIVE/heartbeatPAUSED; no paid model or spore.
