@@ -1407,3 +1407,41 @@ All150 source review paths, original56 import provenance and70 retained raw
 evidence inputs remain intact. Fresh hosted checks and exact-head reviews
 are still required. These fixtures supply no live Mongo, field, mood, stored
 principal, maker prompt, deployment or completed B1/B2/B3 proof.
+
+
+## Three further current native SDK/graph corrections
+
+Native Codex5524262562 roots4275934125/4146 and CodeRabbit5524611166
+root4276223032 identify false-confidence alias normalization, independent
+SDK cache snapshots overwriting one shared file, and an optional hydration
+cache write discarding already readable source text. Original REDf8994ad
+preserves graph80/676 with4failures and the SDK regressions. Receipt265 and
+test correction4eb9b72 explicitly correct the initial optional-cache fixture
+which never reached the write port; those earlier failed captures are not
+causal proof of the production bug. The corrected real owned LMDB put port
+is independently exercised before comparing results. Exact22 committed
+hydration source is compiled by installed TypeScript and temporarily placed
+only in the ignored hydration artifact: actual read text becomesnull on write
+rejection. Current GREEN artifact is restored; corrected focused2/2 passes.
+
+The Mongo adapter now returns the first present alias even when false or nil,
+matching the owning JS boundary's explicit false confidence0 and nil default.
+The runtime shares live persistent caches by resolved configured path, including
+lexical aliases, so both clients use one in-memory snapshot and serialized
+write queue. Weak references and finalization avoid permanent ownership of
+unused cache objects. This is process-local sharing, not independent-process
+locking, external file-change reconciliation or symlink-path equivalence.
+Ephemeral unconfigured caches stay distinct. Optional cachePut rejection is
+caught after the validated descriptor read; fresh text still reaches hydration.
+No read/path authorization check is weakened and no raw error is logged.
+
+Actual final SDK994/994 and full graph80tests676assertions pass, no failures
+errors or skips. Test/released CLJS compilation has0warnings; changed adapter/
+test lint0/0. The actual released ESM Mongo projection reportsconfidence0,
+and the SDK formatter integration passes. Existing npm-config and experimental
+Node notices remain separate from compiler diagnostics. Fresh own hosted gates
+and full current-input reviews remain owed after this concrete source change.
+All150 input paths, original56 provenance, retained raw records and immutable
+receipt/reflection prefixes stay intact. Reviewer throughput scope remains
+human-pending; current model attempts are preserved, with no budget/provider/
+credential/runtime/maker/social/deployment or paid usage changes.

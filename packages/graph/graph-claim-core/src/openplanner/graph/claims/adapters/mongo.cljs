@@ -8,11 +8,13 @@
             [openplanner.graph.claims.core :as claims]))
 
 (defn- get-any
+  "Return the first present alias even when its value is false or nil."
   [m ks]
-  (some (fn [k]
-          (when (contains? m k)
-            (get m k)))
-        ks))
+  (loop [[k & remaining] ks]
+    (when k
+      (if (contains? m k)
+        (get m k)
+        (recur remaining)))))
 
 (defn- present-entry
   "Retain alias presence separately from its value, including false and nil."

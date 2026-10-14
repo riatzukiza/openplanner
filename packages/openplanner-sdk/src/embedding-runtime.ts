@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { OpenPlannerConfig } from "./config.js";
 import { PersistentEmbeddingCache } from "./embedding-cache.js";
 import { embeddingDimensionsForModel, resolveEmbeddingModel } from "./embedding-models.js";
@@ -26,11 +27,30 @@ export type EmbeddingRuntime = {
   };
 };
 
+// Live runtimes sharing one configured file must share its snapshot/write queue.
+// Weak ownership allows an unused cache to be collected; this is process-local,
+// not a lock or merge protocol for independent worker processes.
+const sharedPersistentCaches = new Map<string, WeakRef<PersistentEmbeddingCache>>();
+const cacheFinalizer = new FinalizationRegistry<string>(key => {
+  if (sharedPersistentCaches.get(key)?.deref() === undefined) sharedPersistentCaches.delete(key);
+});
+
+function persistentCacheForPath(cachePath: string | undefined): PersistentEmbeddingCache {
+  if (!cachePath) return new PersistentEmbeddingCache(cachePath);
+  const key = resolve(cachePath);
+  const existing = sharedPersistentCaches.get(key)?.deref();
+  if (existing) return existing;
+  const created = new PersistentEmbeddingCache(key);
+  sharedPersistentCaches.set(key, new WeakRef(created));
+  cacheFinalizer.register(created, key);
+  return created;
+}
+
 export function createEmbeddingRuntime(cfg: OpenPlannerConfig): EmbeddingRuntime {
   const interactiveCache = new Map<string, EmbedProviderFunction>();
   const backgroundCache = new Map<string, EmbedProviderFunction>();
   const parallelPoolCache = new Map<string, ParallelEmbeddingPool>();
-  const persistentCache = new PersistentEmbeddingCache(cfg.embedProviderCachePath);
+  const persistentCache = persistentCacheForPath(cfg.embedProviderCachePath);
 
   const getEmbeddingDimensionsForModel = (model: string): number | undefined =>
     embeddingDimensionsForModel(cfg.embeddingModels, model);

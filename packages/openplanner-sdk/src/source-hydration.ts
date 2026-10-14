@@ -154,7 +154,8 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
     const cached = await cacheGet(hydrationCache, fileCacheKey);
     if (typeof cached === "string") return cached;
     const text = await fileHandle.readFile("utf8");
-    await cachePut(hydrationCache, fileCacheKey, text);
+    try { await cachePut(hydrationCache, fileCacheKey, text); }
+    catch { /* Optional cache persistence cannot discard a validated read. */ }
     return text;
   } catch {
     return null;
