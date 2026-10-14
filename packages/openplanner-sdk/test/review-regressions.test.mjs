@@ -2716,3 +2716,44 @@ for(const persistent of [false,true])test(`Review7e: in-place file versions refr
     if(persistent)await closeHydrationCache();assert.equal(await loadHydrationSourceText(row),equalSize,'mtime changes invalidate same-size rewrites too');
   });}finally{await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });
+
+
+// Current22 native roots4275934146/4276223032: real persistence/read outputs.
+test('Review22: two SDK instances retain disjoint embeddings in one persistent file',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-shared-runtime-'));const path=join(dir,'cache.json');
+  const mongo=mongoFixture();let closes=0,calls=0;const sdks=[];
+  const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});
+  const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
+  const close=mock.method(MongoClient.prototype,'close',async()=>{closes++;});
+  const config={embedProviderCachePath:path,embedProviderBaseUrl:'http://fixture.invalid',embedProviderApiKey:undefined,embedProviderBatchWindowMs:1,mongodb:openingConfig,embeddingModels:{defaultModel:'fixture',bySource:{},byKind:{},byProject:{},dimensionsByModel:{fixture:2}}};
+  try {
+    sdks.push(await createOpenPlannerSdk({config}));
+    sdks.push(await createOpenPlannerSdk({config:{...config,embedProviderCachePath:dir+'/./cache.json'}}));
+    await withFetch(async()=>response(calls++===0?[[1,2]]:[[3,4]]),async()=>{
+      assert.deepEqual(await sdks[0].embeddingRuntime.hot.getEmbeddingFunctionForModel('fixture').generate(['outside-a']),[[1,2]]);
+      assert.deepEqual(await sdks[1].embeddingRuntime.hot.getEmbeddingFunctionForModel('fixture').generate(['outside-b']),[[3,4]]);
+    });
+    await sdks[0].close();await sdks[1].close();assert.equal(closes,2);assert.equal(calls,2);
+    const a=makeEmbeddingCacheKey({model:'fixture',dimensions:2,text:'outside-a'}),b=makeEmbeddingCacheKey({model:'fixture',dimensions:2,text:'outside-b'});
+    const cold=new PersistentEmbeddingCache(path);const saved=await cold.getMany([a,b]);
+    assert.deepEqual(saved.get(a),[1,2]);assert.deepEqual(saved.get(b),[3,4]);
+  } finally {for(const sdk of sdks)await sdk.close();connect.mock.restore();db.mock.restore();close.mock.restore();await rm(dir,{recursive:true,force:true});}
+});
+
+test('Review22: optional LMDB write failure retains the validated source text',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'openplanner-hydration-write-failure-'));const text='Readable outside encounter';
+  const {open}=await import('lmdb');let probe,put;let writes=0;
+  try {await closeHydrationCache();await writeFile(join(dir,'source.txt'),text);
+    await withEnv({OPENPLANNER_SOURCE_ROOT:dir,OPENPLANNER_HYDRATION_LMDB_PATH:join(dir,'cache')},async()=>{
+      probe=open({path:join(dir,'cache')});const prototype=Object.getPrototypeOf(probe);const original=prototype.put;
+      put=mock.method(prototype,'put',async function(key,...args){
+        if(typeof key==='string'&&key.startsWith('hydration:')){writes++;throw new Error('fixture optional store write failed');}
+        return original.call(this,key,...args);
+      });
+      const row={text:'',source_ref:{source_path:'source.txt',content_hash_sha256:'fixture-write-failure'}};
+      assert.equal(await loadHydrationSourceText(row),text);assert.ok(writes>0);
+      const {hydrateRowFromSourceCache}=await import('../dist/source-hydration.js');
+      assert.equal((await hydrateRowFromSourceCache(row)).text,text);
+    });
+  } finally {put?.mock.restore();await closeHydrationCache();await probe?.close();await rm(dir,{recursive:true,force:true});}
+});

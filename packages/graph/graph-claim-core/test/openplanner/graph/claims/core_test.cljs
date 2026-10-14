@@ -520,3 +520,17 @@
           opts #js {:now 1000}]
       (is (= (js->clj (aget (boundary/project-edge-claims-js #js [row] opts) "edges"))
              (js->clj (aget (mongo/project-mongo-edge-claims-js #js [row] opts) "edges")))))))
+
+
+(deftest mongo-confidence-preserves-explicit-false-and-alias-presence
+  (let [row {:source_node_id "a" :target_node_id "b" :relation_kind "supports"
+             :status "active" :confidence false}
+        direct (boundary/edge-claim-from-js (clj->js row))
+        normalized (mongo/edge-claim-from-mongo row)]
+    (is (= 0 (:confidence direct)))
+    (is (= (:confidence direct) (:confidence normalized)))
+    (is (= 0 (:confidence (mongo/edge-claim-from-mongo (assoc row "confidence" 0.9)))))
+    (is (= 0.5 (:confidence (mongo/edge-claim-from-mongo (assoc row :confidence nil "confidence" 0.9)))))
+    (is (= 0 (aget (first (array-seq (aget (mongo/project-mongo-edge-claims-js
+                                         #js [(clj->js row)] #js {:now 1000}) "edges")))
+                  "confidence")))))
