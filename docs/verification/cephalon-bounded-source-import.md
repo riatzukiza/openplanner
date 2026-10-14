@@ -1365,3 +1365,45 @@ No original56 manifest rewrite,new source root,2041-file synchronization,live
 activation,maker/clock/gateway/cloud/model/grant/social/publication/deployment,
 board state,paid usage or spore change. B1 physical field,B2 persisted mood and
 liveB3 remain unfinished. Qualification must use the next actual published head.
+
+## Completed7e full review: late outcomes and in-place file versions
+
+Native CodeRabbit review5523742593 completed on
+`7e111593be60a4848604694e3be548dcad2983ab` with three confirmed findings:
+4275504058 (local `.env`), 4275504070 (late embedding outcome), and
+4275504095 (in-place hydration file version). The actual full request6176739296,
+completion6176741577 and summary6093785717 selected all150 inputs; completion
+with findings supplies no approving verdict. The actual native review body
+contains these same three inline concerns and no additional body-only findings.
+
+The regression capture against the unchanged compiled7e SDK records five tests,
+zero passes and five causal failures. Ordinary RED commit954bc3d preserves the
+tests separately from production changes. The repaired timeout retains ownership
+until the underlying operation settles and returns its actual result or actual
+rejection. A late successful hot-vector write remains independently readable,
+a late graph embedding is stored, and a late provider rejection keeps its own
+error. No cancellation, hard termination bound, terminal availability or
+parent/delegate fencing is established by this observation threshold.
+
+File hydration keeps the same opened descriptor/root checks and uses v5 cache
+identity with device, inode, size and modification time. Real in-place rewrites
+with changed length, then equal length and changed modification time, return
+new text in memory and reopened LMDB. This metadata version is not a guarantee
+against a writer deliberately preserving both size and modification time.
+The root `.env` ignore protects local configuration; the tracked `.env.example`
+remains unignored. No credentials were read or added.
+
+Pinned Node22.20.0/pnpm10.11.0 build succeeds. All five focused regressions and
+all992 existing-plus-new SDK tests pass with zero failures, cancellations or
+skips. The initial shell selected pnpm11.8.0 and refused the repository's
+version requirement before compilation; a mistaken direct pnpm filename also
+failed before compilation. Both operator outputs remain private. Existing
+missing-NPM_TOKEN and Node MockTimers experimental notices remain visible;
+TypeScript compilation emits no diagnostics. No package-manager policy,
+workflow, dependencies or runtime setting changed. The private RED/build/GREEN
+logs retain exact hashes in the new receipt.
+
+All150 source review paths, original56 import provenance and70 retained raw
+evidence inputs remain intact. Fresh hosted checks and exact-head reviews
+are still required. These fixtures supply no live Mongo, field, mood, stored
+principal, maker prompt, deployment or completed B1/B2/B3 proof.

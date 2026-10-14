@@ -1101,3 +1101,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-7e-three-native-findings-red-20261014
   note: Actual RED failures are missing late completed hot vectors, unstored late graph vectors, replaced underlying rejection, and stale in-place file text in memory and reopened LMDB. Capture preceded production corrections. This ordinary RED commit stages only tests and append-only evidence; working source corrections remain unstaged for separate GREEN commit. No live provider/Mongo/maker/runtime/board/social/deployment proof or change; full150 inputs/original56/70 retained raw records stay intact. GoalACTIVE/heartbeatPAUSED; no paid model or spore.
+
+- ts: 2026-10-14T20:19:20.153Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing finite B3 SDK recall source delivery
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-7e-three-native-findings-green-20261014
+  note: Timeout now reports the underlying completed success/rejection after retained ownership. Late hot vectors remain readable; graph results store; actual provider errors propagate to truthful warning. File cache v5 includes validated descriptor device/inode/size/mtime, real memory and reopenedLMDB rewrites verified. Metadata identity does not guarantee resistance to same-size same-mtime adversarial mutation. Initial wrong pnpm version/filename failed before compiler, retained as operator attempts; pinned local pnpm10 succeeded without installation/policy change. Existing npm-config/MockTimers notices remain distinct from compiler diagnostics. Native7e fullreview has3findings, notapproval; body read shows no extra concerns. Current owned MiMo38615534310 was still in_progress; no observation-timeout cancellation. New concrete source head needs fresh native review/CI. Still150inputs/original56/all70raw; no newsourceevidencepath, runtime/Mongo/maker/clock/board/social/deployment/modelauth/paid/spore change. B1B2B3 remain0of3, goalACTIVE/heartbeatPAUSED.

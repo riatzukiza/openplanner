@@ -16,6 +16,9 @@ public/renderer/
 # Dependencies
 node_modules/
 
+# Local credentials; the public .env.example template remains tracked.
+.env
+
 # Data lake / database artifacts (regenerable)
 openplanner-lake/
 

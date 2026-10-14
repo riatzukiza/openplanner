@@ -146,8 +146,10 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
   } catch (error) {
     if (timedOut) {
       // Provider cancellation is not available on every embedding implementation.
-      // Retain ownership until the underlying operation settles; expiry is not termination.
-      try { await promise; } catch { /* Preserve the original timeout outcome. */ }
+      // Retain ownership until the underlying operation settles, then report its
+      // real outcome. The observation threshold is not a hard termination bound;
+      // a late success may already have persisted the owned vectors.
+      return await promise;
     }
     throw error;
   } finally {
