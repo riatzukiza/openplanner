@@ -1445,3 +1445,20 @@ All150 input paths, original56 provenance, retained raw records and immutable
 receipt/reflection prefixes stay intact. Reviewer throughput scope remains
 human-pending; current model attempts are preserved, with no budget/provider/
 credential/runtime/maker/social/deployment or paid usage changes.
+
+
+## Actual hosted retention-clock fixture correction
+
+Current763 hosted functional run38640368065 failed SDK test71 with
+`expiresAt-updatedAt` equal59999 instead of60000. The fixture already used
+the saved record timestamp; the cause is separate production clock samples
+when deriving expiration and recording the update, not a remaining-time
+assertion after an async call. Freeze Date within that one test using the
+existing Node test API, retaining every original exact-duration and exemption
+assertion. Production retention/clock behavior is unchanged. Actual focused
+fixture and full994 SDK tests pass locally; a fresh hosted source gate is owed
+after this concrete fixture change. Preserve the original hosted failure.
+The prior current763 Codex request failed with native GitHubHTTP500 during
+status collection; direct native readback confirms zero current-head writer
+request markers. It is an operator collection failure, not provider quota or
+review completion, and a new corrected head must be invited independently.

@@ -521,7 +521,8 @@ test('unknown session detail modes refuse before reading history',async()=>{
   for(const mode of ['visiblity','',{},42])await assert.rejects(getSessionResponse({mongo},'session-a',{mode}),/mode.*full.*resume.*visibility/i);
   assert.equal(reads,0);
 });
-test('derived graph-node event content follows resolved retention and label exemptions',async()=>{
+test('derived graph-node event content follows resolved retention and label exemptions',async(t)=>{
+  t.mock.timers.enable({apis:['Date'],now:Date.UTC(2026,9,14,12)});
   const mongo=mongoFixture();const provider={generate:async texts=>texts.map(()=>[1,2])};const embeddingRuntime={hot:{getModel(){return 'fixture';},getBackgroundEmbeddingFunction(){return provider;},getBackgroundEmbeddingFunctionForModel(){return provider;}}};
   const event={schema:'openplanner.event.v1',id:'retained-source',ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'outside retained content'};
   const first=await ingestEvents({mongo,embeddingRuntime},[event]);await first.backgroundIndexing;

@@ -1141,3 +1141,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-22-false-confidence-shared-cache-optional-write-green-20261014
   note: Mongo alias access preserves first-present false/nil instead of truthinessfallback. ActualtwoSDKsamefile lexicalaliases retain both disjoint embeddings after close and coldread; process-local resolvedpath shared WeakRef cache and one writequeue, finalizer avoids permanentunusedobjectownership. No multi-processlocking/externalrewrite/symlink-alias guarantee. Optional cachePut failure after validated read preserves freshtext/hydratedrow using exact suggested scopedcatch, no rawfailurelogging or weaker path checks. Initialnewfixture invalidrow and unownedDBprototype didnotexerciseput; causal correction and originaloutputs preserved through receipt265, neverrewritten. Source changes are withinexistingrecall scope and150inputs, distinct from pendinghuman reviewerthroughput addition. New sourcehead mustfreshqualify; prior22Codexpassing and old functionalCI don'ttransfer. Current22MiMo continues, no operatorcancel/restart/budget/provider/auth change. No livefield/mood/maker/automaticpromptproof, runtime/gateway/clock/PM2/cloud/grant/social/publication/deployment/paid/spore mutation. GoalACTIVE/heartbeat humanPAUSED/B1B2B3live0of3.
+
+- ts: 2026-10-14T21:52:16.617Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing bounded SDK source verification
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-native763-retention-fixture-stable-clock-20261014
+  note: Real hosted failure is preserved, not rerun-until-flaky-pass. The fixture froze Date so independent realclock sampling cannotconsume1ms between expiration and update fields. All assertions and retention policy remainunchanged. Commentary describing a remaining-time assertion was imprecise; actualsource has a saved-record anchor and separateproduction samples, nowdocumentedcorrectly. This in-scope owningtest repair is distinct from pendinghuman reviewerthroughput scope. NativeHTTP500 beforeverifiedrequest isnot a failed providerreview, quotaexclusion or authorpermission failure; no duplicateblindinvite. New currenthead needs fresh ownreviews/hostedCI and priorapproval doesn'ttransfer. No newfixturewarningrepair outsideexistingSDKscope, no runtime/maker/auth/paid/social/deployment/spore change. GoalACTIVE/heartbeatPAUSED/B1B2B3live0of3.
