@@ -171,7 +171,10 @@ export async function loadHydrationSourceText(row: Record<string, unknown>): Pro
 }
 
 export async function hydrateRowFromSourceCache(row: Record<string, unknown>): Promise<Record<string, unknown>> {
-  if (!documentNeedsHydration(row)) return row;
+  let needsHydration: boolean;
+  try { needsHydration = documentNeedsHydration(row); }
+  catch { return row; } // Malformed source identity is a hydration miss.
+  if (!needsHydration) return row;
   const sourceText = await loadHydrationSourceText(row);
   return hydrateDocumentRow(row, sourceText).row as Record<string, unknown>;
 }
