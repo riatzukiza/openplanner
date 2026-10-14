@@ -2742,18 +2742,22 @@ test('Review22: two SDK instances retain disjoint embeddings in one persistent f
 
 test('Review22: optional LMDB write failure retains the validated source text',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'openplanner-hydration-write-failure-'));const text='Readable outside encounter';
-  const {open}=await import('lmdb');let probe,put;let writes=0;
+  let put;let writes=0;
   try {await closeHydrationCache();await writeFile(join(dir,'source.txt'),text);
     await withEnv({OPENPLANNER_SOURCE_ROOT:dir,OPENPLANNER_HYDRATION_LMDB_PATH:join(dir,'cache')},async()=>{
-      probe=open({path:join(dir,'cache')});const prototype=Object.getPrototypeOf(probe);const original=prototype.put;
-      put=mock.method(prototype,'put',async function(key,...args){
-        if(typeof key==='string'&&key.startsWith('hydration:')){writes++;throw new Error('fixture optional store write failed');}
-        return original.call(this,key,...args);
-      });
-      const row={text:'',source_ref:{source_path:'source.txt',content_hash_sha256:'fixture-write-failure'}};
-      assert.equal(await loadHydrationSourceText(row),text);assert.ok(writes>0);
+      const cache=await getHydrationCache();const seen=new WeakSet();
+      // Locate the real LMDB public write port through the opaque compiled handle;
+      // no compiled property/method spelling is assumed by this fixture.
+      const findStore=(value,depth=0)=>{if(!value||typeof value!=='object'||seen.has(value)||depth>12)return;seen.add(value);
+        if(typeof value.put==='function'&&typeof value.get==='function'&&typeof value.close==='function')return value;
+        for(const child of Object.values(value)){const found=findStore(child,depth+1);if(found)return found;}};
+      const store=findStore(cache);assert.ok(store,'actual owned LMDB write port exists');
+      put=mock.method(store,'put',async()=>{writes++;throw new Error('fixture optional store write failed');});
+      const row={text:'',extra:{source_path:'source.txt',content_hash:'fixture-write-failure'}};
+      const observed=await loadHydrationSourceText(row);
+      assert.ok(writes>0,'the actual optional store write port was exercised');assert.equal(observed,text);
       const {hydrateRowFromSourceCache}=await import('../dist/source-hydration.js');
       assert.equal((await hydrateRowFromSourceCache(row)).text,text);
     });
-  } finally {put?.mock.restore();await closeHydrationCache();await probe?.close();await rm(dir,{recursive:true,force:true});}
+  } finally {put?.mock.restore();await closeHydrationCache();await rm(dir,{recursive:true,force:true});}
 });

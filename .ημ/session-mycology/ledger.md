@@ -1121,3 +1121,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-22-claim-cache-optional-hydration-red-20261014
   note: Causal RED uses two actual SDK instances/shared-path disjoint provider outputs/real persisted coldread, an actual layered LMDB write port failing after readable FD content, and owning claim normalization/projection parity. All fixtures remain within already included150paths; no new sourceevidencepath, original56/70raw/receipt/reflection history preserved. These genuine scoped correctness/availability defects are separate from proposed reviewer throughput scope, which remains humanpending. New SDK source head will need fresh reviews/CI; do not cancel current22e model based on old2htimeout. No liveMongo/provider/maker/graphfield/mood/automaticprompt, runtime/social/auth/paid/deployment/spore claim or mutation; goalACTIVE/heartbeatPAUSED/B1B2B3live0of3.
+
+- ts: 2026-10-14T21:24:06.670Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing SDK availability regression
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-22-optional-cache-fixture-red-correction-20261014
+  note: The earlier optional-hydration case returnednull before exercising the cache write: first fixture row used unsupported top-level source_ref; correcting the row exposed that a separate LMDB probe's prototype was not the actual owned instance's put. It therefore did not prove the production finding. The corrected fixture directly exercises the real owned store's public put and independently asserts writes>0 before text equality. Baseline22 Gitblob now causally returnsnull on that rejection, current exactfix returnsreadtext/hydratedrow. Temporarily changing only ignored compiled hydration artifact is clearly scoped; no pristine whole22 SDK/graph rerun or compilerresult fabricated, no tracked source reverted. Original partialRED and mistaken receipt264 claim stay intact and this appended correction controls the hydration attribution. Ordinary newtest correction stays in existing scope, no newuserpermission prerequisite. Production changes remain separately unstaged until full GREENverified. No newinputpath/all150historysimplification/runtime/model/auth/paid/social/deployment/spore; goalACTIVE/heartbeatPAUSED/B1B2B3live0of3.
