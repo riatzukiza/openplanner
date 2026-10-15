@@ -1191,3 +1191,23 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-direct-hydration-identity-green-20261014
   note: Prefer actualCodeRabbit minimalguard: catch documentNeedsHydration identityvalidation at directexport boundary before loader, treat asrowmiss; validbehavior retained. Existingloader/vectoraggregationguards unchanged. Currentfull329review actuallycompleted23:29 with onefinding; no sourceapprovaltransfer to newhead. No newfile/scopeomission or build/deployment/credential/paidmodel changes. Largefullreviewthroughput prerequisite stillhumanpending, freeOpenCoderoute unchanged. GoalACTIVE heartbeatPAUSED live0/3.
+
+- ts: 2026-10-14T23:47:15.962Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Existing scoped graph source verification
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk440-current-hosted-functional-success-20261014
+  note: Newhead actualCI supersedes old329success withouteditingit. Nativecurrent reviews/convergence remainoutstanding; onefull329finding wasFixed/resolvedat440. Thisobservation append ishelduncommitted fornextconcreteownedchange; no observation-onlyreviewheadpush. Preserve current329MiMo inprogress andcurrent440 queuedreview; no operatorcancel/duplicate/paidchange. GoalACTIVE heartbeatPAUSED live0/3.
+
+- ts: 2026-10-15T00:54:49.808Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Actual CodeRabbit5526598326 root4277837482
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-row-document-malformed-source-identity-red-20261015
+  note: Causal RED precedes production edit. New cases require no throw, retained existing content/id/kind/time, missing display sourcePath, unmutated row and strict hydration identity refusal. Existing missingNPM_TOKEN config warning and missing source-map-support advisory are tooling observations separate from0compilerwarnings. No runtime/deployment/provider/paid/batching change. Completed fullCR440 includes150inputs andoneactualfinding, notapproval; exact native raw summary retainedprivately without publishing its scoped share link. GoalACTIVE heartbeatPAUSED live0/3.

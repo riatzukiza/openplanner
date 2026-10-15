@@ -180,5 +180,30 @@
                                 [nil "  " ""]]]
     (is (= expected (.-id (hydration/row-to-document #js {:id id :_id storage}))))))
 
+(deftest malformed-source-identity-does-not-prevent-document-display
+  (doseq [extra [#js {:source_path "owned/path" :url #js {}}
+                 #js {:source_path "owned/path" :content_hash #js []}
+                 #js {:source_path "owned/path" :migration_2 #js {:text_hash_sha256 false}}
+                 #js {:source_path "owned/path" :metadata #js {:hostname 42}}]
+          encoded? [false true]]
+    (let [row #js {:id "display-doc" :project "lake" :kind "code"
+                   :text "Retain the existing outside encounter."
+                   :ts "2026-10-15T00:00:00.000Z"
+                   :extra (if encoded? (js/JSON.stringify extra) extra)}
+          original (js/JSON.stringify row)
+          result (try {:document (hydration/row-to-document row)}
+                      (catch :default error {:error error}))]
+      (is (nil? (:error result)) "malformed optional source identity must not break display")
+      (when-let [^js document (:document result)]
+        (is (= "display-doc" (.-id document)))
+        (is (= "Retain the existing outside encounter." (.-content document)))
+        (is (= "code" (.-kind document)))
+        (is (= "2026-10-15T00:00:00.000Z" (.-ts document)))
+        (is (nil? (.-sourcePath document))))
+      (is (= original (js/JSON.stringify row)) "display must preserve its input")
+      (is (thrown-with-msg? js/Error #"identity.*string|string.*identity"
+            (hydration/document-source-ref row))
+          "display fallback must not weaken strict hydration identity admission"))))
+
 (defn -main []
   (run-tests 'openplanner.stores.document-hydration-test))
