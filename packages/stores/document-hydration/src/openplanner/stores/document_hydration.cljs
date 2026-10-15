@@ -139,7 +139,9 @@
          :kind (public-kind (jget row "kind"))
          :visibility (normalize-visibility (jget extra "visibility"))
          :source (some-> (jget row "source") str)
-         :sourcePath (:sourcePath (source-ref-map row))
+         :sourcePath (try (:sourcePath (source-ref-map row))
+                          ;; Malformed source identity is a missing display path.
+                          (catch :default _ nil))
          :domain (some-> (jget extra "domain") str)
          :language (or (some-> (jget extra "language") str) "en")
          :createdBy (some-> (jget extra "created_by") str)

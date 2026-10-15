@@ -1211,3 +1211,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-row-document-malformed-source-identity-red-20261015
   note: Causal RED precedes production edit. New cases require no throw, retained existing content/id/kind/time, missing display sourcePath, unmutated row and strict hydration identity refusal. Existing missingNPM_TOKEN config warning and missing source-map-support advisory are tooling observations separate from0compilerwarnings. No runtime/deployment/provider/paid/batching change. Completed fullCR440 includes150inputs andoneactualfinding, notapproval; exact native raw summary retainedprivately without publishing its scoped share link. GoalACTIVE heartbeatPAUSED live0/3.
+
+- ts: 2026-10-15T00:56:38.755Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Actual CodeRabbit5526598326 root4277837482
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk-row-document-malformed-source-identity-green-20261015
+  note: Prefer actualCodeRabbit minimaltry/catch only around display sourcePath extraction; invalididentity yieldsnil while inputrow/content/id/kind/time remain intact. Strict source-ref/cache/hydration contracts unchanged. All8native/JSON malformedunusedsourcefields reproducedRED andnowGREEN. Compilerwarnings0; existing missingNPM_TOKEN configuration warning/source-map-support advisory recorded separately. Existing272hostedobservation included with realRED/GREEN source change; no observation-onlypush. Prior440fullCRfinishedwithonefinding notapproval; no reviewtransfer to newhead. No live/runtime/deployment/provider/paid/batching change. GoalACTIVE heartbeatPAUSED live0/3.
