@@ -192,3 +192,39 @@ not merge or qualify the broad synchronization. Its own complete cumulative
 diff, checks and exact-head review must qualify independently. See
 [the bounded import report](cephalon-bounded-source-import.md) and hashed
 manifest for current scope, actual fresh local verification and retained limits.
+
+## Scope projection and LMDB cleanup correction — 2026-10-17 UTC
+
+Native CodeRabbit review5560424896 on predecessor
+`6dcc8083c7dd02362f4486d8b92875e5b1a48975` identified two scope conversion
+defects (roots4304798526/4304798530) and LMDB cleanup item
+`cr-comment:v1:056a85a8a5218699664498c2`. The batch projections now return
+their existing JavaScript edge objects directly, and the Mongo JavaScript
+adapter retains string keys on input. Regression coverage checks distinct
+slash-qualified keys at both nesting levels, direct/single/batch/Mongo parity,
+and recomputation of the returned scope's claim identity. The LMDB adapter now
+implements explicit prefix-scoped expiry cleanup with completed removal counts;
+the cache README records its owner-invoked lifecycle and storage limits.
+
+Actual local Node22.20.0 RED: graph82tests/720assertions/7failures/0errors;
+cache19tests/186assertions/3failures/0errors. GREEN retains those counts with
+zero failures/errors. Both packages' compile and released ESM builds report
+zero compiler warnings; changed CLJS lint reports zero errors/warnings. Separate
+released-export checks use the installed LMDB3.5.4 driver and a disposable
+private database: expired owned entries are removed, live/unexpiring/foreign
+entries remain, repeated cleanup returns zero, and a Unicode prefix remains
+isolated. Missing NPM_TOKEN interpolation and optional source-map-support notices
+are recorded separately from compiler/lint warnings. Existing dependencies were
+reused, with no project install or full snapshot.
+
+Predecessor functional CI39074557996 succeeded. Its MiMo run39074558367 ended
+in failure after two actual completed invocations, with neither accepted or
+submitted: the first assessed16of1497pages before stopping; the second assessed
+108, then supplied malformed JSON for a delivered batch. The tool refused it,
+and the receiver reported structured-input-unestablished. All four native
+before/after custody captures match the fresh full656-file compiler context
+tree `30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2`.
+These are failed review attempts, with no approval or cohort credit. No third
+unchanged-head invocation is selected. The correction needs its own fresh hosted
+functional execution and complete native review before qualified merge. Live
+B1/B2/B3 remain unverified; no runtime or creative publication changed.

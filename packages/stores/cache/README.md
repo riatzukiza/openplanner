@@ -46,6 +46,21 @@ Connection lifecycle remains at the application edge. Adapters wrap caller-owned
 - LMDB adapter requires an opened LMDB database handle.
 - Memory adapter owns only its atom.
 
+### Explicit LMDB expiry cleanup
+
+The owner can periodically `await cacheCleanup(cache)` on its existing cache
+handle. LMDB cleanup starts its range at the configured prefix, stops at the
+first key outside that prefix, closes the iterator, and removes only entries
+whose numeric `expiresAt` is at or before the cleanup time. Live entries,
+entries without expiry, and other prefixes remain. The returned count includes
+successful removals after the driver's asynchronous writes complete; range or
+write failures remain visible.
+
+This operation requires the caller-owned LMDB handle's `getRange` and `remove`
+methods. It does not install a timer or perform database compaction. Removing
+expired keys makes LMDB pages reusable; it does not promise to shrink the
+database file or bound growth when the owner never invokes cleanup.
+
 ## Projection envelope
 
 Use `projectionEnvelope` / `projection-envelope` to make cached values legible as projections:

@@ -553,3 +553,26 @@
     (is (= 0 (aget (first (array-seq (aget (mongo/project-mongo-edge-claims-js
                                          #js [(clj->js row)] #js {:now 1000}) "edges")))
                   "confidence")))))
+
+(deftest projection-paths-preserve-slash-qualified-scope-keys-and-identity
+  (let [scope #js {"org/team" "owned" "team" "distinct"
+                   "a/x" 1 "b/x" 2
+                   "nested" #js {"a/x" false "b/x" nil}}
+        row #js {:source_node_id "a" :target_node_id "b" :relation_kind "related"
+                 :status "active" :scope scope}
+        opts #js {:now 1000}
+        expected-id (boundary/build-edge-claim-id-js row)
+        direct (boundary/project-edge-claim-js row opts)
+        batch (boundary/project-edge-claims-js #js [row] opts)
+        mongo-js (mongo/project-mongo-edge-claims-js #js [row] opts)
+        mongo-maps (mongo/project-mongo-edge-claims [(js->clj row)] opts)]
+    (is (= (js->clj scope) (js->clj (aget direct "scope"))))
+    (doseq [result [batch mongo-js mongo-maps]]
+      (is (array? (aget result "edges")))
+      (is (= 1 (alength (aget result "edges"))))
+      (is (= 1 (aget result "stats" "claims")))
+      (let [edge (aget result "edges" 0)]
+        (is (= (js->clj scope) (js->clj (aget edge "scope"))))
+        (is (= expected-id (aget edge "claim_id")))
+        (is (= expected-id (boundary/build-edge-claim-id-js edge)))))
+    (is (= expected-id (:claim-id (mongo/edge-claim-from-mongo (js->clj row)))))))

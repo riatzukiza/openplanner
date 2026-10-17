@@ -1,5 +1,6 @@
 (ns openplanner.stores.cache.adapters.lmdb
-  (:require [openplanner.stores.cache.core :as core]
+  (:require [clojure.string :as str]
+            [openplanner.stores.cache.core :as core]
             [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore]]))
 
 (deftype LmdbTtlCache [^js db prefix default-ttl-ms]
@@ -55,8 +56,25 @@
                             :expiresAt (when (pos? ttl-ms) (+ now ttl-ms))})))))
 
   (cache-cleanup! [_]
-    ;; LMDB key-range cleanup is intentionally left to explicit future compaction.
-    0)
+    (let [now (core/now-ms)
+          rows (.getRange db #js {:start prefix})
+          iterator (.call (aget rows js/Symbol.iterator) rows)
+          expired (try
+                    (loop [keys []]
+                      (let [step (.next iterator)
+                            row (.-value step)
+                            k (core/jget row "key")]
+                        (if (or (.-done step)
+                                (not (and (string? k) (str/starts-with? k prefix))))
+                          keys
+                          (let [expires-at (core/jget (core/jget row "value") "expiresAt")]
+                            (recur (if (and (number? expires-at) (<= expires-at now))
+                                     (conj keys k)
+                                     keys))))))
+                    (finally
+                      (when (fn? (.-return iterator)) (.return iterator))))]
+      (core/pthen (js/Promise.all (into-array (map #(.remove db %) expired)))
+                  (fn [removed] (count (filter true? (array-seq removed)))))))
 
   (cache-stats [_]
     {:type "lmdb-ttl"

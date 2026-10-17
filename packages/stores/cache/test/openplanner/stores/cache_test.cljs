@@ -143,6 +143,36 @@
     (reset! clock 125)
     (is (nil? (boundary/cache-get-js cache "a"))))))
 
+(deftest lmdb-cleanup-removes-only-expired-owned-prefix-entries
+  (async done
+    (let [store (atom {"hydration:old" #js {:value "old" :expiresAt 99}
+                       "hydration:deadline" #js {:value "deadline" :expiresAt 100}
+                       "hydration:zero" #js {:value "zero" :expiresAt 0}
+                       "hydration:live" #js {:value "live" :expiresAt 101}
+                       "hydration:forever" #js {:value "forever" :expiresAt nil}
+                       "other:expired" #js {:value "foreign" :expiresAt 1}})
+          scans (atom [])
+          db #js {:getRange (fn [opts]
+                             (swap! scans conj (js->clj opts))
+                             (into-array
+                               (for [[k v] (sort-by key @store)]
+                                 #js {:key k :value v})))
+                  :remove (fn [k]
+                            (let [present? (contains? @store k)]
+                              (swap! store dissoc k)
+                              (js/Promise.resolve present?)))}
+          cache (boundary/create-lmdb-cache #js {:db db :prefix "hydration:"})
+          result (with-redefs [core/now-ms (constantly 100)]
+                   (boundary/cache-cleanup-js cache))]
+      (-> (js/Promise.resolve result)
+          (.then (fn [removed]
+                   (is (= 3 removed))
+                   (is (= [{"start" "hydration:"}] @scans))
+                   (is (= #{"hydration:live" "hydration:forever" "other:expired"}
+                          (set (keys @store))))))
+          (.catch (fn [error] (is false (str "cleanup failed: " error))))
+          (.finally done)))))
+
 (deftest same-millisecond-recency-is-strict-and-deterministic
   (with-redefs [core/now-ms (constantly 100)]
     (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 2})]

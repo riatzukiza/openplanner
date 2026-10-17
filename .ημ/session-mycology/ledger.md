@@ -1321,3 +1321,73 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner1476-immutable-baseline-ledger-check-20261017T2123
   note: Wholecanonicalcheck exposedhistoricalrow148 ts2026-10-09T16:16:59.012206+00:00 retainedexactlyfromreviewed1476; thisisnotanewcodefailure. RepositoryattributionderivedfromactualcontainingGitroot, no inventedhistoricalrepo field. Newrecords282RED/283GREEN canonicalvalid and source/gtestlogs retained; strictgraphnormalizationandallothertrackedsource/workflow/lockfiles/rawnativeevidenceexact. Snapshot andprojectdependencyinstall commandsnotrun; firstCorepackpnpm launcherfetch retainedtruthfully. Do not replacehistoricalfailurewithpass orrewriteit. CurrentnativeMiMo39068872777stillRUNNINGat21:22/remote1476; localverified3findingfixawaitsconcretecommitandlaterpublication/ownnewheadqualification. All3nativeP2threadsremainunsettled; no syntheticapproval/nativeDone orliveproof; heartbeatACTIVE/live0of3/no spore.
+
+- ts: 2026-10-17T21:25:26.041Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Finite B1-B3; existing bounded OpenPlanner source
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-local-three-finding-fix-checkpoint-20261017T2125
+  note: CurrentnativeCodeRabbit5560100694COMMENTED3P2/roots4304511207,4304511209,4304511215/currentfull1476coverage; completedreply6240959366updated21:07:58. ActualnativeMiMo39068872777/job117502408346stillIN_PROGRESSatfinalread/no acceptedsubmission observed. FreshnativePRremote1476/basef95/auto_merge:null/personalboth unchanged. Localconcretefix6dccpreparednotpushed: immutablequalifiedETA8bsharedworkflowSHA87690e59a9efc7c6f6a95352696d5251224c61be881703d60a4c6f37067c663b hasPRgroupcancel-in-progress:true; pushingnowwouldcancelongoingfullreview. Finishnativeattemptandretainrealartifactbeforeordinaryfollowuppublication, no duplicatejob/retry/modelcall/paid or syntheticapproval. ActualauthoritativeCLI319threads3unresolved/3PASS/0approvals/0cohorts; all3Fixedsettlementsstillowedafterpush. Newheadfullhostedtests/reviewsrequired; no approvalorCItransfer1476→6dcc. Prepared21502Bnextbodyfdfce8a8/full150inputnote9ce6633b arelocaldrafts/notnativecomments, mustrefreshandwholebodyreadbackbeforepush. SourceworkflowunchangedETA8b/Musef422/agentsface300/OpenCode1.18.31/reviewNode22.23.3/physicalNode22.20/120minutes/max2actualnativeinvocationsincludinginternalrecovery. ExistingreadprobeincludedmissingETAeta-mu-review.yml/rgexit2, correctedviaactualimmutableowningworkflowread/no productionfailure. Actualnativegoalremainsoldblockedstatus; sourceprogressispossible/no pendinghumanquestion/no newblockedimpasse orcompletionclaim. HeartbeatactualACTIVE/promptunchanged. Lastfree11379589120below20GiB/no fullsnapshot/projectinstall; unexpectedCorepacklauncherfetch retained. Field9df/ETA4e4e/root578 unchanged. B1B2B3served0of3/no board/runtime/maker/cloud/credentials/paid/deployment/social/spore effects. Thispostcommit285andreflectionhelduntilnextconcreteownedsource/lifecyclechange; do notobservation-onlypush.
+
+- ts: 2026-10-17T22:20:40.158Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Finite B1-B3; current OpenPlanner source qualification
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner1476-native-terminal-review-trace-20261017T2215
+  note: ActualnewdeliveredAPIused92successfulbatches/368of1495pages;372delivered. Modelthenusedstrictreview_assess_diff_batchfor369-372withonlyid/note(no start/end/digestmemberbindings), encodedinput2111B; actualtoolokfalse/restartrequired/malformedoversizedmismatchedorundelivered. Separatereceivercanonicalverdictunestablished-review-trace/structured-input-unestablished retainedwithoutinventingbroaderrootcause. ActualdynamicOpenCodecatalogselectedopencode/mimo-v2.6-flash-free/1.18.31 datedobservation, anonymousfree/toolcapable; no newfixedalias/credentials/paid. Thisisnottimeoutoracceptedreview/approval/round, nooldheadrerunselected. InitialjoblogobserverbroadstringfiltermatchedhistoricalnestedfailuresinsidehugeJSON andfloodedtruncatedoutput; raw5490607B/SHA36c0b44bb466546f03b6ea5862f1d35940a3edb09355108091a9f097f1252f24preserved, subsequentboundedJSONmetadataanalysiscorrectedobserveronly. Terminalattemptwasnotcancelled; actualverified6dccthree-real-findingcorrectioncanprogressunderstandingordinaryGit/reviewauthority. NativePRdescriptionwhole22327Breadback85d2bee4beforeordinary6dccpush/actualnativeGitlocalhead6dccbasef95/personalboth/automerge:null verified. All150inputs/284committedreceipts1323reflection/fulloriginal56source70raw remainreviewinput; newheadgenuinefunctional/fullreviews/3Fixedsettlementsstillowed. Existing285+this286held/noobservation-onlycommit. Root578/Field9df/ETA4e4eunchanged/liveB1B2B30of3/heartbeatACTIVE/no pendinghumanquestion/no board/runtime/maker/cloud/credentials/paid/deployment/social/sporeeffects.
+
+- ts: 2026-10-17T22:27:47.669Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Finite B1-B3; existing bounded graph and recall source qualification
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner6dcc-complete-functional-and-review-input-custody-20261017T2228
+  note: Ordinary6dccpublished/localnativeGitmatched/basef95/personalboth/automerge:null; native22327BbodySHA85d2bee4whole-readbackbeforepushandafterpasses. Canonical3settleexit0 andactualexactUserriatzukizareplies4304749596/4304750862/4304751995 resolveoriginalP2roots4304511207/4304511209/4304511215; originalhistoryretained. NewcanonicalfullCodeRabbitrequest6242165767at22:22:26/all150actualpaths/all284introducedreceipts/full1323reflection/original56source70raw; freshnativeoldfooterEssentials0remaining1/hour/currentcompletedrequestdedupchecked; bot6242167694trigger22:22:33ONLY/currentsummaryprocessing, old1476coverageNOTcurrentapproval. NewMiMo39074558367/job117519189545RUNNINGsince22:20:18/no acceptedsubmissionobserved; same120min/max2actualnativeinvocationsincltypedrecovery/no duplicate orpaid. NativeCodexaccountquota6240940742stilllatestUNKNOWN0credit/no manualrepeat. Actualcanonical6dcc3PASS/319settled0unresolved/noapproval/0codecohorts; BLOCKEDonlycurrentreview/convergence. Freshcompileroutputs4differingfilesinclSHA256SUMS/2sameinvocationcjs+plugin; currentCJS790af156418a8507161b9edf98e229fc1b013fcb4f9a08c205c72fb9d7321007/plugin2739e0c4b857b3e05b3e75848eb21c83f47b9fd6d5820d5602478587ace9abb9. FreshFULL656expecteddownloaded0644sortedDFStree 30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2 mustmatchactualnewmodeloriginal+before+afterwhenartifactexists; PENDINGnotverifiedyet, neverreuseoldb5e915treeorETA542context. ZIPstored37executablesaredistinctfromdownload644modes; literalqualifiedownercollectorusedandoldobservedhashcalibrated. Initialprivateobserverswronglyassumedallcompiledbytessame thenZIPmodes644; refusedbeforeproof, fixedreadonlyobserver/recoveredactualownerformula; notproductfailureorapprovalcredit. Nativeproducercontext22583BcontainsactualpublishedbodybeforelaterCIsettlementevidence; capturedpendingclaimsarehistoricaltimefacts. Existingheld285/286+this287helduntilnextconcreteownedchange/noobservationonlycommitpush. Wholeledgerold148timestampfailureunchanged/allnewvalid/no waiver. B1B2B3served0of3/heartbeatACTIVE/no board/runtime/maker/cloud/credentials/paid/deployment/social/sporeeffects ornewscope.
+
+- ts: 2026-10-17T22:30:29.757Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Finite B1-B3; current bounded graph source qualification
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner6dcc-native-publication-and-current-review-checkpoint-20261017T2230
+  note: Freshfunctional39074557996/job117518914397SUCCESS22:22:06 on6dcc separatelyprovesactualSDK1000/cache18-183/hydration14-172/portable17-100/compiled81-7000failure,error plusactualforced-exit1negative/Mongofixture/ESM; sixcompiler0warnings notwholelogwarning-free. Nativeexplanationitemizesall3cr-commentIDs/sourcefixandactualFixedIDs, explainsold1476partialfailureandcurrentcaptured-bodychronology/fullinputcustody/liveprooflimits. CurrentCodeRabbitfull6242165767posted22:22:26,bot6242167694ackonly22:22:33/currentsummaryprocessing22:22:51 retainsold1476riskcoveragewhichisNOnewapproval; do notrepeatpendingrequest. CurrentMiMo39074558367/117519189545IN_PROGRESSsince22:20:18/latestactualread, max2actualinvocationsincludinginternalrecovery/120minutes, no extra orpaid. Old1476onefailedpartial368/1495/acceptednull/artifact06106462retained/no oldheadrerun. Currentactualnewnativeinputs150/all284introducedreceipts1323reflection/original56source70raw andfull11888445B645b4953verifiedagainstimmutableGit7hex; producer2customdiffgatesnotfullfunctional. Fullcompiler656files/all581hashesverified/newSHA30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2 expecteddownloaded0644tree muststillmatchactualcurrentmodeloriginalandbothcaptureswhenartifactexists; comparefreshCJS790af156/plugin2739e0c4 notoldb5context. NativeCodex6240940742accountquotaUNKNOWNremainszeroapproval/no duplicateinvite; noKimiidentityoverride. 284committed/held285-288append-only; noobservation-onlycommitpush; original148timestampfailurepreservedwithoutwaiver/no inventedrepo. Consumerad41InProgress/Field9dfIncomingphysicalplanlinks/root578/ETA4e4e/source8b+Musef422unchanged; no nativeDone, newpoint/scope, board/runtime/maker/cloud/credentials/paid/deployment/social/spore effects. Nativegoaloldblockedstatusreadunchangedbutmeaningfulsourceprogressmade/no pendinghumanquestion/no freshimpasse. FiniteB1B2B3served0of3/incomplete/heartbeatACTIVE; leaveautomationactiveuntilactualfiniteproofcomplete.
+
+- ts: 2026-10-17T22:53:50.728Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner6dcc-two-native-terminal-attempts-20261017T2245
+  note: Actual MiMo run39074558367/job117519189545 failed at22:44:01UTC after2completed invocations, acceptednull/no submission/no approval. First16of1497 then voluntarily stopped; supported internal retry assessed108of1497/delivered112 then malformed assessments JSONstring1432encoded bytes/parseoffset1244. Native delivered-custody tool refused/restart-required; receiver separately structured-input-unestablished. No authentication/quota failure observed and no third unchanged-head invocation. Full656currentcompiler30ef3ea4 matches all4native custody observations and output hashes verified. Canonical current CodeRabbit5560424896 has2P2scope roots+oneLMDBbody nit, not approval.
+
+- ts: 2026-10-17T22:53:50.887Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-slash-scope-and-lmdb-cleanup-RED-20261017T2245
+  note: Actual Node22.20.0 existingdeps tests with newregressions: graph82tests720assertions7fail0error, cache19tests186assertions3fail0error; both compile0warnings/exit0 and both tests exit1 for intendedbehavior. Initialfixtureparseerror corrected before these runs; no existing assertions removed.
+
+- ts: 2026-10-17T22:53:51.047Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-slash-scope-and-lmdb-cleanup-GREEN-20261017T2245
+  note: Confirmed native scope data-loss fixes use exact3line proposed removal of keyword roundtrips; preserved full slash-qualified nested keys/directMongoidentity. LMDBcleanup now prefix scan/explicitclose/await successfulremovalcount; own lifecycle documented/no timer or compaction guarantee. Node22.20.0 graph82-720/cache19-186 zero failures/errors;4compile/release summaries0warnings;5CLJSlint0/0/hygienePASS. ReleasedESM realLMDB3.5.4 disposable database/Unicodeprefix/foreignisolation/idempotentcleanup PASS via separately labelled tool-output transcription. MissingNPM_TOKEN/optionalsource-map-support notices separate. No install/fullsnapshot/runtime/paid/credential/social changes. B1B2B3still0of3; newexacthead hostedreview/CI required.

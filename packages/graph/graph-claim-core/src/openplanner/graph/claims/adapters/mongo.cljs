@@ -78,7 +78,7 @@
   ([docs opts]
    (let [normalized (edge-claims-from-mongo docs)
          result (claims/project-claims normalized (boundary/projection-options-from-js opts))]
-     #js {:edges (clj->js (mapv #(js->clj (projected-edge->js %) :keywordize-keys true) (:edges result)))
+     #js {:edges (into-array (map projected-edge->js (:edges result)))
           :stats (clj->js (:stats result))})))
 
 (defn project-mongo-edge-claims-js
@@ -89,4 +89,4 @@
   edges themselves."
   ([docs] (project-mongo-edge-claims-js docs #js {}))
   ([docs opts]
-   (project-mongo-edge-claims (js->clj docs :keywordize-keys true) opts)))
+   (project-mongo-edge-claims (js->clj docs) opts)))

@@ -337,7 +337,7 @@
                   (mapv edge-claim-from-js-soft (array-seq claim-rows))
                   [])
          result (claims/project-claims claims (projection-options-from-js opts))]
-     #js {:edges (clj->js (mapv #(js->clj (projected-edge->js %) :keywordize-keys true) (:edges result)))
+     #js {:edges (into-array (map projected-edge->js (:edges result)))
           :stats (clj->js (:stats result))})))
 
 (defn explain-edge-claim-js
