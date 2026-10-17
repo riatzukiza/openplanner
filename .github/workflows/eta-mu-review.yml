@@ -12,11 +12,11 @@ permissions:
 jobs:
   review:
     name: Evidence-first review (eta-mu)
-    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@e8e50a96fbd13edfcf0b4cf65dbeb2b544b4133f
+    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@8b8ebeb323ad4e90bddf4c31082cbaf45d684a3d
     with:
       pr_head_sha: ${{ github.event.pull_request.head.sha }}
       review_timeout_minutes: 120
-      muse_revision: 259c76eee9ac2def944e9191c1da23d3647ba32e
+      muse_revision: f422d77cf9c6cea46b6791e3f54c98679e949d1f
       agents_revision: face3009a8dfb6f355acad467fd288100e49c0ba
       opencode_version: 1.18.31
       node_version: "22.23.3"
