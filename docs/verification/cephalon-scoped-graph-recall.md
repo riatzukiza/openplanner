@@ -164,9 +164,13 @@ and the runnable demonstration. Its compiler steps require the actual completed
 zero-warning summary. The existing broader Code Quality and Review Resolution
 jobs retain their obligations. Local evidence does not establish hosted success.
 
-The evidence review workflow uses the exact shared receiver
+The original scoped evidence review workflow used the exact shared receiver
 `45ec644c2d15ed511e9bc1e797d1b4073b63dbfc` and canonical skill source
-`4b4f48dae1b804b2581974e604cca618ecedadf1`. Its own deterministic gates are
+`4b4f48dae1b804b2581974e604cca618ecedadf1`; those revisions are historical.
+The active bounded consumer in `.github/workflows/eta-mu-review.yml` pins ETA
+`8b8ebeb323ad4e90bddf4c31082cbaf45d684a3d`, Muse
+`f422d77cf9c6cea46b6791e3f54c98679e949d1f` and canonical agents
+`face3009a8dfb6f355acad467fd288100e49c0ba`. Its own deterministic gates are
 diff statistics and hygiene; the separate scoped verification workflow supplies
 functional execution. The existing operator App and personal installation are
 reused through named encrypted GitHub secrets. No credential contents appear in

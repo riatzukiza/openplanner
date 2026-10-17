@@ -77,7 +77,11 @@
 (defn- explain-result-js
   [{:keys [valid? errors]}]
   (clj->js {:valid valid?
-            :errors errors}))
+            :errors errors}
+           :keyword-fn (fn [k]
+                         (if-let [ns (namespace k)]
+                           (str ns "/" (name k))
+                           (name k)))))
 
 (defn explain-cache-entry-js
   [entry]

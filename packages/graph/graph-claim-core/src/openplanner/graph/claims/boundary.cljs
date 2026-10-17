@@ -321,12 +321,12 @@
 (defn claim-projectable-js
   ([claim] (claim-projectable-js claim #js {}))
   ([claim opts]
-   (boolean (claims/projectable? (edge-claim-from-js claim) (projection-options-from-js opts)))))
+   (boolean (claims/projectable? (edge-claim-from-js-soft claim) (projection-options-from-js opts)))))
 
 (defn project-edge-claim-js
   ([claim] (project-edge-claim-js claim #js {}))
   ([claim opts]
-   (some-> (claims/claim->projected-edge (edge-claim-from-js claim)
+   (some-> (claims/claim->projected-edge (edge-claim-from-js-soft claim)
                                          (projection-options-from-js opts))
            projected-edge->js)))
 
@@ -334,7 +334,7 @@
   ([claim-rows] (project-edge-claims-js claim-rows #js {}))
   ([claim-rows opts]
    (let [claims (if (array? claim-rows)
-                  (mapv edge-claim-from-js (array-seq claim-rows))
+                  (mapv edge-claim-from-js-soft (array-seq claim-rows))
                   [])
          result (claims/project-claims claims (projection-options-from-js opts))]
      #js {:edges (clj->js (mapv #(js->clj (projected-edge->js %) :keywordize-keys true) (:edges result)))

@@ -46,6 +46,26 @@
     (is (= "mongo" (aget envelope "projection/source-store")))
     (is (true? (aget (boundary/explain-projection-envelope-js envelope) "valid")))))
 
+(deftest boundary-explanations-identify-the-qualified-javascript-fields
+  (let [entry (boundary/cache-entry-js #js {:key "k" :value "v" :nowMs 1})
+        envelope (boundary/projection-envelope-js
+                   #js {:name "n" :sourceStore "mongo" :sourceKey "id:1" :value "v"})]
+    (aset entry "cache/key" false)
+    (aset envelope "projection/name" "")
+    (aset envelope "projection/source-key" false)
+    (let [result (boundary/explain-cache-entry-js entry)
+          error (aget result "errors" 0)]
+      (is (false? (aget result "valid")))
+      (is (= 1 (alength (aget result "errors"))))
+      (is (= ["cache/key"] (js->clj (aget error "path"))))
+      (is (= "required-nonblank-string" (aget error "error")))
+      (is (false? (aget error "value"))))
+    (let [result (boundary/explain-projection-envelope-js envelope)]
+      (is (false? (aget result "valid")))
+      (is (= #{["projection/name"] ["projection/source-key"]}
+             (set (map #(js->clj (aget % "path"))
+                       (array-seq (aget result "errors")))))))))
+
 (deftest memory-lru-cache-ttl-and-eviction-test
   (let [clock (atom 1000)]
     (with-redefs [core/now-ms #(deref clock)]

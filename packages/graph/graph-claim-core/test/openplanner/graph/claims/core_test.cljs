@@ -235,6 +235,25 @@
   (is (= "related_to" (aget (boundary/normalize-edge-claim-input-js
                             #js {:source_node_id " a " :target_node_id " b "}) "relation_kind"))))
 
+(deftest projection-rejects-no-id-invalid-keys-without-losing-valid-batch-rows
+  (let [valid #js {:source_node_id "a" :target_node_id "b"
+                   :relation_kind "related" :status "active"}
+        opts #js {:now 1000}]
+    (doseq [invalid [#js {:target_node_id "b" :status "active"}
+                     #js {:source_node_id "a" :target_node_id "a" :status "active"}
+                     #js {:source_node_id 42 :target_node_id "b" :status "active"}]]
+      (is (false? (boundary/claim-projectable-js invalid opts)))
+      (is (nil? (boundary/project-edge-claim-js invalid opts)))
+      (let [result (boundary/project-edge-claims-js #js [valid invalid] opts)]
+        (is (= 2 (aget result "stats" "claims")))
+        (is (= 1 (aget result "stats" "edges")))
+        (is (= 1 (alength (aget result "edges"))))
+        (is (= "a" (aget result "edges" 0 "source"))))
+      (is (thrown-with-msg? js/Error #"Invalid edge claim key"
+            (boundary/build-edge-claim-id-js invalid)))
+      (is (thrown-with-msg? js/Error #"Invalid edge claim key"
+            (boundary/edge-claim-from-js invalid))))))
+
 
 (deftest supplied-claim-identities-are-never-replaced-by-generated-identities
   (doseq [field ["claimId" "claim_id"]
