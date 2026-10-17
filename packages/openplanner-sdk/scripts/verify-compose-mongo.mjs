@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 import { loadConfig } from "../dist/config.js";
+import { reconcileManagedTtl } from "../dist/mongodb.js";
 import { listMongoVectorPartitions, replaceMongoVectorEntries, upsertMongoVectorDocuments } from "../dist/mongo-vectors.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -76,6 +77,37 @@ try {
   const hello = await db.admin().command({ hello: 1 });
   assert.equal(hello.setName, "openplanner");
   assert.equal(hello.isWritablePrimary, true);
+  const retained = db.collection("owned_retention_cleanup");
+  await retained.insertMany([
+    ...Array.from({ length: 1000 }, (_, id) => ({ _id: `retained-${id}`, value: id })),
+    { _id: "dated", expiresAt: new Date("2099-01-01T00:00:00Z") },
+    { _id: "explicit-null", expiresAt: null },
+    { _id: "non-date", expiresAt: "unchanged" },
+  ]);
+  await reconcileManagedTtl(retained, "owned_ttl", 0);
+  const cleanupIndex = (await retained.indexes()).find(index => index.name === "owned_ttl_cleanup");
+  assert.ok(cleanupIndex, "disabled retention must retain a non-TTL date cleanup index");
+  assert.deepEqual(cleanupIndex.partialFilterExpression, { expiresAt: { $type: "date" } });
+  assert.equal(Object.hasOwn(cleanupIndex, "expireAfterSeconds"), false);
+  assert.equal(await retained.countDocuments(), 1003);
+  assert.equal(Object.hasOwn(await retained.findOne({ _id: "dated" }), "expiresAt"), false);
+  assert.equal((await retained.findOne({ _id: "explicit-null" })).expiresAt, null);
+  assert.equal((await retained.findOne({ _id: "non-date" })).expiresAt, "unchanged");
+  const cleanupPlan = await db.command({
+    explain: { update: retained.collectionName, updates: [
+      { q: { expiresAt: { $type: "date" } }, u: { $unset: { expiresAt: "" } }, multi: true },
+    ] }, verbosity: "executionStats",
+  });
+  const winningPlan = JSON.stringify(cleanupPlan.queryPlanner.winningPlan);
+  assert.ok(winningPlan.includes('"indexName":"owned_ttl_cleanup"'), "repeat startup cleanup must use the partial index");
+  assert.ok(!winningPlan.includes('"stage":"COLLSCAN"'));
+  assert.equal(cleanupPlan.executionStats.totalDocsExamined, 0);
+  await reconcileManagedTtl(retained, "owned_ttl", 0);
+  assert.deepEqual((await retained.indexes()).find(index => index.name === cleanupIndex.name), cleanupIndex);
+  await reconcileManagedTtl(retained, "owned_ttl", 60);
+  const enabledIndexes = await retained.indexes();
+  assert.ok(!enabledIndexes.some(index => index.name === "owned_ttl_cleanup"));
+  assert.equal(enabledIndexes.find(index => index.name === "owned_ttl").expireAfterSeconds, 0);
   const mongo = { db, client, hotVectors: db.collection("hot_vectors"), compactVectors: db.collection("compact_vectors"),
     vectorPartitions: db.collection("vector_partitions"), retention: { eventsTtlSeconds: 0, compactedTtlSeconds: 0 } };
   const entry = id => ({ id, parentId: "owned-parent", text: "outside encounter", embedding: [1, 0], metadata: { embedding_model: "owned-fixture" } });
@@ -97,7 +129,8 @@ try {
   assert.deepEqual(await ids(mongo.hotVectors), ["replacement"]);
   assert.deepEqual(await ids(partition), ["replacement"]);
   console.log(JSON.stringify({ passed: true, image, replica: hello.setName, health_idempotent: true,
-    actual_sdk_replacement_and_rollback: true, adjusted_only_client_port: true }));
+    actual_sdk_replacement_and_rollback: true, adjusted_only_client_port: true,
+    disabled_retention_indexed_cleanup_and_reenable: true, repeat_cleanup_docs_examined: 0 }));
 } finally {
   try { if (client) await client.close(); }
   finally { if (container) docker("rm", "--force", container); }

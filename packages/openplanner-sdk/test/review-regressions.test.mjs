@@ -887,6 +887,49 @@ test('graph model failures do not skip independently healthy groups',async()=>{
 test('TTL disable reconciles stored dates without rewriting explicit nonexpiring rows',async()=>{
   const c=collection('retention');await reconcileManagedTtl(c,'managed',0);assert.deepEqual(c.calls.writes[0].filter,{expiresAt:{$type:'date'}});
 });
+
+for(const [label,name,initial,managedName] of [
+  ['ordinary managed TTL','managed',[{name:'managed',key:{expiresAt:1},expireAfterSeconds:0}],'managed'],
+  ['fresh shared-writer namespace','events_ttl',[],'events_ttl_absolute'],
+  ['legacy shared writer','events_ttl',[{name:'events_ttl',key:{createdAt:1},expireAfterSeconds:60}],'events_ttl_absolute'],
+  ['prior SDK shared name','events_ttl',[{name:'events_ttl',key:{expiresAt:1},expireAfterSeconds:0}],'events_ttl'],
+])test(`disabled retention keeps indexed cleanup across restart and re-enable: ${label}`,async()=>{
+  const c=collection('retention-indexed');const indexes=new Map(initial.map(row=>[row.name,{...row}]));
+  const operations=[];const cleanupName=managedName+'_cleanup';
+  c.indexes=async()=>[...indexes.values()];
+  c.dropIndex=async index=>{operations.push(['drop',index]);indexes.delete(index);};
+  c.createIndex=async(keys,options)=>{operations.push(['create',options.name]);indexes.set(options.name,{key:keys,...options});return options.name;};
+  c.updateMany=async(filter,update)=>{
+    const cleanup=indexes.get(cleanupName);
+    assert.ok(cleanup,'dated cleanup must have an index before visiting collection rows');
+    assert.deepEqual(cleanup.key,{expiresAt:1});
+    assert.deepEqual(cleanup.partialFilterExpression,{expiresAt:{$type:'date'}});
+    assert.equal(Object.hasOwn(cleanup,'expireAfterSeconds'),false);
+    assert.deepEqual(filter,{expiresAt:{$type:'date'}});
+    assert.deepEqual(update,{$unset:{expiresAt:''}});
+    operations.push(['cleanup',cleanupName]);
+  };
+  await reconcileManagedTtl(c,name,0);
+  assert.equal(indexes.has(managedName),false);
+  const creates=operations.filter(([op])=>op==='create').length;
+  await reconcileManagedTtl(c,name,0);
+  assert.equal(operations.filter(([op])=>op==='create').length,creates);
+  assert.equal(operations.filter(([op])=>op==='cleanup').length,2);
+  await reconcileManagedTtl(c,name,60);
+  assert.equal(indexes.has(cleanupName),false);
+  assert.equal(indexes.get(managedName).expireAfterSeconds,0);
+  assert.ok(operations.findIndex(([op,index])=>op==='drop'&&index===cleanupName)<
+    operations.findIndex(([op,index])=>op==='create'&&index===managedName));
+  if(label==='legacy shared writer')assert.deepEqual(indexes.get(name),initial[0]);
+});
+
+test('failed disabled-retention index setup prevents unindexed cleanup',async()=>{
+  const c=collection('retention-index-failure');let cleanups=0;
+  c.createIndex=async()=>{throw new Error('owned index setup failure');};
+  c.updateMany=async()=>{cleanups++;};
+  await assert.rejects(reconcileManagedTtl(c,'managed',0),/owned index setup failure/);
+  assert.equal(cleanups,0);
+});
 test('opening Mongo indexes source-owned cleanup and retained graph edges',async()=>{
   const mongo=mongoFixture();const connect=mock.method(MongoClient.prototype,'connect',async function(){return this;});const db=mock.method(MongoClient.prototype,'db',()=>mongo.db);
   try{await openMongoDB({...openingConfig,eventsTtlSeconds:60});const edges=mongo.db.collection('graph_edges');

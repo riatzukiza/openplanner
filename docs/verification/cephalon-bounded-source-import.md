@@ -1462,3 +1462,41 @@ The prior current763 Codex request failed with native GitHubHTTP500 during
 status collection; direct native readback confirms zero current-head writer
 request markers. It is an operator collection failure, not provider quota or
 review completion, and a new corrected head must be invited independently.
+
+
+## Disabled-retention cleanup index — current review5560660819
+
+CodeRabbit's exact1245 full review selected all150 inputs and reported P1
+root4305002322: disabling retention removed the supporting TTL index before
+startup cleanup. Repeated cleanup could scan retained collections. Keep an
+SDK-owned non-TTL partial index on date-valued `expiresAt` before cleanup;
+remove that index when enabling absolute TTL again. The cleanup marker retains
+prior SDK shared-name ownership across restart; an older writer's relative
+`createdAt` TTL remains intact. Failure to establish the cleanup index prevents
+the cleanup update. No query filter or retention-label semantics are relaxed.
+
+Correct package-CWD RED on Node22.20.0/pnpm10.11.0 passed all1000 prior SDK
+tests and failed exactly five new lifecycle/index-failure regressions. The
+existing disposable Mongo7 verifier independently failed because the cleanup
+index was absent. The first implementation passed1004/1005; the older SDK
+shared-name restart case exposed duplicate index creation. Recognition of its
+owned cleanup marker fixes that case without weakening the assertions. Final
+TypeScript build and all1005 SDK tests pass, zero failures/cancellations/skips.
+
+The actual Mongo7 verifier retains1003 rows, removes only the date expiry and
+preserves explicit-null/string values. Its real update explain selects the
+partial index with no COLLSCAN and examines zero documents after the initial
+cleanup. Repeat disable preserves the index; enable removes it and restores
+absolute TTL0. Existing actual vector replacement/injected rollback assertions
+also pass. Only the unique disposable nonroot test container runs; it is removed
+by the existing finally block, with no image pull or application service effect.
+
+Exact command records and raw RED/intermediate/GREEN logs are preserved under
+`/home/err/.local/share/codex/cephalon-field-restore-work-20261017/openplanner-qualified-delivered-consumer-20261017/ttl-index-finding-20261017T2345`,
+including `ttl-index-red-green-proof.json`. Initial wrong-CWD package-manager
+and child-module lookup failures remain operator evidence, separately from the
+causal RED. Missing-NPM_TOKEN interpolation remains a separate environment
+notice; TypeScript emits no diagnostics. Fresh hosted functional checks and
+full current-head reviews remain required. The original56 source provenance,
+all150 review paths,70 raw evidence inputs and append-only journals remain
+intact. This source fix supplies no served B1/B2/B3 proof.

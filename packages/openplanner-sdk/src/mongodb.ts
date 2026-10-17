@@ -109,11 +109,20 @@ export async function reconcileManagedTtl(collection: Collection<any>, name: str
   // Fresh SDK databases must also leave the retained writer's names available.
   // Prior SDK-owned indexes keep their names; no legacy rows are rewritten.
   const sharedWriterName = name === "events_ttl" || name === "compacted_ttl";
-  const managedName = legacy || (sharedWriterName && !existing) ? `${name}_absolute` : name;
+  const priorSdkCleanup = indexes.some(index => index.name === `${name}_cleanup`);
+  const managedName = legacy || (sharedWriterName && !existing && !priorSdkCleanup) ? `${name}_absolute` : name;
+  const cleanupName = `${managedName}_cleanup`;
   if (ttlSeconds > 0) {
+    if (indexes.some(index => index.name === cleanupName)) await collection.dropIndex(cleanupName);
     await ensureTtlIndex(collection, { expiresAt: 1 }, { name: managedName, expireAfterSeconds: 0 });
   } else {
     if (indexes.some(index => index.name === managedName)) await collection.dropIndex(managedName);
+    if (!indexes.some(index => index.name === cleanupName)) {
+      await collection.createIndex({ expiresAt: 1 }, {
+        name: cleanupName,
+        partialFilterExpression: { expiresAt: { $type: "date" } },
+      });
+    }
     await collection.updateMany({ expiresAt: { $type: "date" } }, { $unset: { expiresAt: "" } });
   }
 }

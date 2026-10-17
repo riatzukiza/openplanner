@@ -1391,3 +1391,43 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-slash-scope-and-lmdb-cleanup-GREEN-20261017T2245
   note: Confirmed native scope data-loss fixes use exact3line proposed removal of keyword roundtrips; preserved full slash-qualified nested keys/directMongoidentity. LMDBcleanup now prefix scan/explicitclose/await successfulremovalcount; own lifecycle documented/no timer or compaction guarantee. Node22.20.0 graph82-720/cache19-186 zero failures/errors;4compile/release summaries0warnings;5CLJSlint0/0/hygienePASS. ReleasedESM realLMDB3.5.4 disposable database/Unicodeprefix/foreignisolation/idempotentcleanup PASS via separately labelled tool-output transcription. MissingNPM_TOKEN/optionalsource-map-support notices separate. No install/fullsnapshot/runtime/paid/credential/social changes. B1B2B3still0of3; newexacthead hostedreview/CI required.
+
+- ts: 2026-10-17T23:00:36.392Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner1245-published-fixed-and-full-functional-20261017T2259
+  note: Actualordinary1245e611ec526622ac4a95b92b1b0b5f4450ba69 pushed over6dcc/basef95/personalboth;9paths205+6-/291committedreceipts1393reflectionlines;initialpostpushRESTold6dcc retained then actualfreshGraphQL/local/remote agree1245/exact27000Bbody1326de9e/automergeabsent. NativeFixed4304865451/4304866341 actualUser/exactbody/resolved both originalscope roots, plus itemizedcomment6242675235 actualUser3307B24a60d90 handles both stableIDs andLMDBnit. Fullfunctional39077002869/job117526114547SUCCESS22:57:40/literal1245:SDK1000/1000/cache19-186/hydration14-172/portable17-100/compilednormal82-720zero failures/errors;separateforcedexit1negativePASS;allnative stepsSUCCESS/6compiler0warnings/raw461348Ba0236519. Producer39077003269/job117526364019SUCCESS cleanexecuted/completed1245/custom2diffgates0only/full11924696B159f4a1fexactGit7hex/context27256Bcontainsactual27000Bdescription beforelaterexplanation. Currentcompiler656files/all581declaredhashesvalid;newdownloaded0644sortedDFSexpected992e62b10fa732e23de5341aa2c6a154773d5034c78f7717d6b520fa5ad6c203/CJSc9eb6b99/plugin1fd1a0a9. Freshactualmodelcaptures PENDING;nevertransferold30ef/b5tree/ETA542context. MiMo39077003269attempt1/job117526419139RUNNINGsince22:57:08/max2actualTOTALon1245inclinternalrecovery/120min; no duplicate dispatch/rerun/paid. CodeRabbit1245fullrequestNOTsent;knownpriorcompletion22:34:09 and included0/dynamic1hour requirefreshcooldown/pendingcheck conservativelyafter23:35UTC. NewCodexnativequota6242650865updated22:55:48UNKNOWN0approval/no manualrepeat. Canonical3PASS/321settled/noapproval/0cohorts/BLOCKEDonlyapprovalconvergence. Observation-only postjobreceipt held fornextconcrete source/lifecycle change;no extra commit/push. No board/runtime/credential/paid/social effects orliveB1B2B3completion.
+
+- ts: 2026-10-17T23:33:34.216Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner1245-native-terminal-and-new-full-request-20261017T2332
+  note: Current1245MiMo39077003269/job117526419139FAILURE23:14:43 after2actualcompleted processes/acceptednull/no submission/stages/findings. First12of1502voluntary stop ->supportedfreshretry76assessed80delivered; page80note2306UTF8abovealready-explicit2048, request5883below16384, remainingnotes1364/931/1185 fit; actualtoolrefusedrestart-required/receiverseparatelystructured-input-unestablished. Modelclaim79assessed disprovedby76nativecoverage. Fouractualbeforeaftercustody matchfresh656tree992e62b1/outputhashesexact; rawZIP1312529B106caa9f/log1664180B1afb8b5f. No credential/quota/transport error orguarddefect inferred; no thirdunchanged1245invocation selected. Canonicalfreshorigin/main580unchanged; unrelatedglobalpackdirtpreserved. NativePRdescription condensed27000to7092B166d73bf witholdbodyarchived/exactwhole-readback/sourceheadunchanged/all150changedinputsstillrequired; previousMiMocapturedcontext remains olddatedtruth. FreshcanonicalcurrentCodeRabbitfullrequest6243104578created23:31:30actualUser13981B99f96811/full150/all291receipts1393reflection; latestpreviousrequestactually22:22:26, morethan1h passed andfreshcanonicalguard0 (older23:35estimateoperatorconservative,nonnative reset). ActualBot6243106051triggerack23:31:36/no completion/approval; nativecommitstatus56611186990PENDINGreviewinprogress23:31:40. No duplicate/paidrequest. MandatoryOpenCodeevidencegate117529804012FAILURE23:14:49 remains; currentfullfunctionalSUCCESSunchanged. Proposed1pointETAconcisenote/native-arrayinstructions+matchingembed isUNAPPLIED/currenthumanquestionpending; qualifiedRheosrecordedlatercandidateonexistingconsumerad41withoutadoptingtask/points/readiness/sourcepins. ETA397ownedheldcomment/event/journals; source4eunchanged. Field9dfreadonlyauditstillrealP1wholeowner/historyclosure+P2restoreallocation; no edits or inventedgrants. GoalnativeACTIVEverified/currentturnprogress; heartbeatACTIVE. No runtime/deploy/credentials/paid/social effects; B1B2B3live0of3. Heldreceipt/reflectionfornextconcreteownedchange, no observation-onlysourcepush.
+
+- ts: 2026-10-17T23:53:32.925Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-ttl-index-causal-RED-20261017T2345
+  note: Native current1245 full CodeRabbit5560660819/root4305002322 confirmed missing supporting index on disabled retention cleanup. Correct package-CWD pinned SDK RED1005/1000PASS/5newFAIL; actual isolated Mongo7 RED assertion absent nonTTL partial index. Initial wrong-root pnpm selection and child-module lookup errors preserved separately; no test weakened.
+
+- ts: 2026-10-17T23:53:33.165Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-ttl-index-GREEN-20261017T2355
+  note: Named nonTTL date partial index created before cleanup and removed on reenable; old SDK name retained via own marker, legacy relative writer untouched. Firstpatch1004/1005 exposed restart duplicate, corrected without assertion loss. Final pinned TSbuild0diagnostics/SDK1005PASS0failcancelSkip; actualMongo1003rows/null-stringpreserved/querywinningpartialindex/noCOLLSCAN/repeat0examined/indexrepeatstable/reenableTTL0/vectorreplacementrollbackPASS. Owned nonroot disposable container removed/no pull, no live app effects. Held293receipt1413reflection prefixes preserved. Wholeledger retains historical row148 timestamp failure; new rows canonicalvalid. No snapshot/install/runtime/board/credential/paid/social/deploy/goalcompletion.
