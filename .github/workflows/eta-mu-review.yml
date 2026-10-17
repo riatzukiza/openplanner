@@ -12,15 +12,14 @@ permissions:
 jobs:
   review:
     name: Evidence-first review (eta-mu)
-    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@e4fb01ff056f9ac823b2b9659e6bc25ac7fea1f2
+    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@e8e50a96fbd13edfcf0b4cf65dbeb2b544b4133f
     with:
       pr_head_sha: ${{ github.event.pull_request.head.sha }}
-      model: opencode/mimo-v2.6-flash-free
       review_timeout_minutes: 120
-      muse_revision: a9a62f0d509056406f3dd7d8c86a13551be168cd
+      muse_revision: 259c76eee9ac2def944e9191c1da23d3647ba32e
       agents_revision: face3009a8dfb6f355acad467fd288100e49c0ba
       opencode_version: 1.18.31
-      node_version: "22.20.0"
+      node_version: "22.23.3"
       setup_eta_mu_toolchain: false
       evidence_gates_script: |
         run_gate diff_stat git diff --stat "${PR_BASE_SHA}...HEAD"

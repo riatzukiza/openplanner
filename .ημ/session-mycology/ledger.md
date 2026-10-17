@@ -1221,3 +1221,23 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-sdk-row-document-malformed-source-identity-green-20261015
   note: Prefer actualCodeRabbit minimaltry/catch only around display sourcePath extraction; invalididentity yieldsnil while inputrow/content/id/kind/time remain intact. Strict source-ref/cache/hydration contracts unchanged. All8native/JSON malformedunusedsourcefields reproducedRED andnowGREEN. Compilerwarnings0; existing missingNPM_TOKEN configuration warning/source-map-support advisory recorded separately. Existing272hostedobservation included with realRED/GREEN source change; no observation-onlypush. Prior440fullCRfinishedwithonefinding notapproval; no reviewtransfer to newhead. No live/runtime/deployment/provider/paid/batching change. GoalACTIVE heartbeatPAUSED live0/3.
+
+- ts: 2026-10-15T01:14:21.244Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Scoped graph source qualification on3ab5ffb
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-sdk3ab-hosted-functional-success-20261015
+  note: Actual native hosted result, not writerreturnedstate/modelapproval/live proof. Current PRdescription refreshed from stale65944byte chronologicalcurrent snapshots to compact exact3ab source/test/CI/review state; originaldescription privatelyarchived andwhole-body readbackverified withsamehead/base/autoMerge:null. Thisverificationappend helduncommitted fornextconcreteownedchange; no observation-onlysourcepush. Existingreceipt/reflectionprefix retained. Current new-head fullreviews/convergence stillrequired; prior440CRonefindingFixed3ab notapproval. No runtime/deployment/credentials/paid/batching scopechange. GoalACTIVE heartbeatPAUSED live0/3.
+
+- ts: 2026-10-17T02:35:03.778Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: Reviewed Incoming1 consumerad41fc8a; accepted finite B1-B3 prerequisite
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-qualified-batched-review-consumer-20261017
+  note: Consumerplan actuallyqualified and MERGED ETA27 as5bf66006 at02:29:33UTC, E8+d83 parents and tree8e0093699335c0cf47e7d5994770c33337e6d332 exactlyreviewedd83. Native MiMoAPPROVED5555559565/full9of9pages/missing[]/46of46contextEOF/singleacceptedinvocation/recoverynull/artifact12086996034ZIP871955BSHAd12444cb964c281e9c7d051212434af05d204530612901cabd632496c00ed798, canonical9PASS/0threads/currentCodeRabbit+MiMo/1planningcohort; actualCodexquota0credit, firstfailedgrep trace preserved. Freshnative3prerequisitesDone then qualifiedRheos85369213/source8ef comment and lawful IncomingAcceptedBreakdownReadyTodoInProgress; Ready+InProgress actualreadback/write1792204310206-0.j0qnr9n8yii2eb8ueec/configSHAb2067056d4b15e32a57a3fe3e239896d312d1ce9d26db2f8a5aec8407bed045c/nativeeventprefixretained, no manualstatus. Only workflowtwoGitpins nowETAe8/Muse259, remove fixed freeMiMo slug to inheritedqualified anonymousOpenCode discovery, approved review-onlyNode22.23.3. Opencode1.18.31/120minute/twoattempts/allotherconfigincludingagentsface/signing/evidencegates/permissions preserved; no thirdpin/newprovider/credentials/paid/application/global/physicalNode change. Native selected E8workflow Gitblob0e4243c8db01db11db3b407adf471fd1ee8c773a/278670B/SHA2138e2018d22c5ad6920d679d66bcd1d47b1cca15a47aa6c4ddb59a6803780d9; nativeMuse259commit resolvesactualMERGEPR12. ExistingActionsenabled/all permissionreadno settingschange. NewcallerSHA8233c574e15614f9e6eee031e9d10fb4cbc85d04c602d31241399f73f87ee464; physicalfunctionalworkflow byteidenticalSHA7496f990d74c831373e46a91176beff94212a298c662f6e64e7d552a86da6c44/Node22.20. Includeexistingheld275 receipt/proof of old3ab fullfunctionalCI38662895704; retainexact274committedreceiptprefix/1223reflectionlines. Baselineactual150changedinputs and original56/raw70 provenance remain; refreshcurrentnative/localbasehead/fullchangedinput and obtain actual new-head functionalCI/fullreview/nativepublication/checks/settlements/convergence/MERGE withinbounds. Sourceapprovals/staticYAMLchecks donotproveconsumerthroughput, recallsemantics orservedB1B2B3. No mirror unit tests or newsourceprerequisite added for immutable configpins; actualnative invocation ismeaningful verification.21GiBfloor restored/no additionalfullcopyinstall. GoalACTIVE/0of3served/heartbeatHUMANpaused; no maker/runtime/clock/owner/PM2/cloud/boardsemantics/deployment/social/spore mutation.
