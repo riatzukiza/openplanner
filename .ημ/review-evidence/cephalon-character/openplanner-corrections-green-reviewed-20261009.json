@@ -1,0 +1,266 @@
+{
+  "evidence_tier": "observed",
+  "representation": "Exact command-output transcription and paraphrase of actually returned local subagent review; no raw REST or native GitHub approval",
+  "red_commit": "e2bf96d0f8fa41e7d5a9e5343a0cb784a853b6c5",
+  "reviewer_agent_id": "01a1211b-b618-7e70-b1d7-bab8cf938bba",
+  "review_verdict": "No remaining actionable defects in current correction scope against e2bf96d; both second-review findings and original four resolved.",
+  "reviewed_source_sha256": {
+    "packages/graph/graph-claim-core/src/openplanner/graph/recall/core.cljc": "63756f955e12a8583f82bd6e33ccf1ade137f2942b98b23c521d2e41067c5202",
+    "packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs": "dd5955d2969c19894e6b0b196cbb61b90d7a6ee1866309b80a1e3d5fc04d8694",
+    "docs/verification/cephalon-scoped-graph-recall.md": "a5a45b34a7dcf84e9109386b90c13352a542de3504f557661beb7f99ad85409d"
+  },
+  "reviewer_independent_observations": {
+    "JVM": "17tests100assertions0fail0error/exit0",
+    "Node": "27tests142assertions0fail0error",
+    "forced_child": "1actualfailure/exit1; parentverifierexit0",
+    "additional_shared_ID_cases": [
+      "foreign/self/empty/malformed members preserve permitted hits",
+      "independently admitted duplicate fails invalid-snapshot"
+    ],
+    "lint": "0warnings0errors",
+    "scope": "Pure selection/verifier corrections, not G history/source integration/live authority/maker/B3/native approval"
+  },
+  "source_manifest": [
+    {
+      "path": "docs/verification/cephalon-scoped-graph-recall.md",
+      "bytes": 5486,
+      "sha256": "a5a45b34a7dcf84e9109386b90c13352a542de3504f557661beb7f99ad85409d"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/deps.edn",
+      "bytes": 205,
+      "sha256": "21943b637b7be465fb2f84876120935c37e0514f9ff0c3aeb85c01fd64d97ea6"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/index.d.ts",
+      "bytes": 3715,
+      "sha256": "33bb6c5bec056b99fd81fcea857a25d458fbb0b172b0f708eadd3564a0f808db"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/package.json",
+      "bytes": 597,
+      "sha256": "5af8e76c2f02d3d836c0ecac3ef1077ebe7e3fe000d6909fe3385fd222af3d51"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs",
+      "bytes": 3460,
+      "sha256": "dd5955d2969c19894e6b0b196cbb61b90d7a6ee1866309b80a1e3d5fc04d8694"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-scoped-recall.mjs",
+      "bytes": 2663,
+      "sha256": "b0c5ee8f09cb2852e058581996315c2ba41179a7709cae2513fd5ea560b5bbee"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/shadow-cljs.edn",
+      "bytes": 2099,
+      "sha256": "dbfec971d1d35cdf9b17a91d73089492489bfd89c2922f04b142800017168816"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/boundary.cljs",
+      "bytes": 1502,
+      "sha256": "2a84a6e581684e0ea7152098f09b5f2771985707b3b188be48369f0575f33011"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/contract.cljc",
+      "bytes": 4878,
+      "sha256": "350499515a80c71c6c9afc9ca463e9a4813e5d637da257049ec35eb8eb3f9d94"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/core.cljc",
+      "bytes": 7955,
+      "sha256": "63756f955e12a8583f82bd6e33ccf1ade137f2942b98b23c521d2e41067c5202"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/core_test.cljc",
+      "bytes": 10935,
+      "sha256": "fa9ce6fa9e7c384df6bfecd10bebc17a281a787514026620f3e0d54508679522"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/runner.cljs",
+      "bytes": 1391,
+      "sha256": "188c05a19484b66cc8b0a0c1ca1b693b8ae76c47e688a9ea8c8511ac28c116da"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 356915,
+      "sha256": "d2da328030005747a081d068b0bec297882c9cae0fd98cad201f1140ec26615d"
+    }
+  ],
+  "executions": [
+    {
+      "command": "clojure -M:recall-test",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-green-jvm.log",
+      "bytes": 107,
+      "sha256": "4e31bdd141e5516d55b73346fe44bcca47e6c36228577243bb27e75218ca3b16",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Ran 17 tests containing 100 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "command": "pnpm exec shadow-cljs --force-spawn compile test",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-green-node-compile.log",
+      "bytes": 307,
+      "sha256": "300263038b628533d21619dda1e7887f57d199af1ee5b8c074854b4c2bbf775c",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:test] Compiling ...\n",
+        "[:test] Build completed. (80 files, 4 compiled, 0 warnings, 2.52s)\n"
+      ]
+    },
+    {
+      "command": "node target/test.cjs",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-green-node-test.log",
+      "bytes": 192,
+      "sha256": "26707d750d004353c6a6aca27d2cccb436f187a566afb399da9ca5350e542bd2",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 27 tests containing 142 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "command": "node scripts/verify-recall-test-exit.mjs",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-runner-summary-review-green.log",
+      "bytes": 736,
+      "sha256": "6a2f675facd9e6b954fef7a06596ebef47cad505b4e9618989c577a19a9a5011",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 27 tests containing 142 assertions.\n",
+        "0 failures, 0 errors.\n",
+        "ISOLATED_IN_MEMORY_ASSERTION_FAILURE\n",
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "FAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:12:9)\n",
+        "expected: (= \"completed\" (aget result \"status\"))\n",
+        "  actual: (not (= \"completed\" \"forced-review-failure\"))\n",
+        "\n",
+        "Ran 27 tests containing 142 assertions.\n",
+        "1 failures, 0 errors.\n",
+        "Observed isolated runner exit=1\n",
+        "PASS actual compiled Node runner exits 1 for the forced assertion failure\n"
+      ]
+    },
+    {
+      "command": "pnpm exec shadow-cljs --force-spawn release lib",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-green-release.log",
+      "bytes": 305,
+      "sha256": "c3d2097d480a7c8f563b602c060a71636b8d437ad3085f5ab2aec3dc84763173",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:lib] Compiling ...\n",
+        "[:lib] Build completed. (67 files, 2 compiled, 0 warnings, 7.50s)\n"
+      ]
+    },
+    {
+      "command": "node scripts/verify-scoped-recall.mjs",
+      "exit": 0,
+      "raw_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-shared-compact-review-green-released-demo.log",
+      "bytes": 1560,
+      "sha256": "0dd4167fe827822a9feb040a1b12d9e61d88a15c9b7a999ec859821f671e44c4",
+      "stdout_utf8_lines": [
+        "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n",
+        "{\n",
+        "  \"feedback\": {\n",
+        "    \"status\": \"not-requested\",\n",
+        "    \"attempted\": 0,\n",
+        "    \"completed\": 0\n",
+        "  },\n",
+        "  \"diagnostics\": {\n",
+        "    \"denied-nodes\": 0,\n",
+        "    \"authorized-nodes\": 2,\n",
+        "    \"admitted-edges\": 1\n",
+        "  },\n",
+        "  \"hits\": [\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:outside-encounter\",\n",
+        "      \"reason\": \"semantic-seed\",\n",
+        "      \"id\": \"outside-encounter\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [],\n",
+        "      \"cost\": 0,\n",
+        "      \"seed?\": true,\n",
+        "      \"text\": \"memory:outside-encounter\"\n",
+        "    },\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\",\n",
+        "        \"graph-only-neighbor\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:graph-only-neighbor\",\n",
+        "      \"reason\": \"graph-neighbor\",\n",
+        "      \"id\": \"graph-only-neighbor\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [\n",
+        "        \"edge:encounter:neighbor\"\n",
+        "      ],\n",
+        "      \"cost\": 1,\n",
+        "      \"seed?\": false,\n",
+        "      \"text\": \"memory:graph-only-neighbor\"\n",
+        "    }\n",
+        "  ],\n",
+        "  \"graph-revision\": \"fixture-graph:23\",\n",
+        "  \"recall-id\": \"fixture-turn:17\",\n",
+        "  \"field-revision\": \"fixture-field:11\",\n",
+        "  \"status\": \"completed\",\n",
+        "  \"visited-count\": 2,\n",
+        "  \"policy-revision\": \"fixture-policy:7\",\n",
+        "  \"budget\": {\n",
+        "    \"k\": 6,\n",
+        "    \"fetch\": 18,\n",
+        "    \"max-nodes\": 64,\n",
+        "    \"max-cost\": 4\n",
+        "  },\n",
+        "  \"field-owner\": \"eros-eris-field\"\n",
+        "}\n",
+        "PASS missing decisions refuse recall; retrieval schedules zero feedback writes\n",
+        "WARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\n",
+        "CLEAN removed only this demonstration's dedicated temporary fixture\n"
+      ]
+    }
+  ],
+  "released_esm": {
+    "bytes": 303429,
+    "sha256": "015ded57b9b007b9aa2d8fbcef0b0be1c3bc601dcfe6632a51929472d8742bda"
+  },
+  "operator_attempts": [
+    "First proof assembly failed before creating any artifact because git name-only quoted Unicode bytes; actual -z paths correct the operator decoding. A receipt/reflection already named the pending artifact; both are preserved unchanged. This is an assembly attempt, not a product test."
+  ],
+  "limitations": [
+    "Scoped package and pure JVM suite only; OpenPlanner full root/SDK integration gates not yet executed",
+    "Missing NPM_TOKEN interpolation from private npm config remains an operator warning; compiler and Node test warnings are zero",
+    "Field/mood/persisted storage/actual maker prompt/B1/B2/B3 unfinished; source integration G/f95 independently unqualified",
+    "Earlier evidence/passing scopes/failed attempts remain byte-identical; no provider/Mongo/board/runtime/clock/social/deployment operation"
+  ]
+}

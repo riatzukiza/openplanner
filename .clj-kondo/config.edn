@@ -1,0 +1,9 @@
+;; ClojureScript 1.12.145 treats await inside ^:async forms as a native compiler
+;; special form. The installed clj-kondo does not yet resolve that spelling.
+;; Keep this recognition limited to the two adapter namespaces; compilation
+;; still enforces lawful placement. No test or compiler warning is suppressed.
+{:config-in-ns
+ {openplanner.graph.recall.mongo
+  {:linters {:unresolved-symbol {:exclude [await]}}}
+  openplanner.graph.recall.mongo-test
+  {:linters {:unresolved-symbol {:exclude [await]}}}}}

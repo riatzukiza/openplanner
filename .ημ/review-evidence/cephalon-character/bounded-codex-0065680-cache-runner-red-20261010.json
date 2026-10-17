@@ -1,0 +1,29 @@
+{
+  "tier": "actual capture; prior RED cache new test was defined after run-tests macro and did not execute; definition moved before macro and rerun; production unchanged",
+  "commands": [
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "exit_code": 0,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (56 files, 1 compiled, 0 warnings, 2.22s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "exit_code": 1,
+      "stdout": "\nTesting openplanner.stores.cache-test\n\nFAIL in (memory-capacity-must-be-a-nonnegative-safe-integer) (openplanner/stores/cache_test.cljs:143:9)\nexpected: (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))\n  actual: nil\n\nFAIL in (memory-capacity-must-be-a-nonnegative-safe-integer) (openplanner/stores/cache_test.cljs:143:9)\nexpected: (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))\n  actual: nil\n\nFAIL in (memory-capacity-must-be-a-nonnegative-safe-integer) (openplanner/stores/cache_test.cljs:143:9)\nexpected: (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))\n  actual: nil\n\nFAIL in (memory-capacity-must-be-a-nonnegative-safe-integer) (openplanner/stores/cache_test.cljs:143:9)\nexpected: (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))\n  actual: nil\n\nFAIL in (memory-capacity-must-be-a-nonnegative-safe-integer) (openplanner/stores/cache_test.cljs:143:9)\nexpected: (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))\n  actual: nil\n\nRan 9 tests containing 39 assertions.\n5 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    }
+  ]
+}

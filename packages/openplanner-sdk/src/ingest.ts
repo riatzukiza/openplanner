@@ -1,0 +1,961 @@
+/**
+ * Event ingest pipeline, extracted from the REST API's POST /v1/events handler
+ * so it can run in-process anywhere the SDK is embedded (the API server is one
+ * consumer; knoxx's direct-mongo client is another). Metrics and Kafka
+ * publishing are intentionally NOT here — they are API-server concerns layered
+ * on by the route.
+ */
+import { createHash } from "node:crypto";
+import { createProtocols } from "./protocol-adapters.js";
+import { upsertEvent, upsertGraphEdges, upsertGraphNodeEmbeddings, eventRetentionExpiry } from "./mongodb.js";
+import type { MongoConnection } from "./mongodb.js";
+import { prepareIndexDocument } from "./indexing.js";
+import { indexTextInMongoVectors, replaceMongoVectorEntries } from "./mongo-vectors.js";
+import type { EventEnvelopeV1 } from "./types.js";
+import { assertNonblankIdentifier, validIsoTimestamp } from "./types.js";
+import { splitSentences, deduplicateByHash, computeTextHash } from "./sentence-split.js";
+import { formatEmbeddingPassageText } from "./embedding-text.js";
+import { eventMigrationState, OPENPLANNER_SCHEMA_TARGETS } from "./schema-versions.js";
+import type { EmbeddingRuntime } from "./embedding-runtime.js";
+
+export interface IngestLogger {
+  warn(obj: Record<string, unknown>, msg: string): void;
+}
+
+export interface IngestContext {
+  mongo: MongoConnection;
+  embeddingRuntime: EmbeddingRuntime;
+  log?: IngestLogger;
+}
+
+export interface IngestResult {
+  ok: true;
+  count: number;
+  ids: string[];
+  projectedGraphEdges: number;
+  ftsEnabled: true;
+  storageBackend: "mongodb";
+  indexed: true;
+  indexing: "queued" | "skipped";
+  queuedEventVectors: number;
+  queuedGraphNodeEmbeddings: number;
+  /** Events that passed validation, for downstream fan-out (e.g. Kafka). */
+  acceptedEvents: EventEnvelopeV1[];
+  /**
+   * Settles when detached vector/embedding work finishes. Callers that need
+   * read-your-writes (tests, batch jobs) can await it; the API route does not.
+   */
+  backgroundIndexing: Promise<void>;
+}
+
+function norm(v: any): string | null {
+  if (v === undefined || v === null) return null;
+  return String(v);
+}
+
+
+export function validateEvent(ev: EventEnvelopeV1) {
+  if (!ev || ev.schema !== "openplanner.event.v1") throw new Error("event.schema must be openplanner.event.v1");
+  for (const field of ["id", "source", "kind"] as const) {
+    assertNonblankIdentifier(ev[field], `event.${field}`);
+  }
+  if (!validIsoTimestamp(ev.ts)) throw new Error("event.ts must be a valid timestamp (ISO)");
+  if (ev.extra !== undefined && ev.extra !== null && (typeof ev.extra !== "object"
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(ev.extra)))) {
+    throw new Error("event.extra must be a plain object when supplied");
+  }
+  if (ev.source_ref !== undefined && (ev.source_ref === null || typeof ev.source_ref !== "object"
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(ev.source_ref)))) {
+    throw new Error("source_ref must be a plain object when supplied");
+  }
+  for (const field of ["project", "session", "message", "turn"] as const) {
+    const value = ev.source_ref?.[field];
+    if (value !== undefined && typeof value !== "string") {
+      throw new Error("source_ref identifier must be a string: " + field);
+    }
+  }
+  // Use the writer's shared label admission before any batch event is persisted.
+  eventRetentionExpiry(ev.extra, 0, new Date(0));
+  const extra = ev.extra ?? {};
+  for (const labels of [extra, extra.openplanner_labels as Record<string, unknown> | undefined]) {
+    if (labels && Object.hasOwn(labels, "tenant_id")) assertNonblankIdentifier(labels.tenant_id, "label tenant_id");
+  }
+  const nestedTenant = (extra.openplanner_labels as Record<string, unknown> | undefined)?.tenant_id;
+  if (extra.tenant_id !== undefined && nestedTenant !== undefined && extra.tenant_id !== nestedTenant) {
+    throw new Error("tenant identity aliases must agree");
+  }
+  const supplied = ev.kind === "graph.edge" ? ["source_node_id", "target_node_id", "edge_type", "edge_kind"]
+    : ev.kind === "graph.node" ? ["node_id"] : [];
+  for (const field of supplied) {
+    if (Object.hasOwn(extra, field)
+        && (typeof extra[field] !== "string" || !String(extra[field]).trim())) {
+      throw new Error("graph identifier must be a nonblank string: " + field);
+    }
+  }
+  if (ev.kind === "graph.edge") {
+    const edgeType = extra.edge_type as string | undefined, edgeKind = extra.edge_kind as string | undefined;
+    if (edgeType && edgeKind && edgeType.trim() !== edgeKind.trim()) {
+      throw new Error("graph relation identifier must be a nonblank string with agreeing aliases");
+    }
+  }
+  if (ev.text !== undefined && typeof ev.text !== "string") {
+    throw new Error(`${ev.kind} event text must be a string when supplied`);
+  }
+}
+
+function hasIndexableEventText(ev: EventEnvelopeV1): boolean {
+  return typeof ev.text === "string" && ev.text.trim().length > 0;
+}
+
+function labelSlug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96) || "label";
+}
+
+function graphLabelId(tenantId: string, project: string | null, label: string): string {
+  return `label:${labelSlug(label)}:${createHash("sha256").update(JSON.stringify([tenantId, project, label]), "utf8").digest("hex")}`;
+}
+
+function eventLabels(extra: Record<string, unknown>): string[] {
+  const labels = (extra.openplanner_labels as any)?.labels;
+  if (!Array.isArray(labels)) return [];
+  return [...new Set(labels.map((label: string) => label.trim()))];
+}
+
+export function shouldIndexEventHotVectors(ev: EventEnvelopeV1): boolean {
+  if (!hasIndexableEventText(ev)) return false;
+
+  // graph.node receives dedicated node-embedding materialization below, and
+  // graph.edge text is mostly structural glue (e.g. mentions_web URLs). Running
+  // both through the generic hot vector path just burns response time and can
+  // hold /v1/events open long enough for upstream header timeouts.
+  if (ev.kind === "graph.node" || ev.kind === "graph.edge") return false;
+
+  return true;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  let timedOut = false;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => { timedOut = true; reject(new Error(`${label} timed out after ${timeoutMs}ms`)); }, timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    if (timedOut) {
+      // Provider cancellation is not available on every embedding implementation.
+      // Retain ownership until the underlying operation settles, then report its
+      // real outcome. The observation threshold is not a hard termination bound;
+      // a late success may already have persisted the owned vectors.
+      return await promise;
+    }
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+const noopLogger: IngestLogger = { warn: () => {} };
+
+// SDK connection-local ownership. A replacement waits for earlier detached
+// writes to terminate; this is not a distributed writer or fencing protocol.
+const ingestTails = new WeakMap<MongoConnection, Map<string, Promise<void>>>();
+
+function autoDerivedEventId(event: EventEnvelopeV1): string | null {
+  return event.kind !== "graph.node" && event.kind !== "graph.edge" && hasIndexableEventText(event)
+    ? `graph.node:derive:${event.id}` : null;
+}
+
+
+function planGeneratedEvents(event: EventEnvelopeV1) {
+  const sentences: Array<{ hash: string; sent: ReturnType<typeof splitSentences>[number]; nodeId: string; eventId: string }> = [];
+  const ids: string[] = [];
+  const automatic = autoDerivedEventId(event);
+  if (automatic) ids.push(automatic);
+  const extra = (event.extra as Record<string, unknown> | undefined) ?? {};
+  const nodeId = norm(extra.node_id)?.trim() ?? norm(event.source_ref?.message)?.trim() ?? "";
+  const body = norm(event.text)?.trim() ?? "";
+  let prepared: ReturnType<typeof prepareIndexDocument> | undefined;
+  if (event.kind === "graph.node" && nodeId && body) {
+    try {
+      prepared = prepareIndexDocument({
+        parentId: nodeId, text: body, forceChunking: false,
+        targetChunkTokens: 32_000, targetChunkChars: 180_000, overlapChars: 1_000,
+      });
+    } catch (error) {
+      // Structural text remains an admitted source, with no derived content.
+      // Other preparation failures retain their original failure semantics.
+      if (!(error instanceof Error) || error.message !== "index document normalized text must be nonempty") throw error;
+    }
+  }
+  if (prepared) {
+    if (prepared.chunkCount > 1) ids.push(...prepared.chunks.map(chunk => `graph.node:doc_chunk:${chunk.id}`));
+    const hashes = new Set<string>();
+    const sources = prepared.chunkCount <= 1 ? [{ text: prepared.normalizedText }] : prepared.chunks;
+    for (const source of sources) for (const [hash, sent] of deduplicateByHash(splitSentences(source.text))) {
+      if (sent.tokens <= 3 || hashes.has(hash)) continue;
+      hashes.add(hash);
+      const sentenceNodeId = "sentence:" + createHash("sha256").update(JSON.stringify([norm(event.source_ref?.project) ?? null, event.id, hash]), "utf8").digest("hex");
+      const eventId = `graph.node:sentence:${sentenceNodeId}`;
+      ids.push(eventId);
+      sentences.push({ hash, sent, nodeId: sentenceNodeId, eventId });
+    }
+  }
+  const embeddingIds = prepared ? [nodeId,
+    ...(prepared.chunkCount > 1 ? prepared.chunks.map(chunk => chunk.id) : []),
+    ...sentences.map(sentence => sentence.nodeId)] : [];
+  return { ids, prepared, sentences, nodeId, embeddingIds };
+}
+
+
+export async function ingestEvents(ctx: IngestContext, events: EventEnvelopeV1[]): Promise<IngestResult> {
+  const unique = new Map<string, EventEnvelopeV1>();
+  const payloads = new Map<string, string>();
+  for (const event of events) {
+    validateEvent(event);
+    const payload = JSON.stringify(event);
+    const previous = payloads.get(event.id);
+    if (previous !== undefined && previous !== payload) {
+      throw new Error(`conflicting event replacements in one batch: ${event.id}`);
+    }
+    payloads.set(event.id, payload);
+    unique.set(event.id, event);
+  }
+  const plans = new Map([...unique.values()].map(event => [event.id, planGeneratedEvents(event)]));
+  // One batch cannot assign the same physical embedding identity to two owners.
+  // Include ordinary automatic nodes as well as explicit parents/chunks/sentences.
+  const embeddingOwners = new Map<string, string>();
+  for (const event of unique.values()) {
+    const nodeIds = [...plans.get(event.id)!.embeddingIds,
+      ...(autoDerivedEventId(event) ? [event.id] : [])];
+    for (const nodeId of nodeIds) {
+      const owner = embeddingOwners.get(nodeId);
+      if (owner !== undefined && owner !== event.id) {
+        throw new Error(`graph embedding identity ownership collision: ${nodeId}`);
+      }
+      embeddingOwners.set(nodeId, event.id);
+    }
+  }
+  const tails = ingestTails.get(ctx.mongo) ?? new Map<string, Promise<void>>();
+  ingestTails.set(ctx.mongo, tails);
+  const reservedIds = new Set([...unique.keys(),
+    ...[...plans.values()].flatMap(plan => [...plan.ids, ...plan.embeddingIds])]);
+  const predecessors = [...reservedIds].map(id => tails.get(id)).filter((tail): tail is Promise<void> => tail !== undefined);
+  let complete!: () => void;
+  const terminal = new Promise<void>(resolve => { complete = resolve; });
+  // Reserve the complete batch without yielding, avoiding overlapping-batch
+  // lock ordering. Unrelated parents remain independent.
+  for (const id of reservedIds) tails.set(id, terminal);
+  const release = () => {
+    for (const id of reservedIds) if (tails.get(id) === terminal) tails.delete(id);
+    complete();
+  };
+  try {
+    await Promise.all(predecessors);
+    const result = await ingestReservedEvents(ctx, [...unique.values()], plans);
+    void result.backgroundIndexing.then(release, release);
+    return result;
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
+async function ingestReservedEvents(ctx: IngestContext, events: EventEnvelopeV1[], plans: Map<string, ReturnType<typeof planGeneratedEvents>>): Promise<IngestResult> {
+  const { mongo, embeddingRuntime } = ctx;
+  const log = ctx.log ?? noopLogger;
+  const protocols = createProtocols({ mongo });
+
+  // Refuse the whole batch before starting event, projection or vector writes.
+  for (const ev of events) validateEvent(ev);
+  const batchPayloads = new Map<string, string>();
+  for (const ev of events) {
+    const payload = JSON.stringify(ev);
+    const previous = batchPayloads.get(ev.id);
+    if (previous !== undefined && previous !== payload) {
+      throw new Error(`conflicting event replacements in one batch: ${ev.id}`);
+    }
+    batchPayloads.set(ev.id, payload);
+  }
+  // Generated event identities cannot replace caller-owned source rows. Check
+  // every batch and persisted owner before the first event/projection write.
+  const sourceIds = new Set(events.map(event => event.id));
+  const generatedOwners = new Map<string, string>();
+  for (const event of events) for (const derivedId of plans.get(event.id)!.ids) {
+    const batchOwner = generatedOwners.get(derivedId);
+    if (sourceIds.has(derivedId) || batchOwner !== undefined && batchOwner !== event.id) {
+      throw new Error(`derived event identity collision: ${derivedId}`);
+    }
+    generatedOwners.set(derivedId, event.id);
+  }
+  const generatedIds = [...generatedOwners.keys()];
+  for (let offset = 0; offset < generatedIds.length; offset += 256) {
+    const previousRows = await mongo.events.find({ _id: { $in: generatedIds.slice(offset, offset + 256) } })
+      .project({ _id: 1, source: 1, "extra.source_event_id": 1 }).toArray();
+    for (const previous of previousRows) {
+      const owner = generatedOwners.get(previous._id);
+      if (owner !== undefined && (previous.source !== "openplanner-derive"
+          || (previous.extra as Record<string, unknown> | undefined)?.source_event_id !== owner)) {
+        throw new Error(`derived event identity ownership collision: ${previous._id}`);
+      }
+    }
+  }
+
+  // Old endpoint-keyed edges can lack causal ownership. Refuse replacement
+  // rather than mutate the event and retain stale or delete another owner.
+  for (const ev of events) {
+    const previous = await mongo.events.findOne({ _id: ev.id });
+    if (previous?.source === "openplanner-derive" && typeof (previous.extra as Record<string, unknown> | undefined)?.source_event_id === "string") {
+      throw new Error(`derived event identity ownership collision: ${ev.id}`);
+    }
+    if (previous?.kind === "graph.edge") {
+      const old = (previous.extra as Record<string, unknown> | undefined) ?? {};
+      const source = norm(old.source_node_id)?.trim();
+      const target = norm(old.target_node_id)?.trim();
+      const kind = (norm(old.edge_type) ?? norm(old.edge_kind))?.trim();
+      if (source && target && kind) {
+        const legacy = await mongo.graphEdges.findOne({ _id: `${source}||${target}||${kind}` });
+        if (legacy && legacy.source_node_id === source && legacy.target_node_id === target
+          && legacy.edge_kind === kind && legacy.data?.source_event_id !== ev.id) {
+          throw new Error(`graph projection ownership unavailable for event ${ev.id}`);
+        }
+      }
+    }
+  }
+
+  const ids: string[] = [];
+  const acceptedEvents: EventEnvelopeV1[] = [];
+  const eventVectorTasks: Array<() => Promise<void>> = [];
+  const projectedGraphEdges: Array<{
+    source_node_id: string;
+    target_node_id: string;
+    edge_kind: string;
+    layer?: string | null;
+    project?: string | null;
+    source?: string | null;
+    data?: Record<string, unknown> | null;
+    updated_at?: Date;
+    expiresAt?: Date | null;
+  }> = [];
+  type GraphNodeEmbeddingInput = {
+    node_id: string;
+    source_event_id: string;
+    project?: string | null;
+    text: string;
+    source_text_hash_sha256: string;
+    expiresAt: Date | null;
+    chunk_count: number;
+  };
+  const graphNodeEmbeddingInputs = new Map<string, GraphNodeEmbeddingInput>();
+  const graphParentEmbeddingInputs = new Map<string, GraphNodeEmbeddingInput & { chunk_node_ids: string[] }>();
+  const sourceExpiries = new Map<string, Date | null>();
+
+  const derivedGraphNodeOps = new Map<string, any>();
+  const graphLabelNodeOps: any[] = [];
+  const queuedGraphLabelIds = new Set<string>();
+  const now = new Date();
+
+  const queueDerivedGraphNodeEvent = (params: {
+    id: string;
+    ts: Date;
+    project?: string | null;
+    nodeId: string;
+    nodeKind: string;
+    label: string;
+    preview: string;
+    retentionLabels: string[];
+    sourceEventId: string;
+    extra?: Record<string, unknown>;
+  }): void => {
+    derivedGraphNodeOps.set(params.id, {
+      updateOne: {
+        filter: { _id: params.id },
+        update: {
+          $set: {
+            id: params.id,
+            ts: params.ts,
+            source: "openplanner-derive",
+            kind: "graph.node",
+            project: params.project ?? null,
+            session: null,
+            message: params.label,
+            role: null,
+            author: null,
+            model: null,
+            tags: null,
+            text: "",
+            attachments: null,
+            extra: {
+              ...(params.extra ?? {}),
+              node_id: params.nodeId,
+              node_kind: params.nodeKind,
+              label: params.label,
+              preview: params.preview,
+              content_hash: computeTextHash(params.preview),
+              lake: params.project ?? undefined,
+              source_event_id: params.sourceEventId,
+              openplanner_labels: {
+                ...((params.extra?.openplanner_labels as Record<string, unknown> | undefined) ?? {}),
+                labels: params.retentionLabels,
+              },
+            },
+            schema_version: OPENPLANNER_SCHEMA_TARGETS.event,
+            migration_state: eventMigrationState(now),
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+          },
+        },
+        upsert: true,
+      },
+    });
+  };
+
+  const queueNodeEmbedding = (params: {
+    nodeId: string;
+    sourceEventId: string;
+    project?: string | null;
+    text: string;
+    chunkCount?: number;
+    sourceText?: string;
+  }): void => {
+    const normalized = formatEmbeddingPassageText(params.text);
+    if (!normalized) return;
+    graphNodeEmbeddingInputs.set(params.nodeId, {
+      node_id: params.nodeId,
+      source_event_id: params.sourceEventId,
+      project: params.project ?? null,
+      text: normalized,
+      source_text_hash_sha256: createHash("sha256").update(params.sourceText ?? params.text, "utf8").digest("hex"),
+      expiresAt: sourceExpiries.get(params.sourceEventId) ?? null,
+      chunk_count: params.chunkCount ?? 1,
+    });
+  };
+
+  for (const ev of events) {
+    const projectionStart = projectedGraphEdges.length;
+    acceptedEvents.push(ev);
+
+    const sr = ev.source_ref ?? {};
+    const meta = ev.meta ?? {};
+    const extra = (ev.extra as Record<string, unknown> | undefined) ?? {};
+    const role = norm((meta as any).role);
+    const author = norm((meta as any).author);
+    const model = norm((meta as any).model);
+    const tags = (meta as any).tags;
+    const project = norm((sr as any).project);
+
+    // Protocol-based event admission
+    await protocols.eventAdmission.appendEvent({
+      id: ev.id,
+      ts: new Date(ev.ts),
+      source: ev.source,
+      kind: ev.kind,
+      project,
+      session: norm((sr as any).session),
+      message: norm((sr as any).message),
+      role,
+      author,
+      model,
+      tags: tags ?? null,
+      text: norm(ev.text ?? ""),
+      attachments: ev.attachments ?? null,
+      extra: ev.extra ?? null,
+      schema_version: ev.schema_version,
+      migration_state: ev.migration_state as any,
+    });
+
+    ids.push(ev.id);
+    const admittedSource = await mongo.events.findOne({ _id: ev.id });
+    sourceExpiries.set(ev.id, admittedSource?.expiresAt instanceof Date ? admittedSource.expiresAt : null);
+
+    const labels = eventLabels(extra);
+    for (const label of labels) {
+      const tenantId = ((extra.openplanner_labels as any)?.tenant_id ?? extra.tenant_id ?? "default").trim();
+      const labelId = graphLabelId(tenantId, project, label);
+      if (!queuedGraphLabelIds.has(labelId)) {
+        queuedGraphLabelIds.add(labelId);
+        graphLabelNodeOps.push({
+          updateOne: {
+            filter: { label_id: labelId },
+            update: {
+              $set: {
+                _id: labelId,
+                label_id: labelId,
+                label,
+                emoji: null,
+                description: `Auto-derived event label: ${label}`,
+                color: null,
+                tenant_id: tenantId,
+                project,
+                embedding_model: null,
+                embedding_dimensions: 0,
+                embedding: null,
+                created_by: "event-ingest",
+                updatedAt: now,
+              },
+              $setOnInsert: { createdAt: now },
+            },
+            upsert: true,
+          },
+        });
+      }
+
+      projectedGraphEdges.push({
+        source_node_id: ev.kind === "graph.node" ? plans.get(ev.id)!.nodeId || ev.id : ev.id,
+        target_node_id: labelId,
+        edge_kind: "has_label",
+        layer: null,
+        project,
+        source: ev.source,
+        data: {
+          applied_at: new Date(ev.ts).toISOString(),
+          confidence: 1,
+          label,
+          claim_system: (extra.openplanner_labels as any)?.claim_system ?? null,
+          source_event_id: ev.id,
+        },
+        updated_at: new Date(ev.ts),
+      });
+    }
+
+    if (ev.kind === "graph.edge") {
+      const sourceNodeId = norm(extra.source_node_id)?.trim() ?? "";
+      const targetNodeId = norm(extra.target_node_id)?.trim() ?? "";
+      const edgeKind = (norm(extra.edge_type) ?? norm(extra.edge_kind) ?? "").trim();
+      if (sourceNodeId && targetNodeId && edgeKind && sourceNodeId !== targetNodeId) {
+        projectedGraphEdges.push({
+          source_node_id: sourceNodeId,
+          target_node_id: targetNodeId,
+          edge_kind: edgeKind,
+          layer: norm(extra.layer),
+          project,
+          source: ev.source,
+          data: extra,
+          updated_at: new Date(ev.ts),
+        });
+      }
+    }
+
+    if (ev.kind === "graph.node") {
+      const nodeId = norm(extra.node_id)?.trim() ?? norm((sr as any).message)?.trim() ?? "";
+      // Only admitted event text may influence an authority-hashed vector.
+      const body = norm(ev.text)?.trim() ?? "";
+      if (nodeId && body && plans.get(ev.id)!.prepared) {
+        const label = String(extra.label ?? extra.path ?? (sr as any).message ?? nodeId).trim() || nodeId;
+        const prepared = plans.get(ev.id)!.prepared!;
+
+        if (prepared.chunkCount <= 1) {
+          queueNodeEmbedding({
+            nodeId,
+            sourceEventId: ev.id,
+            project,
+            text: prepared.normalizedText,
+            sourceText: ev.text ?? "",
+            chunkCount: 1,
+          });
+        } else {
+          graphParentEmbeddingInputs.set(nodeId, {
+            node_id: nodeId, source_event_id: ev.id, project: project ?? null,
+            text: formatEmbeddingPassageText(prepared.normalizedText),
+            source_text_hash_sha256: createHash("sha256").update(ev.text ?? "", "utf8").digest("hex"),
+            expiresAt: sourceExpiries.get(ev.id) ?? null,
+            chunk_count: prepared.chunkCount,
+            chunk_node_ids: prepared.chunks.map(chunk => chunk.id),
+          });
+          for (const chunk of prepared.chunks) {
+            const chunkLabel = `${label} [chunk ${chunk.chunkIndex + 1}/${chunk.chunkCount}]`;
+            const chunkPreview = chunk.text.slice(0, 800);
+            const chunkEventId = `graph.node:doc_chunk:${chunk.id}`;
+
+            queueDerivedGraphNodeEvent({
+              id: chunkEventId,
+              ts: new Date(ev.ts),
+              project,
+              nodeId: chunk.id,
+              nodeKind: "doc_chunk",
+              label: chunkLabel,
+              preview: chunkPreview,
+              retentionLabels: labels,
+              sourceEventId: ev.id,
+              extra: {
+                parent_node_id: nodeId,
+                chunk_index: chunk.chunkIndex,
+                chunk_count: chunk.chunkCount,
+              },
+            });
+
+            projectedGraphEdges.push({
+              source_node_id: nodeId,
+              target_node_id: chunk.id,
+              edge_kind: "contains_chunk",
+              layer: "derived",
+              project,
+              source: "openplanner-derive",
+              data: {
+                parent_node_id: nodeId,
+                chunk_index: chunk.chunkIndex,
+                chunk_count: chunk.chunkCount,
+              },
+              updated_at: new Date(ev.ts),
+            });
+
+            queueNodeEmbedding({
+              nodeId: chunk.id,
+              sourceEventId: ev.id,
+              project,
+              text: chunk.text,
+              sourceText: ev.text ?? "",
+              chunkCount: chunk.chunkCount,
+            });
+          }
+        }
+
+        for (const { hash, sent, nodeId: sentenceNodeId, eventId: sentenceEventId } of plans.get(ev.id)!.sentences) {
+              queueDerivedGraphNodeEvent({
+                id: sentenceEventId,
+                ts: new Date(ev.ts),
+                project,
+                nodeId: sentenceNodeId,
+                nodeKind: "sentence",
+                label: sent.sentence.length > 120 ? sent.sentence.slice(0, 117) + "..." : sent.sentence,
+                preview: sent.sentence,
+                retentionLabels: labels,
+                sourceEventId: ev.id,
+                extra: {
+                  derived_from_node_id: nodeId,
+                },
+              });
+
+            projectedGraphEdges.push({
+              source_node_id: nodeId,
+              target_node_id: sentenceNodeId,
+              edge_kind: "contains_sentence",
+              layer: "derived",
+              project,
+              source: "openplanner-derive",
+              data: {
+                sentence_hash: hash,
+              },
+              updated_at: new Date(ev.ts),
+            });
+
+            queueNodeEmbedding({
+              nodeId: sentenceNodeId,
+              sourceEventId: ev.id,
+              project,
+              text: sent.sentence,
+              sourceText: ev.text ?? "",
+              chunkCount: 1,
+            });
+        }
+      }
+    }
+
+    // Auto-materialize arbitrary event kinds as graph nodes so the graph
+    // export and graph-weaver can see them without requiring every producer
+    // to emit `kind: "graph.node"`. We preserve the original kind in
+    // `extra.node_kind` and use the event id as the node id.
+    if (ev.kind !== "graph.node" && ev.kind !== "graph.edge" && hasIndexableEventText(ev)) {
+      const nodeId = ev.id;
+      const preview = norm(ev.text)?.trim() ?? "";
+      const derivedEventId = autoDerivedEventId(ev)!;
+      const label = String(
+        extra.label ?? (sr as any).message ?? (preview.length > 80 ? `${preview.slice(0, 77)}...` : preview) ?? nodeId,
+      ).trim() || nodeId;
+
+      queueDerivedGraphNodeEvent({
+        id: derivedEventId,
+        ts: new Date(ev.ts),
+        project,
+        nodeId,
+        nodeKind: ev.kind,
+        label,
+        preview,
+        retentionLabels: labels,
+        sourceEventId: ev.id,
+        extra: {
+          lake: project ?? undefined,
+          entity_key: ev.id,
+          source_event_id: ev.id,
+          source_kind: ev.kind,
+          ...extra,
+        },
+      });
+
+      queueNodeEmbedding({
+        nodeId,
+        sourceEventId: ev.id,
+        project,
+        text: preview,
+        sourceText: ev.text!,
+        chunkCount: 1,
+      });
+    }
+
+    for (let index = projectionStart; index < projectedGraphEdges.length; index++) {
+      const edge = projectedGraphEdges[index]!;
+      edge.data = { ...edge.data, source_event_id: ev.id };
+      edge.expiresAt = sourceExpiries.get(ev.id) ?? null;
+    }
+
+    if (shouldIndexEventHotVectors(ev)) {
+      eventVectorTasks.push(async () => {
+        try {
+          const embeddingScope = {
+            source: ev.source,
+            kind: ev.kind,
+            project: project ?? undefined,
+          };
+
+          const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunction(embeddingScope);
+          const embeddingModel = embeddingRuntime.hot.getModel(embeddingScope);
+          await withTimeout(indexTextInMongoVectors({
+            mongo,
+            tier: "hot",
+            parentId: ev.id,
+            text: ev.text!,
+            extra,
+            metadata: {
+              ts: ev.ts,
+              source: ev.source,
+              kind: ev.kind,
+              project: (sr as any).project,
+              session: (sr as any).session,
+              author: author ?? "",
+              role: role ?? "",
+              model: model ?? "",
+              embedding_model: embeddingModel ?? "",
+              search_tier: "hot",
+              source_expires_at: sourceExpiries.get(ev.id) ?? null,
+              visibility: extra.visibility ?? "internal",
+              quality_label: ((extra.openplanner_labels as any)?.quality ?? ""),
+              labels,
+              title: extra.title ?? (sr as any).message ?? ev.id,
+            },
+            embeddingFunction,
+          }), 30_000, `event vector index ${ev.id}`);
+        } catch (err) {
+          // The accepted base row already contains the replacement. Old search
+          // rows must not outlive a failed provider/storage attempt, including
+          // retention-exempt copies in historical model partitions.
+          await replaceMongoVectorEntries(mongo, "hot", ev.id, []);
+          log.warn({ err, eventId: ev.id }, "Failed to index event into MongoDB vectors; preserving base event without embeddings");
+        }
+      });
+    } else {
+      // An empty or structural replacement still owns deletion of its old
+      // hot vectors, including retention-exempt rows and model partitions.
+      await replaceMongoVectorEntries(mongo, "hot", ev.id, []);
+    }
+  }
+
+  if (derivedGraphNodeOps.size > 0) {
+    for (const operation of derivedGraphNodeOps.values()) {
+      const derived = operation.updateOne.update.$set;
+      const sourceEventId = derived.extra.source_event_id;
+      await upsertEvent(mongo.events, derived, mongo.retention?.eventsTtlSeconds, {
+        sourceEventId, expiresAt: sourceExpiries.get(sourceEventId)!,
+      });
+    }
+  }
+
+  // Reconcile only explicitly owned derived rows. Legacy rows without causal
+  // ownership are retained for an independently qualified migration.
+  for (const sourceEventId of new Set(ids)) {
+    const derivedIds = [...derivedGraphNodeOps.values()]
+      .map((operation) => operation.updateOne.update.$set)
+      .filter((row) => row.extra.source_event_id === sourceEventId)
+      .map((row) => row.id);
+    const inputs = [...graphNodeEmbeddingInputs.values(), ...graphParentEmbeddingInputs.values()]
+      .filter((row) => row.source_event_id === sourceEventId);
+    await mongo.events.deleteMany({ source: "openplanner-derive", "extra.source_event_id": sourceEventId, id: { $nin: derivedIds } });
+    await mongo.graphNodeEmbeddings.deleteMany({ source_event_id: sourceEventId, node_id: { $nin: inputs.map((row) => row.node_id) } });
+    for (const input of inputs) {
+      await mongo.graphNodeEmbeddings.deleteMany({
+        source_event_id: sourceEventId,
+        node_id: input.node_id,
+        source_text_hash_sha256: { $ne: input.source_text_hash_sha256 },
+      });
+    }
+  }
+
+  if (graphLabelNodeOps.length > 0) {
+    const batchSize = 1000;
+    for (let i = 0; i < graphLabelNodeOps.length; i += batchSize) {
+      await mongo.graphLabelNodes.bulkWrite(graphLabelNodeOps.slice(i, i + batchSize), { ordered: false });
+    }
+  }
+
+  // Replacing an admitted source removes its old owned projection, including
+  // when the replacement produces no edges. Unrelated owners remain intact.
+  if (ids.length > 0) await mongo.graphEdges.deleteMany({ "data.source_event_id": { $in: ids } });
+  if (projectedGraphEdges.length > 0) {
+    await upsertGraphEdges(mongo.graphEdges, projectedGraphEdges);
+  }
+
+  const graphNodeEmbeddingTask = graphNodeEmbeddingInputs.size > 0
+    ? (async () => {
+        try {
+          const groupedByModel = new Map<string, GraphNodeEmbeddingInput[]>();
+
+          for (const input of graphNodeEmbeddingInputs.values()) {
+            const model = embeddingRuntime.hot.getModel({
+              source: "graph-event",
+              kind: "graph.node",
+              project: input.project ?? undefined,
+            });
+            const rows = groupedByModel.get(model) ?? [];
+            rows.push(input);
+            groupedByModel.set(model, rows);
+          }
+
+          for (const [model, rows] of groupedByModel) {
+            try {
+              const embeddingFunction = embeddingRuntime.hot.getBackgroundEmbeddingFunctionForModel(model);
+              const expectedDimensions = embeddingRuntime.hot.getEmbeddingDimensionsForModel?.(model);
+              const parents = [...graphParentEmbeddingInputs.values()].filter(parent =>
+                embeddingRuntime.hot.getModel({ source: "graph-event", kind: "graph.node",
+                  project: parent.project ?? undefined }) === model);
+              const nodeIds = rows.map((row) => row.node_id);
+              const existing = await mongo.graphNodeEmbeddings
+                .find({ node_id: { $in: nodeIds }, embedding_model: model,
+                  ...(expectedDimensions !== undefined ? { embedding_dimensions: expectedDimensions } : {}) })
+                .project({ node_id: 1, text: 1, source_text_hash_sha256: 1, source_event_id: 1, project: 1,
+                  chunk_count: 1, expiresAt: 1, embedding: 1, embedding_dimensions: 1 })
+                .toArray();
+              const existingById = new Map(existing.map((row: any) => [String(row.node_id), row] as const));
+
+              const reusable = (row: GraphNodeEmbeddingInput): boolean => {
+                const previous = existingById.get(row.node_id);
+                return Boolean(previous && previous.text === row.text && previous.source_text_hash_sha256 === row.source_text_hash_sha256
+                  && Array.isArray(previous.embedding) && previous.embedding.length > 0
+                  && previous.embedding.every((value: unknown) => typeof value === "number" && Number.isFinite(value))
+                  && (expectedDimensions === undefined || (previous.embedding_dimensions === expectedDimensions
+                    && previous.embedding.length === expectedDimensions)));
+              };
+
+              const toEmbed = rows.filter(row => !reusable(row));
+
+              for (const row of rows) {
+                const previous = existingById.get(row.node_id);
+                if (previous && reusable(row)
+                    && (previous.source_event_id !== row.source_event_id || (previous.project ?? null) !== (row.project ?? null)
+                        || previous.chunk_count !== row.chunk_count
+                        || (previous.expiresAt?.getTime() ?? null) !== (row.expiresAt?.getTime() ?? null))) {
+                  await mongo.graphNodeEmbeddings.updateMany({
+                    node_id: row.node_id, embedding_model: model, text: row.text,
+                    source_text_hash_sha256: row.source_text_hash_sha256,
+                    source_event_id: previous.source_event_id, project: previous.project ?? null,
+                  }, { $set: { source_event_id: row.source_event_id, project: row.project ?? null,
+                    chunk_count: row.chunk_count, expiresAt: row.expiresAt, updated_at: new Date(), updatedAt: new Date() } });
+                }
+              }
+
+              const embeddings = toEmbed.length === 0 ? [] : await withTimeout(
+                embeddingFunction.generate(toEmbed.map((row) => row.text)) as Promise<number[][]>,
+                30_000,
+                `graph node embedding batch ${model}`,
+              );
+              if (!Array.isArray(embeddings) || embeddings.length !== toEmbed.length) {
+                throw new Error("Graph embedding batch size mismatch");
+              }
+
+              const storedRows = toEmbed.flatMap((row, idx) => {
+                const embedding = embeddings[idx];
+                if (!Array.isArray(embedding) || embedding.length === 0
+                    || embedding.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+                  throw new Error("Graph embedding must be a nonempty finite vector");
+                }
+                if (expectedDimensions !== undefined && embedding.length !== expectedDimensions) {
+                  throw new Error("Graph embedding violates declared model dimensions");
+                }
+                return [{
+                  node_id: row.node_id,
+                  source_event_id: row.source_event_id,
+                  project: row.project ?? null,
+                  embedding_model: model,
+                  embedding_dimensions: embedding.length,
+                  embedding,
+                  chunk_count: row.chunk_count ?? 1,
+                  text: row.text,
+                  source_text_hash_sha256: row.source_text_hash_sha256,
+                  expiresAt: row.expiresAt,
+                  updated_at: new Date(),
+                }];
+              });
+
+              const vectorsById = new Map<string, number[]>(rows.filter(reusable)
+                .map(row => [row.node_id, existingById.get(row.node_id)!.embedding]));
+              for (const row of storedRows) vectorsById.set(row.node_id, row.embedding);
+              for (const parent of parents) {
+                const vectors = parent.chunk_node_ids.map(id => vectorsById.get(id));
+                const dimensions = vectors[0]?.length ?? 0;
+                if (dimensions === 0 || vectors.some(vector => !vector || vector.length !== dimensions)) {
+                  throw new Error("Graph parent aggregation requires every bound chunk vector");
+                }
+                // A scaled mean avoids overflow while retaining all source chunks.
+                const embedding = Array.from({ length: dimensions }, (_, dimension) => {
+                  const scale = vectors.reduce((max, vector) => Math.max(max, Math.abs(vector![dimension])), 0);
+                  return scale === 0 ? 0 : vectors.reduce((sum, vector) => sum + vector![dimension] / scale, 0)
+                    / vectors.length * scale;
+                });
+                if (embedding.some(value => !Number.isFinite(value))) {
+                  throw new Error("Graph parent aggregation must produce a finite vector");
+                }
+                const { chunk_node_ids: _chunkIds, ...input } = parent;
+                storedRows.push({ ...input, project: input.project ?? null, embedding_model: model, embedding_dimensions: dimensions,
+                  embedding, updated_at: new Date() });
+              }
+              if (storedRows.length > 0) {
+                await upsertGraphNodeEmbeddings(mongo.graphNodeEmbeddings, storedRows);
+                if (expectedDimensions !== undefined) for (const row of storedRows) {
+                  await mongo.graphNodeEmbeddings.deleteMany({
+                    node_id: row.node_id, source_event_id: row.source_event_id,
+                    embedding_model: model, embedding_dimensions: { $ne: expectedDimensions },
+                  });
+                }
+              }
+            } catch (err) {
+              log.warn({ err, model, count: rows.length }, "Failed graph embedding model group; continuing independent groups");
+            }
+          }
+        } catch (err) {
+          log.warn({ err, count: graphNodeEmbeddingInputs.size }, "Failed to materialize graph node embeddings during event ingest");
+        }
+      })()
+    : Promise.resolve();
+
+  const eventVectorsTask = eventVectorTasks.length > 0
+    ? Promise.allSettled(eventVectorTasks.map(task => task())).then((results) => {
+        const rejected = results.filter((result) => result.status === "rejected").length;
+        if (rejected > 0) {
+          log.warn({ rejected, queued: eventVectorTasks.length }, "Detached event vector indexing completed with rejected tasks");
+        }
+      })
+    : Promise.resolve();
+
+  // All work must terminate even if a task's logger throws: a first rejection
+  // cannot release parent ownership while another task is still writing.
+  const backgroundIndexing = Promise.allSettled([graphNodeEmbeddingTask, eventVectorsTask]).then(() => undefined);
+  // Detached by default, mirroring the original route behavior.
+  void backgroundIndexing;
+
+  return {
+    ok: true,
+    count: ids.length,
+    ids,
+    projectedGraphEdges: projectedGraphEdges.length,
+    ftsEnabled: true,
+    storageBackend: "mongodb",
+    indexed: true,
+    indexing: eventVectorTasks.length > 0 || graphNodeEmbeddingInputs.size > 0 ? "queued" : "skipped",
+    queuedEventVectors: eventVectorTasks.length,
+    queuedGraphNodeEmbeddings: graphNodeEmbeddingInputs.size + graphParentEmbeddingInputs.size,
+    acceptedEvents,
+    backgroundIndexing,
+  };
+}

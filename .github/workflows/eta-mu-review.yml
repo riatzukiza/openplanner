@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: eta-mu evidence review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review:
+    name: Evidence-first review (eta-mu)
+    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@8b8ebeb323ad4e90bddf4c31082cbaf45d684a3d
+    with:
+      pr_head_sha: ${{ github.event.pull_request.head.sha }}
+      review_timeout_minutes: 120
+      muse_revision: f422d77cf9c6cea46b6791e3f54c98679e949d1f
+      agents_revision: face3009a8dfb6f355acad467fd288100e49c0ba
+      opencode_version: 1.18.31
+      node_version: "22.23.3"
+      setup_eta_mu_toolchain: false
+      evidence_gates_script: |
+        run_gate diff_stat git diff --stat "${PR_BASE_SHA}...HEAD"
+        run_gate diff_hygiene git diff --check "${PR_BASE_SHA}...HEAD"
+    secrets:
+      ETA_MU_APP_ID: ${{ secrets.ETA_MU_APP_ID }}
+      ETA_MU_APP_PRIVATE_KEY: ${{ secrets.ETA_MU_APP_PRIVATE_KEY }}

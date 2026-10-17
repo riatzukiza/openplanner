@@ -1,0 +1,346 @@
+(ns openplanner.stores.cache-test
+  (:require [cljs.test :as t :refer [async deftest is run-tests]]
+            [openplanner.stores.cache.boundary :as boundary]
+            [openplanner.stores.cache.schema :as schema]
+            [openplanner.stores.cache.layered :as layered]
+            [openplanner.stores.cache.protocol :as protocol]
+            [openplanner.stores.cache.core :as core]))
+
+(defmethod t/report [:cljs.test/default :summary] [m]
+  (println "\nRan" (:test m) "tests containing" (+ (:pass m) (:fail m) (:error m)) "assertions.")
+  (println (:fail m) "failures," (:error m) "errors.")
+  (when (pos? (+ (:fail m) (:error m)))
+    (.exit js/process 1)))
+
+(defn- p->
+  [p f]
+  (.then (js/Promise.resolve p) f))
+
+(deftest cache-entry-and-projection-envelope-schema-test
+  (let [entry (schema/cache-entry {:key "sessions:recent"
+                                   :value {:rows []}
+                                   :ttl-ms 1000
+                                   :now-ms 10})
+        envelope (schema/projection-envelope {:name "openplanner.sessions/session-index"
+                                              :version 1
+                                              :source-store "mongo"
+                                              :source-collection "events"
+                                              :source-key "project:devel"
+                                              :watermark "events:123"
+                                              :value {:sessions []}})]
+    (is (= "sessions:recent" (:cache/key entry)))
+    (is (= 1010 (:cache/expires-at-ms entry)))
+    (is (true? (:valid? (schema/explain-cache-entry entry))))
+    (is (= "mongo" (:projection/source-store envelope)))
+    (is (true? (:valid? (schema/explain-projection-envelope envelope))))
+    (is (false? (:valid? (schema/explain-projection-envelope (dissoc envelope :projection/source-key)))))))
+
+(deftest boundary-schema-functions-return-js-objects-test
+  (let [entry (boundary/cache-entry-js #js {:key "k" :value "v" :ttlMs 5 :nowMs 1})
+        envelope (boundary/projection-envelope-js #js {:name "n"
+                                                       :sourceStore "mongo"
+                                                       :sourceKey "id:1"
+                                                       :value #js {:ok true}})]
+    (is (= "k" (aget entry "cache/key")))
+    (is (= 6 (aget entry "cache/expires-at-ms")))
+    (is (= "mongo" (aget envelope "projection/source-store")))
+    (is (true? (aget (boundary/explain-projection-envelope-js envelope) "valid")))))
+
+(deftest boundary-explanations-identify-the-qualified-javascript-fields
+  (let [entry (boundary/cache-entry-js #js {:key "k" :value "v" :nowMs 1})
+        envelope (boundary/projection-envelope-js
+                   #js {:name "n" :sourceStore "mongo" :sourceKey "id:1" :value "v"})]
+    (aset entry "cache/key" false)
+    (aset envelope "projection/name" "")
+    (aset envelope "projection/source-key" false)
+    (let [result (boundary/explain-cache-entry-js entry)
+          error (aget result "errors" 0)]
+      (is (false? (aget result "valid")))
+      (is (= 1 (alength (aget result "errors"))))
+      (is (= ["cache/key"] (js->clj (aget error "path"))))
+      (is (= "required-nonblank-string" (aget error "error")))
+      (is (false? (aget error "value"))))
+    (let [result (boundary/explain-projection-envelope-js envelope)]
+      (is (false? (aget result "valid")))
+      (is (= #{["projection/name"] ["projection/source-key"]}
+             (set (map #(js->clj (aget % "path"))
+                       (array-seq (aget result "errors")))))))))
+
+(deftest memory-lru-cache-ttl-and-eviction-test
+  (let [clock (atom 1000)]
+    (with-redefs [core/now-ms #(deref clock)]
+      (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 1 :defaultTtlMs 5})]
+        (boundary/cache-put-js cache "a" "A")
+        (is (= "A" (boundary/cache-get-js cache "a")))
+        (boundary/cache-put-js cache "b" "B")
+        (is (nil? (boundary/cache-get-js cache "a")))
+        (is (= "B" (boundary/cache-get-js cache "b")))
+        (reset! clock 1008)
+        (is (nil? (boundary/cache-get-js cache "b")))))))
+
+(deftest layered-cache-promotes-lower-layer-hit-test
+  (async done
+    (let [hot (boundary/create-memory-lru-cache #js {:maxEntries 2})
+          warm (boundary/create-memory-lru-cache #js {:maxEntries 2})
+          layered (boundary/create-layered-cache #js [hot warm])]
+      (boundary/cache-put-js warm "k" "v")
+      (-> (boundary/cache-get-js layered "k")
+          (p-> (fn [value]
+                 (is (= "v" value))
+                 (is (= "v" (boundary/cache-get-js hot "k")))
+                 (done)))
+          (.catch (fn [err]
+                    (is false (str "layered cache failed: " err))
+                    (done)))))))
+
+(deftest lower-cache-hits-survive-sync-and-async-promotion-failures
+  (async done
+    (-> (js/Promise.all
+         (clj->js
+          (for [asynchronous? [false true]]
+            (let [broken (reify
+                           protocol/CacheEntryStore
+                           (cache-get-entry [_ _] nil)
+                           protocol/CacheStore
+                           (cache-get [_ _] nil)
+                           (cache-put! [_ _ _ _]
+                             (if asynchronous?
+                               (js/Promise.reject (js/Error. "closed cache"))
+                               (throw (js/Error. "full cache"))))
+                           (cache-evict! [_ _] nil)
+                           (cache-touch! [_ _ _] nil)
+                           (cache-cleanup! [_] 0)
+                           (cache-stats [_] {}))
+                  hot (boundary/create-memory-lru-cache #js {})
+                  warm (boundary/create-memory-lru-cache #js {:defaultTtlMs 5000})
+                  cache (layered/create-layered-cache [broken hot warm])]
+              (boundary/cache-put-js warm "key" "found")
+              (-> (protocol/cache-get-entry cache "key")
+                  (p-> (fn [entry]
+                         (is (= "found" (:value entry)))
+                         (is (= "found" (boundary/cache-get-js hot "key")))
+                         (is (number? (:expires-at-ms entry)))))
+                  (.catch (fn [error] (is false (str "promotion lost lower hit: " error)))))))))
+        (.finally done))))
+
+(deftest lmdb-cache-adapter-expires-and-touches-test
+  (let [clock (atom 100)
+        store (atom {})
+        db #js {:get (fn [k] (get @store k))
+                :put (fn [k v]
+                       (swap! store assoc k v)
+                       true)
+                :remove (fn [k]
+                          (let [present? (contains? @store k)]
+                            (swap! store dissoc k)
+                            present?))}
+        cache (boundary/create-lmdb-cache #js {:db db :prefix "l:" :defaultTtlMs 5})]
+    (with-redefs [core/now-ms #(deref clock)]
+    (is (true? (boundary/cache-put-js cache "a" "A")))
+    (is (= "A" (boundary/cache-get-js cache "a")))
+    (is (true? (boundary/cache-touch-js cache "a" 20)))
+    (is (= "A" (boundary/cache-get-js cache "a")))
+    (reset! clock 125)
+    (is (nil? (boundary/cache-get-js cache "a"))))))
+
+(deftest lmdb-cleanup-removes-only-expired-owned-prefix-entries
+  (async done
+    (let [store (atom {"hydration:old" #js {:value "old" :expiresAt 99}
+                       "hydration:deadline" #js {:value "deadline" :expiresAt 100}
+                       "hydration:zero" #js {:value "zero" :expiresAt 0}
+                       "hydration:live" #js {:value "live" :expiresAt 101}
+                       "hydration:forever" #js {:value "forever" :expiresAt nil}
+                       "other:expired" #js {:value "foreign" :expiresAt 1}})
+          scans (atom [])
+          db #js {:getRange (fn [opts]
+                             (swap! scans conj (js->clj opts))
+                             (into-array
+                               (for [[k v] (sort-by key @store)]
+                                 #js {:key k :value v})))
+                  :remove (fn [k]
+                            (let [present? (contains? @store k)]
+                              (swap! store dissoc k)
+                              (js/Promise.resolve present?)))}
+          cache (boundary/create-lmdb-cache #js {:db db :prefix "hydration:"})
+          result (with-redefs [core/now-ms (constantly 100)]
+                   (boundary/cache-cleanup-js cache))]
+      (-> (js/Promise.resolve result)
+          (.then (fn [removed]
+                   (is (= 3 removed))
+                   (is (= [{"start" "hydration:"}] @scans))
+                   (is (= #{"hydration:live" "hydration:forever" "other:expired"}
+                          (set (keys @store))))))
+          (.catch (fn [error] (is false (str "cleanup failed: " error))))
+          (.finally done)))))
+
+(deftest same-millisecond-recency-is-strict-and-deterministic
+  (with-redefs [core/now-ms (constantly 100)]
+    (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 2})]
+      (boundary/cache-put-js cache "a" "A")
+      (boundary/cache-put-js cache "b" "B")
+      (is (= "A" (boundary/cache-get-js cache "a")))
+      (boundary/cache-put-js cache "c" "C")
+      (is (nil? (boundary/cache-get-js cache "b")))
+      (is (= "A" (boundary/cache-get-js cache "a")))
+      (is (= "C" (boundary/cache-get-js cache "c"))))))
+
+(deftest expired-touch-cannot-revive-memory-or-lmdb-entries
+  (let [clock (atom 100)
+        store (atom {})
+        db #js {:get #(get @store %)
+                :put (fn [k v] (swap! store assoc k v) true)
+                :remove (fn [k] (swap! store dissoc k) true)}]
+    (with-redefs [core/now-ms #(deref clock)]
+      (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 5})
+                     (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 5})]]
+        (reset! clock 100)
+        (boundary/cache-put-js cache "expired" "value")
+        (reset! clock 106)
+        (is (false? (boundary/cache-touch-js cache "expired" 20)))
+        (is (nil? (boundary/cache-get-js cache "expired")))))))
+
+(deftest layered-promotion-preserves-lower-expiration
+  (async done
+    (let [clock (atom 100)
+          original core/now-ms
+          store (atom {})
+          db #js {:get #(get @store %)
+                  :put (fn [k v] (swap! store assoc k v) true)
+                  :remove (fn [k] (swap! store dissoc k) true)}]
+      (set! core/now-ms #(deref clock))
+      (let [hot (boundary/create-memory-lru-cache #js {:defaultTtlMs 10000})
+            warm (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 1000})
+            layered (boundary/create-layered-cache #js [hot warm])]
+        (boundary/cache-put-js warm "k" "value")
+        (reset! clock 1099)
+        (-> (boundary/cache-get-js layered "k")
+            (p-> (fn [value]
+                   (is (= "value" value))
+                   (is (= "value" (boundary/cache-get-js hot "k")))
+                   (reset! clock 1101)
+                   (is (nil? (boundary/cache-get-js hot "k")))
+                   (is (nil? (boundary/cache-get-js warm "k")))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn [] (set! core/now-ms original) (done))))))))
+
+
+(deftest memory-capacity-must-be-a-nonnegative-safe-integer
+  (doseq [capacity [-1 0.5 js/NaN js/Infinity 9007199254740992]]
+    (is (thrown? js/Error (boundary/create-memory-lru-cache #js {:maxEntries capacity}))))
+  (let [cache (boundary/create-memory-lru-cache #js {:maxEntries 0})]
+    (boundary/cache-put-js cache "zero" "value" nil)
+    (is (nil? (boundary/cache-get-js cache "zero")))))
+
+(deftest explicit-zero-touch-removes-prior-expiry
+  (let [clock (atom 100) original core/now-ms]
+    (set! core/now-ms #(deref clock))
+    (try
+      (let [cache (boundary/create-memory-lru-cache #js {:defaultTtlMs 5})]
+        (boundary/cache-put-js cache "k" "value")
+        (is (true? (boundary/cache-touch-js cache "k" 0)))
+        (reset! clock 1000)
+        (is (= "value" (boundary/cache-get-js cache "k"))))
+      (finally (set! core/now-ms original)))))
+
+
+
+;; Actual native Codex5481523582/4239897032: TTL never becomes immortal by coercion.
+(deftest cache-rejects-malformed-write-and-default-ttls
+  (let [store (atom {})
+        db #js {:get (fn [key] (get @store key))
+                :put (fn [key value] (swap! store assoc key value))
+                :remove (fn [key] (swap! store dissoc key))}]
+    (doseq [ttl [-1 js/NaN js/Infinity js/-Infinity]]
+      (is (thrown-with-msg? js/Error #"TTL|ttl"
+            (boundary/create-memory-lru-cache #js {:defaultTtlMs ttl})))
+      (is (thrown-with-msg? js/Error #"TTL|ttl"
+            (boundary/create-lmdb-cache #js {:db db :defaultTtlMs ttl})))
+      (doseq [cache [(boundary/create-memory-lru-cache #js {})
+                    (boundary/create-lmdb-cache #js {:db db})]]
+        (is (thrown-with-msg? js/Error #"TTL|ttl"
+              (boundary/cache-put-js cache "invalid" "value" ttl)))
+        (is (nil? (boundary/cache-get-js cache "invalid")))))
+    (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 0})
+                  (boundary/create-lmdb-cache #js {:db db :defaultTtlMs 0})]]
+      (boundary/cache-put-js cache "zero" "retained" 0)
+      (is (= "retained" (boundary/cache-get-js cache "zero"))))))
+
+
+(deftest cache-keys-are-admitted-before-adapter-effects
+  (let [effects (atom 0)
+        db #js {:get (fn [_] (swap! effects inc) nil)
+                :put (fn [_ _] (swap! effects inc))
+                :remove (fn [_] (swap! effects inc))}]
+    (doseq [cache [(boundary/create-memory-lru-cache)
+                  (boundary/create-lmdb-cache #js {:db db})]]
+      (doseq [key [#js {} #js [] nil 42 "" " "]]
+        (doseq [operation [#(boundary/cache-get-js cache key)
+                           #(boundary/cache-put-js cache key "value")
+                           #(boundary/cache-touch-js cache key)
+                           #(boundary/cache-evict-js cache key)
+                           #(protocol/cache-get-entry cache key)]]
+          (is (thrown-with-msg? js/Error #"key.*string|string.*key" (operation)))))
+      (is (zero? @effects)))))
+
+
+(deftest cache-entry-schema-keeps-string-only-identity
+  (doseq [key [#js {} #js [] nil 42 "" " "]]
+    (is (thrown-with-msg? js/Error #"key.*string|string.*key"
+          (boundary/cache-entry-js #js {:key key :value "content" :nowMs 10})))
+    (is (false? (:valid? (schema/explain-cache-entry
+                          {:cache/key key :cache/value "content"
+                           :cache/created-at-ms 10 :cache/touched-at-ms 10}))))))
+
+(deftest lmdb-entry-value-and-expiry-use-one-read
+  (with-redefs [core/now-ms (constantly 100)]
+    (let [reads (atom 0)
+          db #js {:get (fn [_] (swap! reads inc)
+                        (if (= @reads 1)
+                          #js {:value "old" :expiresAt 150}
+                          #js {:value "new" :expiresAt 300}))}
+          cache (boundary/create-lmdb-cache #js {:db db})]
+      (is (= {:value "old" :expires-at-ms 150}
+             (protocol/cache-get-entry cache "key")))
+      (is (= 1 @reads)))))
+
+
+(deftest absolute-expiry-deadline-is-not-a-live-cache-hit
+  (let [clock (atom 100) original core/now-ms
+        store (atom {})
+        db #js {:get (fn [k] (get @store k))
+                :put (fn [k v] (swap! store assoc k v))
+                :remove (fn [k] (swap! store dissoc k))}]
+    (set! core/now-ms #(deref clock))
+    (try
+      (is (false? (schema/entry-expired? {:cache/expires-at-ms 105} 104)))
+      (is (true? (schema/entry-expired? {:cache/expires-at-ms 105} 105)))
+      (is (true? (schema/entry-expired? {:cache/expires-at-ms 105} 106)))
+      (doseq [cache [(boundary/create-memory-lru-cache #js {:defaultTtlMs 5})
+                    (boundary/create-lmdb-cache #js {:db db :prefix "deadline:" :defaultTtlMs 5})]]
+        (reset! clock 100)
+        (doseq [k ["read" "entry" "touch"]] (boundary/cache-put-js cache k "value"))
+        (reset! clock 104)
+        (is (= "value" (boundary/cache-get-js cache "read")))
+        (reset! clock 105)
+        (is (nil? (boundary/cache-get-js cache "read")))
+        (is (nil? (protocol/cache-get-entry cache "entry")))
+        (is (false? (boundary/cache-touch-js cache "touch" 10)))
+        (is (nil? (boundary/cache-get-js cache "touch"))))
+      (finally (set! core/now-ms original)))))
+
+(deftest cache-timestamps-must-stay-finite-through-serialization
+  (doseq [value [js/Infinity js/-Infinity js/NaN -1]]
+    (is (false? (schema/valid-ms? value))))
+  (doseq [value [0 1 0.5 js/Number.MAX_VALUE]]
+    (is (true? (schema/valid-ms? value))))
+  (doseq [[now ttl] [[js/Infinity 1] [1 js/Infinity]
+                    [js/Number.MAX_VALUE js/Number.MAX_VALUE]]]
+    (let [entry (schema/cache-entry {:key "finite" :value "value" :now-ms now :ttl-ms ttl})]
+      (is (false? (:valid? (schema/explain-cache-entry entry))))))
+  (let [entry (schema/cache-entry {:key "finite" :value "value" :now-ms 0 :ttl-ms 1})]
+    (is (:valid? (schema/explain-cache-entry entry)))
+    (is (= 0 (:cache/created-at-ms entry)))
+    (is (= 1 (:cache/expires-at-ms entry)))))
+
+(defn -main []
+  (run-tests 'openplanner.stores.cache-test))
