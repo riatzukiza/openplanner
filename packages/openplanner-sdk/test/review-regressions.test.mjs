@@ -2644,6 +2644,42 @@ function graphSearchIndexFixture(t) {
  t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);t.mock.method(MongoClient.prototype,'close',async()=>{});
  return {mongo,indexes,writes};
 }
+const review32eGraphFields = () => [
+ {type:'vector',path:'embedding',numDimensions:2,similarity:'cosine'},
+ ...['project','node_id','embedding_model','embedding_dimensions'].map(path=>({type:'filter',path})),
+];
+for(const key of ['latestDefinition','definition'])for(const defect of ['project','node_id','embedding_model','embedding_dimensions','similarity'])test(`Review32e: graph index reconciles full ${key} fields missing or changed ${defect}`,async(t)=>{
+ const {mongo,writes}=graphSearchIndexFixture(t);let fields=review32eGraphFields();
+ if(defect==='similarity')fields[0].similarity='euclidean';else fields=fields.filter(field=>field.path!==defect);
+ mongo.graphNodeEmbeddings.listSearchIndexes=()=>({toArray:async()=>[{name:'embedding_vector',status:'READY',queryable:true,[key]:{fields}}]});
+ mongo.graphNodeEmbeddings.updateSearchIndex=async(name,definition)=>{writes.push({name,definition});fields=definition.fields;};
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'owned',EMBED_PROVIDER_MODEL_DIMENSIONS:'owned=2'},async()=>{
+  const connection=await openMongoDB(openingConfig);assert.equal(writes.length,1);assert.deepEqual(fields,review32eGraphFields());assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector'});
+ });
+});
+test('Review32e: equivalent reordered graph index fields need no update',async(t)=>{
+ const {indexes,writes}=graphSearchIndexFixture(t);indexes.set('embedding_vector',{fields:review32eGraphFields().reverse()});
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'owned',EMBED_PROVIDER_MODEL_DIMENSIONS:'owned=2'},async()=>{
+  const connection=await openMongoDB(openingConfig);assert.equal(writes.length,0);assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector'});
+ });
+});
+test('Review32e: a stale READY graph index is not advertised before all filter fields become queryable',async(t)=>{
+ const {mongo,writes}=graphSearchIndexFixture(t);let polls=0,sleeps=0,clock=0;
+ mongo.graphNodeEmbeddings.listSearchIndexes=()=>({toArray:async()=>{polls++;return [{name:'embedding_vector',status:'READY',queryable:true,latestDefinition:{fields:polls<3?review32eGraphFields().slice(0,1):review32eGraphFields()}}];}});
+ mongo.graphNodeEmbeddings.updateSearchIndex=async(name,definition)=>{writes.push({name,definition});};
+ t.mock.method(Date,'now',()=>{clock+=1000;return clock;});t.mock.method(globalThis,'setTimeout',resolve=>{sleeps++;queueMicrotask(resolve);return {unref(){},ref(){}};});
+ await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'owned',EMBED_PROVIDER_MODEL_DIMENSIONS:'owned=2'},async()=>{
+  const connection=await openMongoDB(openingConfig);assert.equal(writes.length,1);assert.equal(polls,3);assert.equal(sleeps,1);assert.deepEqual(connection.graphNodeEmbeddingVectorIndexes,{2:'embedding_vector'});
+ });
+});
+test('Review32e: hydration source reference declarations accept every actual null field and preserve narrowing',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'openplanner-null-source-ref-types-'));
+ try{
+  const types=new URL('../../stores/document-hydration/index.d.ts',import.meta.url).pathname;const fixture=join(dir,'consumer.mts');
+  await writeFile(fixture,`import type { DocumentSourceRef } from ${JSON.stringify(types)};\nconst ref: DocumentSourceRef = {sourcePath:null,url:null,hostname:null,lake:null,contentHash:null,cacheKey:'owned'};\nfor(const field of [ref.sourcePath,ref.url,ref.hostname,ref.lake,ref.contentHash]) { if(field != null) { const text:string=field; } }\n// @ts-expect-error a source path is never numeric\nconst invalid: DocumentSourceRef = {cacheKey:'owned',sourcePath:42};\n`);
+  await promisify(execFileCallback)(process.execPath,[new URL('../node_modules/typescript/bin/tsc',import.meta.url).pathname,'--noEmit','--strict','--skipLibCheck','--module','NodeNext','--moduleResolution','NodeNext',fixture]);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
 test('Codex371: default and routed graph index widths derive from the active model contracts',async(t)=>{
  const {indexes}=graphSearchIndexFixture(t);
  await withEmbeddingEnv({EMBED_PROVIDER_MODEL:'small',EMBED_PROVIDER_MODEL_BY_PROJECT:'character=large',EMBED_PROVIDER_MODEL_DIMENSIONS:'small=2;large=3',EMBED_PROVIDER_DIMENSIONS:'9'},async()=>{

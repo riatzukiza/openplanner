@@ -32,6 +32,17 @@
       (is (= "source text" (.-content doc)))
       (is (= "code" (.-kind doc))))))
 
+(deftest source-ref-null-wire-fields-test
+  (doseq [[row present expected] [[#js {:extra #js {:source_path "owned/path"}} "sourcePath" "owned/path"]
+                                [#js {:extra #js {:url "https://fixture.invalid/owned"}} "url" "https://fixture.invalid/owned"]]]
+    (let [ref (hydration/document-source-ref row)]
+      (is (= expected (aget ref present)))
+      (doseq [field (remove #{present} ["sourcePath" "url" "hostname" "lake" "contentHash"])]
+        (is (js/Object.hasOwn ref field))
+        (is (nil? (aget ref field))))
+      (is (= (js/JSON.stringify ref)
+             (js/JSON.stringify (.-sourceRef (hydration/hydrate-document-row row "owned source"))))))))
+
 (deftest memory-lru-cache-ttl-and-eviction-test
   (let [clock (atom 1000)]
     (with-redefs [core/now-ms #(deref clock)]

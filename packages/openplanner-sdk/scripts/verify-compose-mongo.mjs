@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync, copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,14 @@ assert.equal(documented, "mongodb://localhost:27017/?directConnection=true");
 // Render the documented copied-.env setup without reading a private project .env.
 const envDirectory = mkdtempSync(join(tmpdir(), "openplanner-compose-env-proof-"));
 try {
+  const legacy = join(envDirectory, "legacy.env");
+  const legacyUri = "mongodb://legacy-external.invalid:27017/?replicaSet=legacy";
+  for (const composeOverride of [undefined, "", "mongodb://explicit-external.invalid:27017/?replicaSet=explicit"]) {
+    writeFileSync(legacy, `MONGODB_URI=${legacyUri}\n${composeOverride === undefined ? "" : `COMPOSE_MONGODB_URI=${composeOverride}\n`}`);
+    const rendered = JSON.parse(docker("compose", "--env-file", legacy, "-f", `${root}docker-compose.yml`, "--profile", "mongodb", "config", "--format", "json"));
+    assert.equal(rendered.services.openplanner.environment.MONGODB_URI, composeOverride || legacyUri,
+      "custom legacy Mongo URIs must survive unless a nonempty Compose-specific override is explicit");
+  }
   const copied = join(envDirectory, ".env");
   copyFileSync(new URL("../../../.env.example", import.meta.url), copied);
   appendFileSync(copied, "\nOPENPLANNER_STORAGE_BACKEND=mongodb\n");
