@@ -189,6 +189,47 @@
     (is (= 1 (aget result "stats" "edges")))
     (is (= "explicit-claim-id" (aget result "edges" 0 "claim_id")))))
 
+(deftest mongo-nonstring-or-blank-storage-identities-use-canonical-fallback
+  (let [base {:source_node_id "a" :target_node_id "b" :relation_kind "supports"
+              :status "supported" :confidence 0.8 :tenant_id "tenant-a"}
+        expected (:claim-id (mongo/edge-claim-from-mongo base))]
+    (doseq [field [:_id "_id" :id "id"]
+            value [#js {:objectId "mongo-storage-id"} 42 false nil ["storage"] "" "  "]]
+      (let [result (mongo/project-mongo-edge-claims [(assoc base field value)] #js {:now 1000})
+            edge (aget (aget result "edges") 0)]
+        (is (= 1 (aget result "stats" "claims")))
+        (is (= 1 (aget result "stats" "edges")))
+        (is (= expected (some-> edge (aget "claim_id"))))
+        (is (= "tenant-a" (some-> edge (aget "scope" "tenant_id"))))))))
+
+(deftest mongo-storage-aliases-select-the-first-nonblank-string
+  (let [base {:source_node_id "a" :target_node_id "b" :relation_kind "supports"
+              :status "supported" :confidence 0.8}]
+    (doseq [storage [{:_id #js {:objectId "storage"} :id "usable-id"}
+                     {"_id" "  " "id" "usable-id"}
+                     {:_id nil "_id" "usable-id" :id "later"}
+                     {:_id "usable-id" :id "later"}]]
+      (let [result (mongo/project-mongo-edge-claims [(merge base storage)] #js {:now 1000})
+            edge (aget (aget result "edges") 0)]
+        (is (= 1 (aget result "stats" "edges")))
+        (is (= "usable-id" (some-> edge (aget "claim_id"))))))))
+
+(deftest mongo-storage-fallback-never-repairs-malformed-explicit-claim-identities
+  (let [base #js {:_id #js {:objectId "storage"} :id "usable-storage-id"
+                  :source_node_id "a" :target_node_id "b" :relation_kind "supports"
+                  :status "supported" :confidence 0.8}]
+    (doseq [field ["claimId" "claim_id"]
+            value [42 #js {:id "malformed"} false nil js/undefined "" "  "]]
+      (let [row (js/Object.assign #js {} base)]
+        (aset row field value)
+        (is (zero? (aget (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000}) "stats" "edges")))))
+    (doseq [field ["claimId" "claim_id"]]
+      (let [row (js/Object.assign #js {} base)]
+        (aset row field "explicit-claim-id")
+        (is (= "explicit-claim-id"
+               (aget (mongo/project-mongo-edge-claims-js #js [row] #js {:now 1000})
+                     "edges" 0 "claim_id")))))))
+
 (deftest nested-scope-identity-is-recursive-and-order-independent
   (let [base {:source_node_id "node:a" :target_node_id "node:b" :relation_kind "related_to"}
         id (fn [scope] (boundary/build-edge-claim-id (clj->js (assoc base :scope scope))))]
