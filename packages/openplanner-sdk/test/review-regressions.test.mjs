@@ -2467,7 +2467,7 @@ test('CodeRabbit0b: configured trimmed root hydrates only its actual owned file'
 
 for(const key of ['latestDefinition','definition'])test(`Codex0b: graph index readiness waits for updated dimensions in ${key}`,async(t)=>{
  const mongo=mongoFixture(),c=mongo.graphNodeEmbeddings;let polls=0,updates=0,sleeps=0,clock=0;
- c.listSearchIndexes=()=>({toArray:async()=>{polls++;return [{name:'embedding_vector',status:'READY',queryable:true,[key]:{fields:[{type:'vector',path:'embedding',numDimensions:polls<3?3:2}]}}];}});
+ c.listSearchIndexes=()=>({toArray:async()=>{polls++;return [{name:'embedding_vector',status:'READY',queryable:true,[key]:{fields:[{type:'vector',path:'embedding',numDimensions:polls<3?3:2,similarity:'cosine'},...['project','node_id','embedding_model','embedding_dimensions'].map(path=>({type:'filter',path}))]}}];}});
  c.updateSearchIndex=async()=>{updates++;};
  t.mock.method(MongoClient.prototype,'connect',async function(){return this;});t.mock.method(MongoClient.prototype,'db',()=>mongo.db);
  t.mock.method(Date,'now',()=>{clock+=1000;return clock;});t.mock.method(globalThis,'setTimeout',resolve=>{sleeps++;queueMicrotask(resolve);return {unref(){},ref(){}};});

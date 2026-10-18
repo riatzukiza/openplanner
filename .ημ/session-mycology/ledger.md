@@ -1491,3 +1491,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner32e-three-native-findings-red-20261018T0050
   note: Native completed CodeRabbit5560828024 exact32e has3 actual findings4305161896/1899/1911, not approval. Canonical fresh status3PASS1FAIL/325threads3unresolved/0cohorts; Codex quota native6243407969 unchanged; MiMo prior2terminalpartialattempts remain failure/no third unchanged invocation. Verified all3 against source. Baseline pinnedNode22.20/pnpm10.11SDK buildPASS. New targetedSDK13tests1PASS12causalFAIL:10 full filter/similarity mismatches, premature stale READY and five-null TypeScript declaration; stderr0. Actual Compose render customlegacyURI fails assertion before fixture container start. Three affected production files byte-identical32e. Added matching hydration runtime-null control retaining prior assertions, not yet compiled. Preserve all295committed and5held observations plus reflection prefixes. No new source scope, native Ready, runtime, board, paid, credential or live proof. This RED source commit is local preparation, not qualifying pass.
+
+- ts: 2026-10-18T00:56:27.673Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-loop-slice/B3
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-three-current-findings-green-20261018T0057
+  note: All3native32e5560828024findings repaired:Compose explicitCOMPOSE>legacyMONGODB>servicefallback; complete order-independent graph vector+filter+similarity reconciliation and exactsamefieldset readiness; all5hydrationoptionalfieldsdeclareactualnull. CausalRED13tests1PASS12FAIL plusactualComposelegacyassertion preserved in locald6208a6. ActualGREENNode22.20/pnpm10.11buildPASS/SDK1018of1018PASS/no cancel/skip/error; unchanged prior1005assertions retained; existing2width-readinessdoublesnowprovidefilters/cosinewithoutassertionloss. Hydrationrelease/testcompile0warnings;actual15tests192assertions0failerror includingnullwirefields. ActualsanitizedComposecustomlegacy absent/empty/presentoverride/copiedexamplePASS. UniquelyownednonrootMongo7fixturePASSimage9fae/replica/TTLcleanup/replacementrollback andfinallyremoved; notAtlasliveproof. ExistingNPM_TOKEN/source-mapnotices/initialhealthconnectionrefusal retained, nozero-stderrclaim. Wholecanonicalhistoricalrow148timestampfailure remains; allnewrowscanonicalvalid/exactprefixrequired. Sourceonlyexistingapprovedinventory/no broadergoal/board/Ready/runtime/credential/paid/social/deployeffects. No staleapprovaltransfer or thirdunchangedMiMo; newconcretesourcequalifiesseparately.

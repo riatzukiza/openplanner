@@ -127,15 +127,19 @@ export async function reconcileManagedTtl(collection: Collection<any>, name: str
   }
 }
 
-function graphIndexDimensions(index: Record<string, any> | undefined): unknown {
+function searchIndexFieldKey(fields: unknown): string {
+  return stableJson((Array.isArray(fields) ? fields : []).map(stableJson).sort());
+}
+
+function graphIndexFieldKey(index: Record<string, any> | undefined): string {
   const definition = index?.latestDefinition ?? index?.definition;
-  return definition?.fields?.find((field: { type?: string; path?: string }) => field.type === "vector" && field.path === "embedding")?.numDimensions;
+  return searchIndexFieldKey(definition?.fields);
 }
 
 async function waitForQueryableSearchIndex(
   collection: Collection<any>,
   indexName: string,
-  dimensions: number,
+  expectedFieldKey: string,
   timeoutMs = 60_000,
   pollMs = 1_000,
 ): Promise<void> {
@@ -145,7 +149,7 @@ async function waitForQueryableSearchIndex(
     const rows = await collection.listSearchIndexes(indexName).toArray() as Array<{ status?: string; queryable?: boolean }>;
     const current = rows[0];
     const status = current?.status;
-    if (status === "READY" && current?.queryable === true && graphIndexDimensions(current) === dimensions) {
+    if (status === "READY" && current?.queryable === true && graphIndexFieldKey(current) === expectedFieldKey) {
       return;
     }
     if (status === "FAILED" || status === "DOES_NOT_EXIST") {
@@ -175,13 +179,14 @@ async function ensureGraphNodeEmbeddingVectorSearchIndex(
       { type: "filter", path: "embedding_dimensions" },
     ],
   };
+  const expectedFieldKey = searchIndexFieldKey(definition.fields);
   if (existing.length === 0) {
     await collection.createSearchIndex({ name: indexName, type: "vectorSearch", definition });
   } else {
-    if (graphIndexDimensions(existing[0]) !== dimensions) await collection.updateSearchIndex(indexName, definition);
+    if (graphIndexFieldKey(existing[0]) !== expectedFieldKey) await collection.updateSearchIndex(indexName, definition);
   }
 
-  await waitForQueryableSearchIndex(collection, indexName, dimensions);
+  await waitForQueryableSearchIndex(collection, indexName, expectedFieldKey);
 }
 
 async function ensureGraphNodeEmbeddingVectorSearchIndexes(

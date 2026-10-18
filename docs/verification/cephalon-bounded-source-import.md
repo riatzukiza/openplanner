@@ -1500,3 +1500,45 @@ notice; TypeScript emits no diagnostics. Fresh hosted functional checks and
 full current-head reviews remain required. The original56 source provenance,
 all150 review paths,70 raw evidence inputs and append-only journals remain
 intact. This source fix supplies no served B1/B2/B3 proof.
+
+
+## Three current Mongo and hydration findings — 2026-10-18 UTC
+
+Completed native CodeRabbit review5560828024 on exact32e076894413a84a43305458f0eb0d17f529e828
+reported three real findings4305161896/1899/1911. It supplied no approval.
+The causal RED commit d6208a6 retains all earlier assertions:13 new selected
+SDK controls produced1PASS12FAIL, including full graph filter/similarity
+reconciliation, stale READY publication and all five nullable declaration
+fields. The actual Compose render independently failed the legacy external
+URI assertion before any fixture container started. Production bytes stayed
+identical to the reviewed head during RED.
+
+Compose now prefers an explicit nonempty COMPOSE_MONGODB_URI, preserves an
+existing MONGODB_URI otherwise, and uses the local replica service only when
+neither is supplied. The copied example continues to select its explicit
+Compose service URI while host SDK access retains its direct localhost URI.
+Graph search-index reconciliation compares the complete field definitions
+independent of field order, and readiness requires that same complete field
+set. Existing dimensions/readiness assertions remain; their provider double
+now supplies the required filters and cosine similarity. DocumentSourceRef
+declares the actual null value for all five optional metadata fields, with
+strict TypeScript narrowing/invalid-number coverage and actual compiled
+hydration wire-value controls.
+
+Pinned Node22.20.0/pnpm10.11.0 SDK build and1018/1018 tests pass. Both hydration
+compiler jobs report0warnings;15 tests/192 assertions pass. Actual sanitized
+Compose rendering covers absent/empty/present Compose overrides and legacy
+external URIs. The uniquely owned nonroot local Mongo7 transaction, indexed
+retention cleanup, replacement and rollback fixture passes and is removed in
+finally. Its image is sha256:9fae371f0280c30c40523dbda5edda96be4c8722cd1272d2ac79f699b2d955d3.
+Graph search-index API behavior uses test doubles; no live Atlas qualification
+is inferred. Existing NPM_TOKEN/source-map notices and an initial expected
+Mongo health-poll connection refusal remain in the logs, distinct from compiler
+warnings. Raw commands, source hashes and outputs are retained under
+/home/err/.local/share/codex/cephalon-field-restore-work-20261017/openplanner-three-current-findings-20261018T0050/green-red-proof.json.
+
+Earlier current32e MiMo attempts remain terminal partial reviews with no
+accepted invocation; passing functional tests supply no review credit. The
+new concrete source requires its own native checks/review and settlements.
+No runtime, board, credential, paid model or deployment changed; B1/B2/B3
+live milestone proofs remain0of3.

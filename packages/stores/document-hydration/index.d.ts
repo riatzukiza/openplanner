@@ -3,11 +3,11 @@ import type { Awaitable, CacheHandle, CacheStats } from "@open-hax/openplanner-s
 export type { Awaitable, CacheHandle, CacheStats } from "@open-hax/openplanner-store-cache";
 
 export interface DocumentSourceRef {
-  sourcePath?: string;
-  url?: string;
-  hostname?: string;
-  lake?: string;
-  contentHash?: string;
+  sourcePath?: string | null;
+  url?: string | null;
+  hostname?: string | null;
+  lake?: string | null;
+  contentHash?: string | null;
   cacheKey: string;
 }
 
