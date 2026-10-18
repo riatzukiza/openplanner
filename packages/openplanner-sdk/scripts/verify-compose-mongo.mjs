@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 import { loadConfig } from "../dist/config.js";
-import { reconcileManagedTtl } from "../dist/mongodb.js";
+import { reconcileManagedTtl, upsertEvent, upsertCompactedMemory } from "../dist/mongodb.js";
 import { listMongoVectorPartitions, replaceMongoVectorEntries, upsertMongoVectorDocuments } from "../dist/mongo-vectors.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -85,6 +85,36 @@ try {
   const hello = await db.admin().command({ hello: 1 });
   assert.equal(hello.setName, "openplanner");
   assert.equal(hello.isWritablePrimary, true);
+  const callerTime = new Date(0);
+  const callerFields = [
+    ["identity", { _id: "caller-owned-id" }],
+    ["creation-time", { createdAt: callerTime }],
+    ["round-trip", { _id: "caller-owned-id", createdAt: callerTime, updatedAt: callerTime }],
+  ];
+  const callerFieldFailures = [];
+  for (const [kind, write] of [["event", upsertEvent], ["compacted", upsertCompactedMemory]]) {
+    const collection = db.collection(`owned_${kind}_caller_fields`);
+    for (const [index, [scenario, fields]] of callerFields.entries()) {
+      const id = `${kind}-${scenario}`;
+      try {
+        await write(collection, { id, text: "first", extra: {}, ...fields }, 0);
+        const inserted = await collection.findOne({ _id: id });
+        assert.equal(inserted._id, id);
+        assert.ok(inserted.createdAt instanceof Date && inserted.createdAt > callerTime);
+        const createdAt = inserted.createdAt.getTime();
+        await write(collection, { ...inserted, ...fields, text: "round-tripped" }, 0);
+        const updated = await collection.findOne({ _id: id });
+        assert.equal(updated._id, id);
+        assert.equal(updated.createdAt.getTime(), createdAt);
+        assert.ok(updated.updatedAt instanceof Date && updated.updatedAt >= inserted.updatedAt);
+        assert.equal(updated.text, "round-tripped");
+        assert.equal(await collection.countDocuments(), index + 1);
+      } catch (error) {
+        callerFieldFailures.push({ kind, scenario, error: error.name, code: error.code, message: error.message });
+      }
+    }
+  }
+  assert.deepEqual(callerFieldFailures, [], "actual Mongo event/memory writes must ignore caller-managed identity and timestamps");
   const retained = db.collection("owned_retention_cleanup");
   await retained.insertMany([
     ...Array.from({ length: 1000 }, (_, id) => ({ _id: `retained-${id}`, value: id })),
@@ -138,6 +168,7 @@ try {
   assert.deepEqual(await ids(partition), ["replacement"]);
   console.log(JSON.stringify({ passed: true, image, replica: hello.setName, health_idempotent: true,
     actual_sdk_replacement_and_rollback: true, adjusted_only_client_port: true,
+    caller_identity_and_timestamp_round_trips: 6,
     disabled_retention_indexed_cleanup_and_reenable: true, repeat_cleanup_docs_examined: 0 }));
 } finally {
   try { if (client) await client.close(); }

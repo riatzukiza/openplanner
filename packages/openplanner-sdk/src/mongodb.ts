@@ -1022,7 +1022,10 @@ export async function upsertEvent(
   const now = new Date();
   const schemaVersion = event.schema_version ?? OPENPLANNER_SCHEMA_TARGETS.event;
   const state = event.migration_state ?? eventMigrationState(now);
-  const { expiresAt: _callerExpiry, ...content } = event;
+  const { expiresAt: _callerExpiry, _id: _callerId, createdAt: _callerCreatedAt,
+    updatedAt: _callerUpdatedAt, ...content } = event as typeof event & {
+      _id?: unknown; createdAt?: unknown; updatedAt?: unknown;
+    };
   const labels = labelsFromExtra(event.extra);
   const normalExpiry = eventRetentionExpiry(event.extra, ttlSeconds, now);
   const expiresAt = sourceRetention
@@ -1057,7 +1060,10 @@ export async function upsertCompactedMemory(
 ): Promise<void> {
   assertNonblankIdentifier(memory.id, "compacted memory id");
   const now = new Date();
-  const { expiresAt: _callerExpiry, ...content } = memory;
+  const { expiresAt: _callerExpiry, _id: _callerId, createdAt: _callerCreatedAt,
+    updatedAt: _callerUpdatedAt, ...content } = memory as typeof memory & {
+      _id?: unknown; createdAt?: unknown; updatedAt?: unknown;
+    };
   const labels = labelsFromExtra(memory.extra);
   const expiresAt = eventRetentionExpiry(memory.extra, ttlSeconds, now);
   await collection.updateOne(

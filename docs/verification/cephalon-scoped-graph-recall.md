@@ -51,12 +51,12 @@ examples; they do not establish current stored authority or deployed state.
 
 The exit verifier forces a real existing assertion to fail by changing only a
 function value in an isolated process. It requires the child to report exactly
-one assertion failure and exit1. That intentional failing child is a passing
+one assertion failure and exit `1`. That intentional failing child is a passing
 runner-integrity check. Both Node entry points use the actual end-run report;
 the return value of `run-tests` is not a result summary.
 The verifier separates the ordinary and injected runs at its explicit marker,
 requires their exact summaries and equal suite counts, and checks the actual
-injected status assertion. It rejects mutated actual outputs reporting11/21
+injected status assertion. It rejects mutated actual outputs reporting 11 or 21
 failures, missing/wrong injection, an ordinary failure or an extra summary.
 Both runs await their actual asynchronous completion event before starting the
 next suite; otherwise shared test counters could overlap and corrupt evidence.
@@ -102,7 +102,7 @@ field; graph snapshot hashes are not field persistence proof.
 
 ## Contract and causal boundary
 
-The named Malli registry is serializable Clojure data. Request version1 accepts
+The named Malli registry is serializable Clojure data. Request version `1` accepts
 query and finite budgets; it accepts no actor/grant fields or feedback writer.
 The host must obtain the snapshot and decisions from an actual trusted storage
 and identity adapter. A valid schema or an exported function cannot grant access.
@@ -195,9 +195,9 @@ manifest for current scope, actual fresh local verification and retained limits.
 
 ## Scope projection and LMDB cleanup correction — 2026-10-17 UTC
 
-Native CodeRabbit review5560424896 on predecessor
+Native CodeRabbit review `5560424896` on predecessor
 `6dcc8083c7dd02362f4486d8b92875e5b1a48975` identified two scope conversion
-defects (roots4304798526/4304798530) and LMDB cleanup item
+defects (roots `4304798526` and `4304798530`) and LMDB cleanup item
 `cr-comment:v1:056a85a8a5218699664498c2`. The batch projections now return
 their existing JavaScript edge objects directly, and the Mongo JavaScript
 adapter retains string keys on input. Regression coverage checks distinct
@@ -206,24 +206,28 @@ and recomputation of the returned scope's claim identity. The LMDB adapter now
 implements explicit prefix-scoped expiry cleanup with completed removal counts;
 the cache README records its owner-invoked lifecycle and storage limits.
 
-Actual local Node22.20.0 RED: graph82tests/720assertions/7failures/0errors;
-cache19tests/186assertions/3failures/0errors. GREEN retains those counts with
-zero failures/errors. Both packages' compile and released ESM builds report
+Actual local Node `22.20.0` RED counts:
+
+- Graph: 82 tests, 720 assertions, 7 failures, 0 errors.
+- Cache: 19 tests, 186 assertions, 3 failures, 0 errors.
+
+GREEN retains those test and assertion counts with zero failures and errors.
+Both packages' compile and released ESM builds report
 zero compiler warnings; changed CLJS lint reports zero errors/warnings. Separate
-released-export checks use the installed LMDB3.5.4 driver and a disposable
+released-export checks use the installed LMDB `3.5.4` driver and a disposable
 private database: expired owned entries are removed, live/unexpiring/foreign
 entries remain, repeated cleanup returns zero, and a Unicode prefix remains
 isolated. Missing NPM_TOKEN interpolation and optional source-map-support notices
 are recorded separately from compiler/lint warnings. Existing dependencies were
 reused, with no project install or full snapshot.
 
-Predecessor functional CI39074557996 succeeded. Its MiMo run39074558367 ended
+Predecessor functional CI run `39074557996` succeeded. Its MiMo run `39074558367` ended
 in failure after two actual completed invocations, with neither accepted or
-submitted: the first assessed16of1497pages before stopping; the second assessed
+submitted: the first assessed 16 of 1497 pages before stopping; the second assessed
 108, then supplied malformed JSON for a delivered batch. The tool refused it,
 and the receiver reported structured-input-unestablished. All four native
-before/after custody captures match the fresh full656-file compiler context
-tree `30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2`.
+before/after custody captures match the fresh, complete compiler context tree
+of 656 files: `30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2`.
 These are failed review attempts, with no approval or cohort credit. No third
 unchanged-head invocation is selected. The correction needs its own fresh hosted
 functional execution and complete native review before qualified merge. Live
