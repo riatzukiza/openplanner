@@ -12,7 +12,7 @@ permissions:
 jobs:
   review:
     name: Evidence-first review (eta-mu)
-    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@8b8ebeb323ad4e90bddf4c31082cbaf45d684a3d
+    uses: riatzukiza/eta-mu/.github/workflows/opencode-code-review.yml@fad2aeee3803157a63cb4612125ce2007b10178f
     with:
       pr_head_sha: ${{ github.event.pull_request.head.sha }}
       review_timeout_minutes: 120

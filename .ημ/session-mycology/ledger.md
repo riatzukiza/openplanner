@@ -1601,3 +1601,43 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-mongo-projection-native4305464626-green-20261018
   note: Verified nativeproposedminimalfix: expose existingsoftconverter/bodyunchanged and mapMongo projectionthrough it; strictsingle/vectornormalizers/otheradapterlogic/serialization/publicJSexports byteunchanged. ActualGREEN87tests987assertions0failerror/twocompilers0warnings; forcedactualassertionexit1/checkerPASS; portable17tests100assertionsPASS, changedclaims+recalllint0/0, releasedESMactualMongoObjectId mixedbatch/exactedge+strictIDbuilderPASS, releasedrecall+SDKcodecPASS. ActualRED128fails/0errors retained; noassertionremovedorweakened. Old7c fullfunctionalSUCCESS/MiMo2terminalfailedinvocations preservedashistory; newheadrequiresfreshCI/review/settlement. PendingETA11lineinstructionproposalstillunapplied/unanswered; no runtime/DB/maker/physicalField/mood/board/credentials/paid/deployment effect. GoalheartbeatACTIVE/B1B2B3livezero.
+
+- ts: 2026-10-18T03:16:54.754Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner404-functional-native-review-qualification-20261018T0316
+  note: Actualcurrent404/f95 fetched/native/local matched; bothpersonal/ready/autoMergeNULL/150inputs. FunctionalCI39091933431 job117570325339SUCCESS:SDK1018/cache19tests186assertions/hydration15/192/portable17/100/compiled87/987allPASS;sixcompilers0warnings;actualMongo replacement/rollback/cleanupPASS;actualforcedassertionexit1/checkerPASS. Raw469254B/SHA431b03e3b5d5504434fec343388d679718a4362aae95cfdf9a44cca3e2a6812b. NativeP1root4305464626 settledactualUserreply4305498745/resolvedoutdated; noapprovalcredit. Onecanonicalfull150current404request6245072708 actualOwnerreadback; realBotquota6245073800 updated03:13:34UTC22minutes; existingcanonicalcooldown-ms1320000/retry03:35:34UTC, no guessedhour. Canonical3PASS/327threads0unresolved/0approvals/0cohorts/availableMiMoonly; CRquotaoptional/CodexaccountUNKNOWN. CurrentMiMo117570570507stillIN_PROGRESS at03:16:25, no submission/review/approval claim ormanualretry. Canonicalselected5files byteequal freshlyfetchedorigin/main580; unrelatedindex/dirt preserved. PendinghumanETA11lineinstructionproposalUNAPPLIED; old7cMiMo2terminalfailedattempts remainhistory/no third. Heldreceiptonlyuntilnextconcreteownedchange/noobservation-onlypush. Resource40.59GBavailable/no fullsnapshot/install; no runtime/board/owner/credential/paid/deployment/social/sporemutation. NativegoalACTIVE/B1B2B3live0of3; wholeledgerhistoricalrow148failure unchanged/no waiver.
+
+- ts: 2026-10-18T03:40:18.143Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner404-native-cooldown-expired-full-review-20261018T0338
+  note: One canonicalfull150 retry afteractualnativequota6245073800 updated03:13:34/22minutes/known03:35:34UTC expiry. Freshfetch/native/localexact404/f95/bothpersonal/autoMergeNULL/ready andsameactualBotquota reread beforeeffect. Earlierstatus6423 reported conversationschangedmidcollection; retained/notusedasqualification. ActualCLIexit0 request6245271975 OwnerUser03:38:52UTC; nativeBotreply6245272901 Fullreviewtriggered03:38:59; exactcommitStatusContext56616947185PENDING03:39:03. Request/ack/pending supplynoapproval,coverage,completion orcohort. No arbitraryhourdelay/paidusage/identityoverride/policywaiver. ExistingcurrentMiMo117570570507 stillactualIN_PROGRESS03:39:10UTC; no duplicateworkflow/restart/manualthirdprior7cattempt. Current404functionalSUCCESS and327settledfindings retained; futurequalification refreshesallcurrentbindings/gates/actualverdict. Priorheld313/exactprefixpreserved; hold314fornextconcreteownedchange/noobservation-onlysourcepush. Field51ae/root4c3 concretelocalrestoreallocationrefinement committedseparately; unpushed/physicalP1P2remainopen/noReady. PendingETA11lineinstructionscopeunanswered/unapplied. No runtime/owner/clock/boardfromthisOPoperation/modelrouting/credentials/paid/deploy/social/spore effects. GoalheartbeatACTIVE/B1B2B3livezero.
+
+- ts: 2026-10-18T07:32:22.432Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner404-terminal-deadline-and-completed-cr-20261018T0733
+  note: Current404 nativeMiMo run39091933687 is TERMINAL_FAILURE: exactlyONE actualinvocation/OpenCode review job deadline expired/submissionmissing/acceptedinvocationnull; mandatorywrapper117590873860FAIL. Nativecatalog selectedcurrentfreeOpenCodeMiMo1.18.31 route; no authentication/directOpenRouter/quotaerror observed. Actual nativearchive12125319582 ZIP4819576bytes/SHAb70ce47f0df0dfc6ec5a597a878d977366c506fd42378634eecce1af0a98bb1f safely retained/extracted12regularfiles27MB/neverexecuted. Derivednativeoutput observation deduplicates413toolcallIDs,191batchreads190batchassessments; lastsuccessfulassessmentcall41118a08e6444bb8a7e41eb3 reports760assessedof1515/755missing, finalread761to764reports764delivered760assessed. This is not acceptedfullinputverification, review orcohortcredit. Earlier1512page7c/twoattemptfailures remain separate. NativeCRfullreply6245272901 completed03:47:17; summary6093785717updated03:47:13/all150selected/exact404/noactionable/SHA c75a240a42721270f411816de43aab022cb63c776a50812b05085d462225d381. Actual5561196492COMMENTEDemptybody isnotformalAPPROVED; canonicalissueverdictseparate. Currentcanonical1FAIL3PASS/327threads0unresolved/CReligibleonly/0cohorts/blockedrequiredcheck+convergence. Existingcompletefunctional39091933431 remainsSUCCESS; no rerun/sourceheadchange or currentcompletedCRrequest. Humanincludedexact11lineonepointETAinstructionrepair; actualpersonalplanningPR34/b2dc/8b created/attached, productionunchanged/cardIncoming1/nativeplanningstaged6247149329/Codexrequest6247150273, hostedreviewsrunning. Futurepinpropagationonlyafterqualifiedsource. Preserve312committedprefix/previousheld313314; hold315untilnextconcretechange, noobservation-onlypush. No app/runtime/board/credential/paid/social effects. Nativegoalget_goal currentlyusageLimited, no self-resume/completion; B1B2B3live0of3.
+
+- ts: 2026-10-18T20:17:18.350Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-qualified-ETA-fad-single-selector-pin-20261018T2018
+  note: After actual ETA PR35qualified MERGEfad2aeee3803157a63cb4612125ce2007b10178f and nativeDone185/write1792354432053-0.31x8ayyckidp7sbeyc4/full14workspace suitesPASS, existing pin-only consumerad41 InProgress1 receives exactone-line existing ETAuses selector8b->fad. Sourceclosure/binding archive47dfac93478ae24e733dc345650c0951acf5fc46 actuallycommitted/pushed personalordinarybranch; not the productionpin. Allfour nativepredecessors Done; one nativeconsumercommentwrite1792354521711-0.ndit8eu6gqi8pxvivi preserves primarybody/points/relationships/oldcommentprefixes. Onlyworkflow sourcefile changes; existing pinned yaml2.9 reader proves validYAML/deepequalallotherconfiguration and actualdiffhygienePASS. Musef422/agentsface3009/reviewNode22.23.3/OpenCode1.18.31/emptydynamicanonymousfreeMiMo/120min/2invocations/fullinput/custody/publication/mergeguards unchanged; independentfunctionalworkflow/applicationNode22.20.0 byteexact. Retain315working/312committed receipt and1633/1603 reflection prefixes including held313314315; complete150oldreviewinputfiles remain, no omissions/newtest or dependencyinstall/fullsnapshot. ActualnativePR3 ready/head404/basef95/bothpersonal/autoMergeNULL and15440Bwholebody rereadbeforeeffect. Prior404single-invocationdeadline/nosubmission/760assessedof1515 and separateall150CRnoactionable remainhistorical. SourceactualMiMo26/26 proves no futureconsumerthroughput/approval/roundcredit; genuine fresh newhead reviews/completefunctional/evidencechecks/canonicalMERGE stillrequired. GoalusageLimited/heartbeatACTIVE/liveB1B2B3zero; no newbatch/model/physical/runtime/credentials/paid/deploy/social/spore action.
