@@ -617,3 +617,41 @@
         (is (= expected-id (aget edge "claim_id")))
         (is (= expected-id (boundary/build-edge-claim-id-js edge)))))
     (is (= expected-id (:claim-id (mongo/edge-claim-from-mongo (js->clj row)))))))
+
+(deftest mongo-projection-isolates-invalid-stored-claim-keys
+  (let [valid-base {:source_node_id "a" :target_node_id "b" :relation_kind "supports"
+                    :status "supported" :confidence 0.8 :tenant_id "tenant-a"}
+        invalid-base {:_id #js {} :relation_kind "supports" :status "supported"
+                      :confidence 0.8 :tenant_id "tenant-a"}]
+    (doseq [storage ["stored-valid" #js {}]
+            invalid [(assoc invalid-base :target_node_id "b")
+                     (assoc invalid-base :source_node_id "a")
+                     (assoc invalid-base :source_node_id "a" :target_node_id "a")
+                     (assoc invalid-base :source_node_id 42 :target_node_id "b")]
+            bad-first? [false true]]
+      (let [valid (assoc valid-base :_id storage)
+            expected (:claim-id (mongo/edge-claim-from-mongo valid))
+            rows (if bad-first? [invalid valid] [valid invalid])
+            outcome (try {:result (mongo/project-mongo-edge-claims-js (clj->js rows) #js {:now 1000})}
+                         (catch js/Error error {:error error}))
+            result (:result outcome)
+            edge (some-> result (aget "edges") (aget 0))]
+        (is (nil? (:error outcome)) "one malformed stored key must not abort a projection batch")
+        (is (= 2 (some-> result (aget "stats" "claims"))))
+        (is (= 1 (some-> result (aget "stats" "edges"))))
+        (is (= 1 (some-> result (aget "edges") alength)))
+        (is (= "a" (some-> edge (aget "source"))))
+        (is (= "b" (some-> edge (aget "target"))))
+        (is (= expected (some-> edge (aget "claim_id"))))
+        (is (= "tenant-a" (some-> edge (aget "scope" "tenant_id"))))))))
+
+(deftest mongo-normalization-keeps-strict-invalid-key-refusal
+  (let [valid {:_id "valid" :source_node_id "a" :target_node_id "b"
+               :relation_kind "supports" :status "supported"}
+        invalid {:_id #js {} :target_node_id "b"
+                 :relation_kind "supports" :status "supported"}]
+    (is (thrown-with-msg? js/Error #"Invalid edge claim key"
+          (mongo/edge-claim-from-mongo invalid)))
+    (is (thrown-with-msg? js/Error #"Invalid edge claim key"
+          (mongo/edge-claims-from-mongo [valid invalid])))
+    (is (= "valid" (:claim-id (mongo/edge-claim-from-mongo valid))))))

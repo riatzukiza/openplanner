@@ -1541,3 +1541,53 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-objectid-native4305312132-green-20261018
   note: Native suggested exact storage selection applied: only nonblank strings from existing ordered _id/id aliases, and only without either explicit claim alias. Actual compiled85tests856assertionsPASS0failerror, forced actual boundary assertion exits1/checkerPASS, compile+release0warnings; portable17tests100assertionsPASS, changed claims+recall lint0/0, released recall/SDKcodec/actual MongoObjectId probePASS. All oldassertions and immutable journal prefixes retained; private raw outputs/proof bound. No runtime/database/maker/mood/physicalField/deployment/board/credentials/paid effects. Newhead requires hosted checks/fullreview; historical0e MiMoONE malformed invocation and fullCI remain historical, pending new ETA instruction scope unanswered/unapplied.
+
+- ts: 2026-10-18T02:02:15.207Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner7c-current-functional-publication-settlement-20261018T0205
+  note: Actual ordinaryRED8bf2/GREEN7c source push; nativeREST/Git/local head7c match/basef95/bothpersonal/autoMerge:null and exact whole PRbody12986B/SHA c7b78f46045d29d188fa236fd2760d9a455998fab6519501e1cf30d214dd23bd beforepush. Native current functional run39088306824/job117559433242SUCCESS, allstepsSUCCESS: SDK1018/1018/cache19/186/hydration15/192/portable17/100/compiled85/856;6compiler0warning summaries, actual Mongo replace/rollback+cleanup PASS; actual forced assertionexit1/checkerPASS. Rawlog469196B/SHA e92403f1a7591c76a20ae7fe5e7c679669c2a1073bd7c68b25929b174908794b. Native authorizedOWNERUser Fixed reply4305342313 actually readback/resolved root4305312132/threadPRRT_kwDOSPHGT86tmV1p; noapprovalcredit. Fresh MiMo39088307104 compile+producerSUCCESS, model117559669072 stillIN_PROGRESS, no verdict or restart. Newnative Codex6244479173 accountquota/UNKNOWNreset preserved, noreinvite/credits. Full150/current306receipt+1543reflection requestpreparedUNSENT; latestincludedfooter0remaining1/hour, conservativeafter02:45:54UTC+freshnativecooldown/head/base/dedupe. Prior0e model failureONEinvocation preserved, pendingETAonepointpromptscope unanswered/unapplied. CurrentField local7392737 contains168receipts1635reflection/sourcebindsd474actualnative durability; unpushed/unqualified and nativeField8c currentgates4PASS2FAIL/P1P2open. Entryroot578/SHAunchanged;40.8GBavailable/no newfullsnapshotinstall; goal+heartbeatACTIVE/liveB1B2B3zero. Hold thisappenduntilnextconcreteownedsourcechange; noobservation-onlypush orruntime/board/credential/paid/deployment effects.
+
+- ts: 2026-10-18T02:16:13.862Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner7c-native-cooldown-correction-20261018T0215
+  note: Correction of prior307 conservatively inferred02:45:54 timing: current canonical upstream580 freshlyfetched/selectedskill+CLI+law+flow+settlementbyteequal and unrelated .agents dirt/index untouched. Actual canonicalrequest-verdict uses native parsedcooldowns; old6244003419 updated01:02:07+31minutes expired01:33:07 and new7c hadnoCRrequest/pendingwork. Let actual canonicalgate decide changedhead full150request:CLIexit0/stderr0, nativeUserOWNER6244611397 created02:13:40/fullprepared12930Bnote/currenthead marker exactreadback. NativeBot6244612348 updated02:14:08 actually terminalReviewratelimited/nextincludedreview21minutes. Invoked existingcanonicalcooldown-ms yields1260000/retry02:35:08UTC. No localpolicywaiver/paidactivation/syntheticapproval/roundcredit. Preserve original307 andpriorconservativeproposalbytes; native notice/sourceIDs now control availability andnextcanonicalrequestafterfresh editednotice/head/base/dedupe. SpecificMiMo39088307104/model117559669072 continues, not restarted; accepted fullinput/verdict still unproven. Initial observer invoked nonexistentNode22.23.3/bin/nbb module path:operatorfailure preserved/corrected by actualPATH nbb; not provider orproductionfailure. Hold append untilnextconcreteownedsourcechange/noobservation-onlypush.
+
+- ts: 2026-10-18T02:26:43.313Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner7c-two-native-attempts-terminal-failure-20261018T0225
+  note: Current7c model117559669072 and requiredwrapper117562777224 actuallyFAILURE. TWO native completed exit0 invocations consumed configuredmax2: first healthytoolpath52assessed52delivered/1512pages then askedhumanhowproceed/partial-inputalternative; missing-review-submit/healthy-unfinished-review legitimately triggered supportedfresh boundedrecovery. Second44assessed48delivered/1512 and nativeassessmentarrayid48 used key " note"; strictbatch45-48refused, modelcorrectlystopped, canonicalunestablished-review-trace/structured-input-unestablished. AcceptedinvocationNULL/no submission/stages/review; no third/manualrestart. Notesmax762/452bytes below2048; no auth/time/note-size failure observed; firstfinishstop100008totalnative tokens is not context-overflow proof. NativeattemptZIP1340908B/SHA332f818c00688baab9fc20d0f456870f8811d6e78b5b2d92c022769f17f97583 validated/extracted<=64MiB/no execution; sourceinputverificationclaim12007200B/SHA2dd333623eba7579875bd8853c163da99a237768e9f8722974c70bb281eb5253, not independently recomputed fullcurrentCJS/input approvalproof. Nativefullfunctional39088306824SUCCESS unaffected; stablecanonical326settled/3PASS1FAIL/noapproval/0cohorts/currentavailableMiMo-only untilCRcooldown02:35:08. Newactualfailure refines existingpendingonepointETAinstructionproposal to11promptlines:exactkeys/concisejudgment/continueauthorizedfullinputsameinvocationwithoutaskinghuman; allguards/4pagecap/hardbytes/max2/120min unchanged. No-effectapply/syntax+embeddedbytecheckPASS onunchangedETA4e/qualified8b; sourceUNAPPLIED, actualhumanquestionresurfaced/PENDING andproposaltabqueued(notconfirmedopened). NativeRheos existingconsumerlatercandidatecommentrecordsnewfailure/patch withoutpoint/status/Readyadoption. Instructionchangeisnotfull1512pagethroughputproof. GoalheartbeatACTIVE/B1B2B3livezero; no sourcepush/runtime/credentials/paid/deployment effect.
+
+- ts: 2026-10-18T02:40:32.046Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner7c-native-cooldown-expired-request-20261018T0237
+  note: Actual owned existing-pattern dispatcher36999/PID2119927 waited until native6244612348 cooldown02:35:08UTC expired, verified canonicalpackhashes and freshlyfetchedlocal/nativepersonal7c/f95/openready/autoMergeNULL, then actualcanonicalfull150code request6244787022 created02:35:57/exactfull14016Bnotereadback. NativeRESTBot6244787928 repliedFullreviewtriggered02:36:04; nativecommitStatusContext56615562669 CodeRabbitPENDING created02:36:07 confirms live review. These are request/ack/pending only: zero approval/round/completion credit. Dispatcher exited0/reaped; no duplicateprocessorautoretry. Initial read-only observer expected GraphQLcoderabbitai login forREST; actualcoderabbitai[bot] matches existingreviewed580 flowidentity and canonical law/trusted-reviewer returnedcoderabbit; no identitychange/override orPOSTreplay. CheckRunarrayempty isnotmissingprovider: actualnativecommitStatusContextrecords pending. CurrentMiMo twoattempts terminalFAILURE/wrapper117562777224FAILURE unchanged; refined1pointETAquestionstillPENDING/unapplied, no thirdMimoattempt. Field739 unchangedsource/nativeKnoxx14stillDRAFTb6f/141files/currentnativeauditnotqualification. Allledgerprefixes retained and no observation-only sourcecommit/push/runtime/board/credentials/paid/deployment effects. GoalheartbeatACTIVE/liveB1B2B3zero.
+
+- ts: 2026-10-18T02:51:11.925Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-mongo-projection-native4305464626-red-20261018
+  note: ActualcompletedcurrentCR5561160452/full150inputs/oneP1 root4305464626, nativecompletion6244787928; no approval. New2tests on unchanged7c production:87tests987assertions128causalFAIL0ERROR/compiler0warnings, all prior85tests856assertions exactbyteprefix. Matrix2validstorageforms*4invalidkeys*2orders checks batchsurvival/claims2/edge1/exactidentity/endpoints/scope; strictsingle+vectornormalizerrefusal3controls alreadyPASS. ActualreleasedESM MongoObjectId mixedrowprobe REDexit1/Invalidedgeclaimkey. No productionchange beforeREDcommit, no testsweakened. NativeRheos/newscope/ETAinstructionimplementation/runtime/model/credentials/paid effects none. Initial applypatch targettestname was wrong; applyverificationfailed with no fileeffect, corrected toactualEOFanchor beforetests. Include held307-310 with this concrete ownedtestchange; no historyrewrite.
