@@ -28,7 +28,12 @@
   [doc]
   (let [camel (present-entry doc [:claim-id :claimId "claimId"])
         snake (present-entry doc [:claim_id "claim_id"])
-        storage (when-not (or camel snake) (present-entry doc [:_id "_id" :id "id"]))
+        storage (when-not (or camel snake)
+                  (some #(let [entry (present-entry doc [%])]
+                           (when (and entry
+                                      (claims/nonblank-string? (:value entry)))
+                             entry))
+                        [:_id "_id" :id "id"]))
         row #js {:direction (get-any doc [:direction "direction"])
        :status (get-any doc [:status "status"])
        :confidence (get-any doc [:confidence "confidence"])}]

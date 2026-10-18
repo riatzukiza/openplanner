@@ -1531,3 +1531,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-objectid-native4305312132-red-20261018
   note: Actual compiled Node RED on unchanged0e production:85tests856assertions90causalFAIL0errors/exit1; compiler0warnings. All prior82tests720assertions retained byte-identically; new3tests136assertions preserve explicit malformed identities/valid stored precedence/scope. Initial new assertions dereferenced absent edges:31fail59errors retained privately; corrected assertion observation only to fail comparisons on nil, keeping every expected value. Final90failures only in2new storage cases; third explicit-identity law alreadypasses. No runtime/board/paid/credential effects; held303/304 receipts included with this concrete test change.
+
+- ts: 2026-10-18T01:56:03.837Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-objectid-native4305312132-green-20261018
+  note: Native suggested exact storage selection applied: only nonblank strings from existing ordered _id/id aliases, and only without either explicit claim alias. Actual compiled85tests856assertionsPASS0failerror, forced actual boundary assertion exits1/checkerPASS, compile+release0warnings; portable17tests100assertionsPASS, changed claims+recall lint0/0, released recall/SDKcodec/actual MongoObjectId probePASS. All oldassertions and immutable journal prefixes retained; private raw outputs/proof bound. No runtime/database/maker/mood/physicalField/deployment/board/credentials/paid effects. Newhead requires hosted checks/fullreview; historical0e MiMoONE malformed invocation and fullCI remain historical, pending new ETA instruction scope unanswered/unapplied.

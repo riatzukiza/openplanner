@@ -1542,3 +1542,27 @@ accepted invocation; passing functional tests supply no review credit. The
 new concrete source requires its own native checks/review and settlements.
 No runtime, board, credential, paid model or deployment changed; B1/B2/B3
 live milestone proofs remain0of3.
+
+
+### Native review 5560994943: Mongo storage identity fallback — 2026-10-18 UTC
+
+The full current `0e95686` CodeRabbit review found that a MongoDB `ObjectId`
+without an explicit claim identity was forwarded as `claim_id`. The canonical
+boundary correctly rejects malformed supplied identities, so this adapter mistake
+silently removed an otherwise valid graph edge. Storage aliases now participate
+only when they contain a nonblank string, in their existing order. Explicit
+`claimId` / `claim_id` presence, ambiguity and malformed-value refusal are retained.
+
+The unchanged production adapter failed 90 assertions in the three added tests
+(85 total tests / 856 assertions, zero errors). The repaired compiled suite passes
+all 85 / 856, and the actual forced-assertion runner still exits 1. Both compilers
+report zero warnings; portable recall laws pass 17 / 100 and scoped lint reports
+zero errors/warnings. A separate released-ESM probe using the actual MongoDB
+`ObjectId` constructor verifies fallback, scope, later usable string aliases and
+explicit identity precedence/refusal. This is a source/adapter proof; no database,
+maker, physical Field state, mood consumer or live milestone proof is supplied.
+
+Native review/comment IDs and the exact RED/GREEN command logs remain bound by
+the accompanying append-only receipts. All earlier assertions and ledger prefixes
+are preserved. The previous head's CI and reviews remain historical; the new head
+requires fresh hosted checks and genuine review before merge.
