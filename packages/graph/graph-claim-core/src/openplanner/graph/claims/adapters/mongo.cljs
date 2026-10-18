@@ -67,6 +67,10 @@
   [docs]
   (mapv edge-claim-from-mongo docs))
 
+(defn- projectable-claim-from-mongo
+  [doc]
+  (boundary/edge-claim-from-js-soft (mongo-claim->js doc)))
+
 (defn- projected-edge->js
   [edge]
   (clj->js {:source (:source edge)
@@ -81,7 +85,7 @@
 (defn project-mongo-edge-claims
   ([docs] (project-mongo-edge-claims docs #js {}))
   ([docs opts]
-   (let [normalized (edge-claims-from-mongo docs)
+   (let [normalized (mapv projectable-claim-from-mongo docs)
          result (claims/project-claims normalized (boundary/projection-options-from-js opts))]
      #js {:edges (into-array (map projected-edge->js (:edges result)))
           :stats (clj->js (:stats result))})))

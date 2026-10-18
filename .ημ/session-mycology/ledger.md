@@ -1591,3 +1591,13 @@ These statements retain their historical observation time and epistemic tier.
   spore: none
   receipt-refs: cephalon-openplanner-mongo-projection-native4305464626-red-20261018
   note: ActualcompletedcurrentCR5561160452/full150inputs/oneP1 root4305464626, nativecompletion6244787928; no approval. New2tests on unchanged7c production:87tests987assertions128causalFAIL0ERROR/compiler0warnings, all prior85tests856assertions exactbyteprefix. Matrix2validstorageforms*4invalidkeys*2orders checks batchsurvival/claims2/edge1/exactidentity/endpoints/scope; strictsingle+vectornormalizerrefusal3controls alreadyPASS. ActualreleasedESM MongoObjectId mixedrowprobe REDexit1/Invalidedgeclaimkey. No productionchange beforeREDcommit, no testsweakened. NativeRheos/newscope/ETAinstructionimplementation/runtime/model/credentials/paid effects none. Initial applypatch targettestname was wrong; applyverificationfailed with no fileeffect, corrected toactualEOFanchor beforetests. Include held307-310 with this concrete ownedtestchange; no historyrewrite.
+
+- ts: 2026-10-18T02:54:38.349Z
+  session: /home/err/spaces/cephalon-openplanner-bounded/openplanner
+  task: cephalon-character-memory-graph
+  p-efficiency: 0.8
+  p-friction: 0.2
+  p-skill-candidate: 0.1
+  spore: none
+  receipt-refs: cephalon-openplanner-mongo-projection-native4305464626-green-20261018
+  note: Verified nativeproposedminimalfix: expose existingsoftconverter/bodyunchanged and mapMongo projectionthrough it; strictsingle/vectornormalizers/otheradapterlogic/serialization/publicJSexports byteunchanged. ActualGREEN87tests987assertions0failerror/twocompilers0warnings; forcedactualassertionexit1/checkerPASS; portable17tests100assertionsPASS, changedclaims+recalllint0/0, releasedESMactualMongoObjectId mixedbatch/exactedge+strictIDbuilderPASS, releasedrecall+SDKcodecPASS. ActualRED128fails/0errors retained; noassertionremovedorweakened. Old7c fullfunctionalSUCCESS/MiMo2terminalfailedinvocations preservedashistory; newheadrequiresfreshCI/review/settlement. PendingETA11lineinstructionproposalstillunapplied/unanswered; no runtime/DB/maker/physicalField/mood/board/credentials/paid/deployment effect. GoalheartbeatACTIVE/B1B2B3livezero.

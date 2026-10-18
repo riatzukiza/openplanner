@@ -258,7 +258,8 @@
            :confidence (clamp-confidence (jget input "confidence") 0.5)
            :valid-until-ms (claim-expiration-ms input))))
 
-(defn- edge-claim-from-js-soft
+(defn edge-claim-from-js-soft
+  "Normalize projection rows without requiring a valid generated claim identity."
   [input]
   (let [key (edge-claim-key-from-js input)
         [source-node-id target-node-id] (claims/canonical-endpoints key)

@@ -1566,3 +1566,31 @@ Native review/comment IDs and the exact RED/GREEN command logs remain bound by
 the accompanying append-only receipts. All earlier assertions and ledger prefixes
 are preserved. The previous head's CI and reviews remain historical; the new head
 requires fresh hosted checks and genuine review before merge.
+
+
+### Native review 5561160452: isolate invalid Mongo keys in projection — 2026-10-18 UTC
+
+The complete native review of `7c60bd5` selected all 150 changed inputs and
+reported one P1: after non-string storage IDs were ignored, the strict generated
+identity builder could throw for a malformed key and discard the whole Mongo
+projection batch. The existing canonical boundary already has a soft projection
+converter. The Mongo projection now reuses it; both strict Mongo normalization
+functions and the canonical converter's actual logic remain unchanged. Existing
+Mongo edge serialization and public JS exports also remain unchanged.
+
+Two new tests retain the complete earlier 85-test/856-assertion suite. The matrix
+covers two valid storage forms, four invalid keys and both row orders. The actual
+unchanged production RED is 87 tests/987 assertions, 128 failures and zero errors;
+all failures are in the new batch-isolation test. Three explicit strict-normalizer
+controls already pass. GREEN passes all 87/987. The actual forced assertion still
+exits 1; portable laws pass 17/100, lint reports zero errors/warnings and both
+compiler summaries report zero warnings. A released ESM probe with an actual
+MongoDB ObjectId confirms mixed-batch survival, the exact unchanged valid edge,
+row/edge counts and strict identity-builder refusal. No database or live maker
+was started by this probe.
+
+This is the proposed repair of native root 4305464626, with exact source and
+RED/GREEN evidence bound by the accompanying receipts. The prior head's hosted
+functional success and both unsuccessful MiMo invocations remain historical.
+The new head requires its own hosted checks, review and authorized settlement;
+this source proof supplies no completed live encounter/Field/mood/recall link.
