@@ -1,0 +1,284 @@
+# Scoped graph selection for the character loop
+
+This is the OpenPlanner selection and scoped storage portion of the accepted
+B3 milestone, task `a1e9d6af-0233-4dcb-9677-5c76fa9a2701`. The storage adapter is
+tested over held SDK collection ports; live identity/storage qualification and
+automatic Knoxx prompt delivery remain unfinished. Passing this package does not complete
+B3, the full recall story, physical field persistence or the separate mood model.
+
+## Current hydration and Compose startup boundaries
+
+The shared source loader treats a malformed source identity as a null hydration
+miss. It retains the disabled-source-root check before key generation and the
+existing descriptor containment and source-hash checks. The exported vector
+hydration adapter therefore returns an empty result for the malformed source
+while a valid peer still reads its actual file. The regression exercises these
+exports; it does not claim that the whole ranked search previously rejected,
+because that path already catches malformed candidates before admission.
+
+The Mongo healthcheck explicitly uses a two-second startup interval, retaining
+its thirty-second steady interval, twenty-second start period and existing
+writable-primary check. This Compose configuration requires Compose 2.20.2 or
+later and Docker Engine 25 or later, as documented by
+[Docker Compose](https://docs.docker.com/reference/compose-file/services/#healthcheck)
+and the [Docker healthcheck reference](https://docs.docker.com/reference/dockerfile/#healthcheck).
+Current Engine 29.9.0 / Compose 5.6.0 support it. On a current engine, an absent
+startup interval defaults to five seconds during the start period; the earlier
+review's thirty-second first-probe premise is not the current engine behavior.
+The explicit two-second interval is a supported refinement, not a measured
+future readiness bound or a live service change.
+
+## Run the actual library
+
+From `packages/graph/graph-claim-core`:
+
+```sh
+clojure -M:recall-test
+pnpm exec shadow-cljs --force-spawn compile test
+node target/test.cjs
+node scripts/verify-recall-test-exit.mjs
+pnpm exec shadow-cljs --force-spawn release lib
+node scripts/verify-scoped-recall.mjs
+node scripts/verify-sdk-query-format.mjs
+```
+
+The Node suite retains every existing edge-claim test. The final demonstration
+imports the released ESM export, creates one private temporary JSON fixture,
+checks a graph-only neighbor and its complete path, exercises absent decisions,
+prints the actual result and deletes only its own fixture. It performs no database,
+REST, model, field write or social call. Fixture identity/revisions are explicit
+examples; they do not establish current stored authority or deployed state.
+
+The exit verifier forces a real existing assertion to fail by changing only a
+function value in an isolated process. It requires the child to report exactly
+one assertion failure and exit `1`. That intentional failing child is a passing
+runner-integrity check. Both Node entry points use the actual end-run report;
+the return value of `run-tests` is not a result summary.
+The verifier separates the ordinary and injected runs at its explicit marker,
+requires their exact summaries and equal suite counts, and checks the actual
+injected status assertion. It rejects mutated actual outputs reporting 11 or 21
+failures, missing/wrong injection, an ordinary failure or an extra summary.
+Both runs await their actual asynchronous completion event before starting the
+next suite; otherwise shared test counters could overlap and corrupt evidence.
+
+## Owning SDK/Mongo recall boundary
+
+`createScopedMongoRecall(sdk, resolveCurrentAuthority, formatQueryText)` binds a trusted SDK
+handle and a host callback. Its returned function accepts only the closed
+version1 recall request. The callback supplies the exact current principal,
+policy revision, project and admitted event IDs/text; neither tool JSON nor
+previous admission receipts can supply a grant. Absence denies before index or
+embedding access. It refreshes the complete binding after index loading, query
+embedding and edge loading, refusing changed scope or text without stale hits.
+These are checked observations across awaits, not atomic grant fencing.
+
+The third argument is the owning SDK's `formatEmbeddingQueryText` export from
+`@open-hax/openplanner-sdk/embedding-text`. The trusted host passes this function;
+request JSON cannot supply or override it. This retains the SDK's actual query
+trim, configured prefix/template and escaped-newline behavior before generating
+the vector. Missing, malformed or throwing formatters refuse without sending
+text to the provider. `node scripts/verify-sdk-query-format.mjs` exercises the
+actual SDK source formatter with held storage/provider ports. It proves provider
+input parity, not live semantic ranking or model availability.
+
+The adapter uses existing `graphNodeEmbeddings` and `graphEdges` cursor methods,
+with a five-second server query limit and finite row limits. It selects the
+same `graph-event` / `graph.node` model scope as the SDK indexer. Index rows must
+bind `node_id` to `source_event_id` in Mongo **before** the row limit; edges must
+have nonempty admitted provenance in Mongo before their limit. Excluded rows
+cannot consume the admitted storage budget. Missing admitted indices return
+`indexing-pending`; overflowing admitted rows fail without partial results.
+Held cursor fixtures test these explicit predicates; they do not establish
+compatibility with a live Mongo deployment.
+
+Validated cosine ranking chooses one strongest semantic seed; the existing
+pure walker selects associative neighbors with their exact node/edge paths.
+`validScopedMongoRecallResult(result)` lets a consumer validate the owning wire
+contract, including failure, feedback and path shapes, without copying those
+schemas. Storage/provider exceptions return bounded safe codes, including null
+or undefined rejections. Retrieval makes no database write and requests no
+reinforcement. `field-status: not-loaded` explicitly records the absent physical
+field; graph snapshot hashes are not field persistence proof.
+
+## Contract and causal boundary
+
+The named Malli registry is serializable Clojure data. Request version `1` accepts
+query and finite budgets; it accepts no actor/grant fields or feedback writer.
+The host must obtain the snapshot and decisions from an actual trusted storage
+and identity adapter. A valid schema or an exported function cannot grant access.
+The ESM boundary converts canonical kebab-case JSON and validates the result.
+
+Selection applies fresh revision/event-bound decisions before seed ordering or
+the k/fetch cuts. A duplicate authority decision denies its node. A duplicate
+currently bound durable node fails storage integrity. Compacted nodes require
+their own decision and all transitive members; unknown members and cycles refuse
+admission. Edges and force/trail/field influences require admitted endpoints and
+every declared provenance node before changing a path or cost. Hidden malformed
+content is excluded before content validation, so it cannot induce a failure in
+otherwise permitted recall. Denied IDs/text are absent from returned diagnostics.
+Duplicate storage detection runs after the complete compact/member admission;
+copies of denied compact rows cannot veto permitted recall. Public selection
+checks each retained compact row's members even if another row admits its ID;
+two independently admitted duplicates still fail storage integrity. Public
+selection states depend on admitted data and the safe denial count, never excluded seed
+flags. Binary64 influence reduction uses stable influence-ID order before cost
+and budget decisions; permutations of the same admitted facts give the same result.
+
+The pure walker returns stable node and edge paths, reasons, graph/field/policy
+revisions, inclusion and visit counts and budgets. Empty, denied, indexing-pending,
+budget-exhausted and malformed-input outcomes remain distinct. Retrieval performs
+zero I/O and schedules zero reinforcement. Motion, field integration and deliberate
+feedback persistence belong to their selected owning adapters and kernel; this
+module does not implement them or inherit the legacy REST route's implicit writes.
+
+## Source integration and remaining execution
+
+The isolated implementation uses actual upstream
+`07085d6557b75834ce6f50e6c54b8ca47e1c7c08`; freshly fetched personal main remains
+`f95a53a4da8ed90588b0be320ba8e86c6a03668d`. The local branch
+`codex/sync-openplanner-origin-main` preserves that source history. This source
+integration is independently unqualified. The much larger upstream history is
+not approved by a review of the scoped delta, and cannot inherit another PR's
+approvals. The shared primary checkout and its unrelated lockfile dirt remain.
+
+Before B3 delivery, the owning storage adapter must load bounded, scope-admitted
+data using current stored actor/source/session authority before candidate caps,
+ranking, traversal, aggregate/field influence and effects. It must verify actual
+projection/index readiness and revisions, propagate distinct transport/timeout
+failures, and enforce compatibility before reaching the legacy REST writer.
+The actual automatic Knoxx turn and provider-session prompt require their own
+positive/negative tests and served-revision proof after qualified delivery.
+
+The original RED stdout and counts remain in the committed evidence JSON.
+The first registry setup error and later malformed-snapshot decoder failure are
+recorded as separate observed attempts, not rewritten into a passing history.
+The private npm configuration emits a missing-NPM_TOKEN warning; compiler and
+scoped lint warning counts are recorded independently. No credential is emitted.
+
+Process documentation: GPL-3.0-or-later.
+# Hosted source verification and review route
+
+The scoped source workflow runs the portable JVM laws, recall namespace lint,
+actual compiled Node suites and isolated assertion-failure proof, released ESM,
+and the runnable demonstration. Its compiler steps require the actual completed
+zero-warning summary. The existing broader Code Quality and Review Resolution
+jobs retain their obligations. Local evidence does not establish hosted success.
+
+The original scoped evidence review workflow used the exact shared receiver
+`45ec644c2d15ed511e9bc1e797d1b4073b63dbfc` and canonical skill source
+`4b4f48dae1b804b2581974e604cca618ecedadf1`; those revisions are historical.
+The active bounded consumer in `.github/workflows/eta-mu-review.yml` pins ETA
+`8b8ebeb323ad4e90bddf4c31082cbaf45d684a3d`, Muse
+`f422d77cf9c6cea46b6791e3f54c98679e949d1f` and canonical agents
+`face3009a8dfb6f355acad467fd288100e49c0ba`. Its own deterministic gates are
+diff statistics and hygiene; the separate scoped verification workflow supplies
+functional execution. The existing operator App and personal installation are
+reused through named encrypted GitHub secrets. No credential contents appear in
+source or evidence, and configured secrets do not prove a completed review.
+
+The frozen upstream source `07085d6557b75834ce6f50e6c54b8ca47e1c7c08` is a
+separate personal synchronization layer. Review of this bounded recall diff
+cannot qualify that larger synchronization diff. Both layers require their own
+current native review, check and merge evidence before release or consumption.
+
+## Authorized bounded delivery — 2026-10-10 UTC
+
+The source-integration account above describes the original scoped PR2 on its
+broad synchronization base. The human subsequently selected the inventoried
+56-package-source import plus required configuration and existing recall.
+The new `codex/cephalon-bounded-graph-recall` branch starts personal mainF95;
+it imports selected source07085 blobs and overlays exact A098 recall. It does
+not merge or qualify the broad synchronization. Its own complete cumulative
+diff, checks and exact-head review must qualify independently. See
+[the bounded import report](cephalon-bounded-source-import.md) and hashed
+manifest for current scope, actual fresh local verification and retained limits.
+
+## Scope projection and LMDB cleanup correction — 2026-10-17 UTC
+
+Native CodeRabbit review `5560424896` on predecessor
+`6dcc8083c7dd02362f4486d8b92875e5b1a48975` identified two scope conversion
+defects (roots `4304798526` and `4304798530`) and LMDB cleanup item
+`cr-comment:v1:056a85a8a5218699664498c2`. The batch projections now return
+their existing JavaScript edge objects directly, and the Mongo JavaScript
+adapter retains string keys on input. Regression coverage checks distinct
+slash-qualified keys at both nesting levels, direct/single/batch/Mongo parity,
+and recomputation of the returned scope's claim identity. The LMDB adapter now
+implements explicit prefix-scoped expiry cleanup with completed removal counts;
+the cache README records its owner-invoked lifecycle and storage limits.
+
+Actual local Node `22.20.0` RED counts:
+
+- Graph: 82 tests, 720 assertions, 7 failures, 0 errors.
+- Cache: 19 tests, 186 assertions, 3 failures, 0 errors.
+
+GREEN retains those test and assertion counts with zero failures and errors.
+Both packages' compile and released ESM builds report
+zero compiler warnings; changed CLJS lint reports zero errors/warnings. Separate
+released-export checks use the installed LMDB `3.5.4` driver and a disposable
+private database: expired owned entries are removed, live/unexpiring/foreign
+entries remain, repeated cleanup returns zero, and a Unicode prefix remains
+isolated. Missing NPM_TOKEN interpolation and optional source-map-support notices
+are recorded separately from compiler/lint warnings. Existing dependencies were
+reused, with no project install or full snapshot.
+
+Predecessor functional CI run `39074557996` succeeded. Its MiMo run `39074558367` ended
+in failure after two actual completed invocations, with neither accepted or
+submitted: the first assessed 16 of 1497 pages before stopping; the second assessed
+108, then supplied malformed JSON for a delivered batch. The tool refused it,
+and the receiver reported structured-input-unestablished. All four native
+before/after custody captures match the fresh, complete compiler context tree
+of 656 files: `30ef3ea40c8fa8d658d416260c380b19a18fe09fe537b9e8c7b50f5d94b623f2`.
+These are failed review attempts, with no approval or cohort credit. No third
+unchanged-head invocation is selected. The correction needs its own fresh hosted
+functional execution and complete native review before qualified merge. Live
+B1/B2/B3 remain unverified; no runtime or creative publication changed.
+## Current source review corrections — 2026-10-19 UTC
+
+Reviews `5565645656` (Codex) and `5565672976` (CodeRabbit) on
+`f2b8de52cfb8863ce2eabe78522163033480ee21` identified six existing source defects:
+
+- Authority reads now map Mongo deadline code `50` to the distinct `timeout`
+  outcome at the initial read and all three authority rechecks. Other failures
+  retain `authority-unavailable`; errors expose no private query text.
+- Recall embedding identity derives from the canonical typed node/model/
+  dimensions/chunk tuple. A preserved BSON `_id` cannot invalidate an admitted
+  embedding or change the snapshot revision. Duplicate and malformed tuples
+  still fail validation. The released ESM check uses actual MongoDB `ObjectId`
+  instances; this check uses held collection ports, not a live database.
+- Traversal completes once the requested hit count is satisfied, before an
+  unused node or cost budget can report exhaustion. Existing insufficient-hit
+  budget outcomes remain tested on JVM and Node.
+- Tenant deletion removes label references in both endpoint directions inside
+  the existing transaction. The regression retains another tenant's labels,
+  outgoing references and unrelated ordinary edges across projects.
+- Expired LMDB reads and touches own asynchronous purge failures while retaining
+  synchronous miss/false results. The causal RED crashed Node on the actual
+  rejected promise; GREEN reaches the subsequent event-loop checkpoint.
+- The Compose replica advertises `openplanner-mongodb:27017`, its existing
+  unique alias on the shared network. The disposable nonroot Mongo fixture
+  uses that hostname and reads the actual advertised `hello.hosts` back.
+  Existing deployed replica configurations are not reconfigured by this check.
+
+Local verification uses process-local Node `22.20.0` and pnpm `10.11.0`:
+cache `20` tests / `191` assertions; portable recall `18` / `111`; compiled
+claims/recall/adapter suites `89` / `1,070`; SDK `1,018` / `1,018` passing tests.
+The separate forced assertion still exits `1`, and its checker passes. Cache
+and recall release/test compilers each report zero compiler warnings; recall
+lint reports zero errors and warnings. Existing npm configuration and optional
+source-map-support notices remain visible separately.
+
+The actual disposable Mongo fixture also retains all six caller identity/time
+cases, health idempotence, indexed retention cleanup/reenable, vector replacement
+and transaction rollback controls. All pass on local image
+`sha256:9fae371f0280c30c40523dbda5edda96be4c8722cd1272d2ac79f699b2d955d3`.
+The first tenant regression was inconclusive because its permissive fixture
+overwrote ownerless tuples; that attempt is preserved. Explicit existing event
+ownership and a cardinality assertion made every endpoint case present before
+the corrected causal RED, which then failed against unchanged source.
+
+All original 150 review-input paths remain. Both workflow files, source pins,
+review guards, complete-input requirements, two-invocation limit and 120-minute
+budget remain unchanged. Fresh hosted functional checks and genuine reviews
+must qualify the new immutable head. No live maker, principal, physical Field
+or consumed mood transition is proven by these local checks; B1/B2/B3 remain
+unverified.

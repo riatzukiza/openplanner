@@ -1,0 +1,417 @@
+import { PersistentEmbeddingCache, makeEmbeddingCacheKey } from "./embedding-cache.js";
+import { isContextOverflowError } from "./indexing.js";
+
+export interface IEmbeddingFunction {
+  generate(texts: string[]): Promise<number[][]>;
+}
+
+class EmbedProviderError extends Error {}
+
+// Only a fixed overflow category crosses the boundary; diagnostics never do.
+async function isOverflowResponse(response: Response): Promise<boolean> {
+  if (response.status === 413) {
+    void response.body?.cancel().catch(() => {});
+    return true;
+  }
+  if (response.status !== 400 && response.status !== 422) {
+    void response.body?.cancel().catch(() => {});
+    return false;
+  }
+  const reader = response.body?.getReader();
+  if (!reader) return false;
+  const decoder = new TextDecoder();
+  let diagnostic = "";
+  let remaining = 8192;
+  try {
+    while (remaining > 0) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value.subarray(0, remaining);
+      diagnostic += decoder.decode(chunk, { stream: true });
+      remaining -= chunk.byteLength;
+    }
+    return isContextOverflowError(diagnostic);
+  } finally {
+    void reader.cancel().catch(() => {});
+  }
+}
+
+function averageEmbeddings(embeddings: number[][]): number[] {
+  const dims = embeddings[0]?.length ?? 0;
+  if (dims === 0 || embeddings.some(embedding => embedding.length !== dims)) {
+    throw new Error("Embedding fragment dimensions must agree and be nonzero");
+  }
+  const sum = new Array(dims).fill(0);
+  for (const emb of embeddings) {
+    for (let i = 0; i < dims; i++) {
+      sum[i] += emb[i]! / embeddings.length;
+    }
+  }
+  return sum;
+}
+
+export class EmbedProviderFunction implements IEmbeddingFunction {
+  private model: string;
+  private url: string;
+  private apiKey?: string;
+  private cache?: PersistentEmbeddingCache;
+  private expectedDimensions?: number;
+  private batchWindowMs: number;
+  private maxBatchItems: number;
+  private maxConcurrentBatches: number;
+  private pending = new Map<string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }>();
+  private flushTimer: NodeJS.Timeout | null = null;
+  private activeBatches = 0;
+  private batchQueue: Array<() => Promise<void>> = [];
+  private readonly MAX_CHARS_PER_BATCH = 4_000;
+  private readonly MAX_SINGLE_ENTRY_CHARS = 4_000;
+
+  constructor(
+    model: string,
+    url: string = "http://host.docker.internal:8789",
+    opts?: {
+      apiKey?: string;
+      cache?: PersistentEmbeddingCache;
+      expectedDimensions?: number;
+      batchWindowMs?: number;
+      maxBatchItems?: number;
+      maxConcurrentBatches?: number;
+    }
+  ) {
+    this.model = model;
+    this.url = url.replace(/\/+$/, "");
+    this.apiKey = typeof opts?.apiKey === "string" && opts.apiKey.length > 0 ? opts.apiKey : undefined;
+    this.cache = opts?.cache;
+    this.expectedDimensions = opts?.expectedDimensions;
+    if (this.expectedDimensions !== undefined && (!Number.isInteger(this.expectedDimensions) || this.expectedDimensions <= 0)) {
+      throw new Error("Embedding model dimensions must be positive integers");
+    }
+    this.batchWindowMs = typeof opts?.batchWindowMs === "number" && Number.isFinite(opts.batchWindowMs) && Math.floor(opts.batchWindowMs) >= 1
+      ? Math.floor(opts.batchWindowMs)
+      : 50;
+    this.maxBatchItems = typeof opts?.maxBatchItems === "number" && Number.isFinite(opts.maxBatchItems) && Math.floor(opts.maxBatchItems) >= 1
+      ? Math.floor(opts.maxBatchItems)
+      : 256;
+    this.maxConcurrentBatches = typeof opts?.maxConcurrentBatches === "number" && Number.isFinite(opts.maxConcurrentBatches) && Math.floor(opts.maxConcurrentBatches) >= 1
+      ? Math.floor(opts.maxConcurrentBatches)
+      : 4;
+  }
+
+  async generate(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+
+    const keys = texts.map((text) => makeEmbeddingCacheKey({
+      model: this.model,
+      text,
+      dimensions: this.expectedDimensions,
+    }));
+    const cached = this.cache ? await this.cache.getMany(keys) : new Map<string, number[]>();
+    if (this.expectedDimensions !== undefined) for (const [key, vector] of cached) {
+      if (vector.length !== this.expectedDimensions) {
+        cached.delete(key);
+        this.cache?.delete(key);
+      }
+    }
+    const inFlight = new Map<string, Promise<number[]>>();
+
+    for (let index = 0; index < keys.length; index += 1) {
+      const key = keys[index]!;
+      if (cached.has(key) || inFlight.has(key)) continue;
+      inFlight.set(key, this.enqueue(key, texts[index]!));
+    }
+
+    return await Promise.all(keys.map(async (key) => {
+      const cachedVector = cached.get(key);
+      if (cachedVector) return cachedVector;
+      return await inFlight.get(key)!;
+    }));
+  }
+
+  private async fetchBatch(texts: string[]): Promise<number[][]> {
+    try {
+      const body = {
+        model: this.model,
+        input: texts,
+      };
+
+      const res = await fetch(`${this.url}/v1/embeddings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60_000),
+      });
+
+      if (!res.ok) {
+        const overflow = await isOverflowResponse(res).catch(() => false);
+        throw new EmbedProviderError(`Embed provider failed: HTTP ${res.status}${overflow ? " context window exceeded" : ""}`);
+      }
+
+      const data = (await res.json()) as { data?: Array<{ index?: unknown; embedding?: number[] }>; embeddings?: number[][] };
+      let out: number[][] = [];
+      if (Array.isArray(data.embeddings)) out = data.embeddings;
+      else if (Array.isArray(data.data)) {
+        if (data.data.length !== texts.length) {
+          throw new EmbedProviderError(`Embed provider returned ${data.data.length} embeddings for ${texts.length} inputs`);
+        }
+        out = new Array(texts.length);
+        const indices = new Set<number>();
+        for (const row of data.data) {
+          const index = row?.index;
+          if (typeof index !== "number" || !Number.isSafeInteger(index) || index < 0 || index >= texts.length || indices.has(index)) {
+            throw new EmbedProviderError("Embed provider returned an invalid or duplicate response index");
+          }
+          indices.add(index);
+          out[index] = row.embedding ?? [];
+        }
+      }
+      if (out.some(vector => !Array.isArray(vector) || vector.length === 0 || vector.some(value => typeof value !== "number" || !Number.isFinite(value)))) {
+        throw new EmbedProviderError("Embed provider returned an invalid or empty vector");
+      }
+      if (out.length !== texts.length) {
+        throw new EmbedProviderError(`Embed provider returned ${out.length} embeddings for ${texts.length} inputs`);
+      }
+      const dimensions = this.expectedDimensions ?? out[0]?.length;
+      if (out.some(vector => vector.length !== dimensions)) {
+        throw new EmbedProviderError("Embed provider returned inconsistent or undeclared vector dimensions");
+      }
+      return out;
+    } catch (err) {
+      const error = err instanceof EmbedProviderError ? err : new EmbedProviderError("Embed provider request failed");
+      console.error("Embed provider error:", error.message);
+      throw error;
+    }
+  }
+
+  private enqueue(key: string, text: string): Promise<number[]> {
+    return new Promise<number[]>((resolve, reject) => {
+      const pending = this.pending.get(key);
+      if (pending) {
+        pending.waiters.push({ resolve, reject });
+      } else {
+        this.pending.set(key, { text, waiters: [{ resolve, reject }] });
+      }
+
+      let totalChars = 0;
+      for (const [, entry] of this.pending) {
+        totalChars += entry.text.length;
+      }
+
+      if (this.pending.size >= this.maxBatchItems || totalChars >= this.MAX_CHARS_PER_BATCH) {
+        this.clearFlushTimer();
+        void this.scheduleFlush().catch((error) => {
+          console.error("Embed provider flush error:", error);
+        });
+        return;
+      }
+
+      if (!this.flushTimer) {
+        this.flushTimer = setTimeout(() => {
+          this.flushTimer = null;
+          void this.scheduleFlush().catch((error) => {
+            console.error("Embed provider flush error:", error);
+          });
+        }, this.batchWindowMs);
+      }
+    });
+  }
+
+  private clearFlushTimer(): void {
+    if (!this.flushTimer) return;
+    clearTimeout(this.flushTimer);
+    this.flushTimer = null;
+  }
+
+  private drainFlushQueue(): void {
+    while (this.activeBatches < this.maxConcurrentBatches && this.batchQueue.length > 0) {
+      const next = this.batchQueue.shift()!;
+      this.activeBatches++;
+      void next().finally(() => {
+        this.activeBatches--;
+        this.drainFlushQueue();
+      });
+    }
+  }
+
+  private async scheduleFlush(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.batchQueue.push(async () => {
+        try { await this.flushPending(); resolve(); }
+        catch (error) { reject(error); }
+      });
+      this.drainFlushQueue();
+    });
+  }
+
+  private async flushPending(): Promise<void> {
+    while (this.pending.size > 0) {
+      const entries:
+        Array<[string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }]> = [];
+      let entriesChars = 0;
+      const allEntries = Array.from(this.pending.entries());
+      for (const entry of allEntries) {
+        if (entries.length >= this.maxBatchItems) break;
+        if (entriesChars + entry[1].text.length > this.MAX_CHARS_PER_BATCH && entries.length > 0) break;
+        entries.push(entry);
+        entriesChars += entry[1].text.length;
+      }
+      for (const [key] of entries) this.pending.delete(key);
+
+      try {
+        const embeddings = await this.resolveBatch(entries);
+
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i]![1];
+          const vector = embeddings[i]!;
+          for (const waiter of entry.waiters) waiter.resolve(vector);
+        }
+        // Optional cache persistence cannot delay or reject valid provider output.
+        void Promise.resolve().then(() => this.cache?.putMany(
+          entries.map(([key], index) => ({ key, vector: embeddings[index]! })),
+        )).catch(() => console.warn("Embedding cache persistence failed"));
+      } catch (error) {
+        for (const [, entry] of entries) {
+          for (const waiter of entry.waiters) waiter.reject(error);
+        }
+      }
+    }
+  }
+
+  private async resolveBatch(
+    entries: Array<[string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }]>,
+  ): Promise<number[][]> {
+    const texts = entries.map(([, entry]) => entry.text);
+
+    try {
+      const embeddings = await this.fetchBatch(texts);
+      if (embeddings.length !== entries.length) {
+        throw new Error(`Embed provider returned ${embeddings.length} embeddings for ${entries.length} queued inputs`);
+      }
+      return embeddings;
+    } catch (error) {
+      if (!isContextOverflowError(error)) {
+        throw error;
+      }
+
+      const results: number[][] = [];
+
+      for (const entry of entries) {
+        results.push(await this.resolveSingleEntry(entry));
+      }
+
+      return results;
+    }
+  }
+
+  private async resolveSingleEntry(
+    entry: [string, { text: string; waiters: Array<{ resolve: (vector: number[]) => void; reject: (error: unknown) => void }> }],
+  ): Promise<number[]> {
+    const text = entry[1].text;
+
+    // If it's short enough, just try it directly
+    if (text.length <= this.MAX_SINGLE_ENTRY_CHARS) {
+      try {
+        const [embedding] = await this.fetchBatch([text]);
+        return embedding;
+      } catch (error) {
+        if (!isContextOverflowError(error) || text.length <= 1
+          || (text.length === 2 && text.codePointAt(0)! > 0xffff)) throw error;
+        // Fall through to binary split
+      }
+    }
+
+    // Binary split the text until pieces are small enough for the provider.
+    // We do NOT trust our local token estimator; we let the provider tell us.
+    const halves = this.binarySplitText(text);
+    const leftEmb = await this.resolveSingleEntry([entry[0], { text: halves[0], waiters: [] }]);
+    const rightEmb = halves[1]
+      ? await this.resolveSingleEntry([entry[0], { text: halves[1], waiters: [] }])
+      : null;
+
+    if (rightEmb) {
+      return averageEmbeddings([leftEmb, rightEmb]);
+    }
+    return leftEmb;
+  }
+
+  private binarySplitText(text: string): [string, string | null] {
+    if (text.length <= 1) {
+      return [text, null];
+    }
+    const mid = Math.floor(text.length / 2);
+    // Try to split on a newline or space near the middle
+    let splitAt = mid;
+    const searchRange = Math.min(100, Math.floor(mid / 4));
+    for (let i = 0; i < searchRange; i++) {
+      if (text[mid + i] === '\n' || text[mid + i] === ' ') {
+        splitAt = mid + i + 1;
+        break;
+      }
+      if (text[mid - i] === '\n' || text[mid - i] === ' ') {
+        splitAt = mid - i + 1;
+        break;
+      }
+    }
+    // UTF-16 midpoint offsets must preserve the provider's actual code points.
+    const before = text.charCodeAt(splitAt - 1), after = text.charCodeAt(splitAt);
+    if (before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff) splitAt++;
+    return [text.slice(0, splitAt), text.slice(splitAt)];
+  }
+}
+
+export class ParallelEmbeddingPool {
+  private workers: EmbedProviderFunction[];
+  private currentIndex = 0;
+
+  constructor(
+    model: string,
+    url: string,
+    opts: {
+      apiKey?: string;
+      cache?: PersistentEmbeddingCache;
+      batchWindowMs?: number;
+      maxBatchItems?: number;
+      workerCount?: number;
+      expectedDimensions?: number;
+    } = {}
+  ) {
+    const workerCount = opts.workerCount ?? 4;
+    if (!Number.isSafeInteger(workerCount) || workerCount <= 0) throw new Error("workerCount must be a positive safe integer");
+    this.workers = Array.from({ length: workerCount }, () =>
+      new EmbedProviderFunction(model, url, {
+        ...opts,
+        maxConcurrentBatches: 1,
+      })
+    );
+  }
+
+  async generate(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    if (this.workers.length === 1) {
+      return this.workers[0]!.generate(texts);
+    }
+
+    const chunkSize = Math.ceil(texts.length / this.workers.length);
+    const chunks: string[][] = [];
+    for (let i = 0; i < texts.length; i += chunkSize) {
+      chunks.push(texts.slice(i, i + chunkSize));
+    }
+
+    const results = await Promise.all(
+      chunks.map((chunk, index) => {
+        const worker = this.workers[index % this.workers.length]!;
+        return worker.generate(chunk);
+      })
+    );
+
+    return results.flat();
+  }
+
+  getWorker(): EmbedProviderFunction {
+    const worker = this.workers[this.currentIndex]!;
+    this.currentIndex = (this.currentIndex + 1) % this.workers.length;
+    return worker;
+  }
+}

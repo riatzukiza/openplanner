@@ -1,0 +1,148 @@
+{
+  "tier": "actual captured subprocess output; not hosted review or live runtime proof",
+  "base": "f95a53a4da8ed90588b0be320ba8e86c6a03668d",
+  "source": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+  "recall": "a09894c48760748b7fca7bf9e94f36471f599a47",
+  "commands": [
+    {
+      "name": "frozen scoped install",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "packages",
+        "--filter",
+        "@open-hax/openplanner-sdk...",
+        "--filter",
+        "@open-hax/openplanner-graph-claim-core...",
+        "install",
+        "--frozen-lockfile",
+        "--offline"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:53:24.086279+00:00",
+      "duration_seconds": 1.321,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "Scope: 4 of 5 workspace projects\nLockfile is up to date, resolution step is skipped\nDone in 772ms using pnpm v10.11.0\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    },
+    {
+      "name": "cache released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:53:25.407909+00:00",
+      "duration_seconds": 21.138,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (53 files, 0 compiled, 0 warnings, 12.35s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:53:46.546521+00:00",
+      "duration_seconds": 12.125,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (56 files, 0 compiled, 0 warnings, 4.36s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "started_at": "2026-10-10T04:53:58.671668+00:00",
+      "duration_seconds": 0.286,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.stores.cache-test\n\nRan 7 tests containing 29 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "document-hydration released ESM",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:53:58.960284+00:00",
+      "duration_seconds": 21.625,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (54 files, 0 compiled, 0 warnings, 12.12s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration compile tests",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "compile",
+        "test",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:54:20.585602+00:00",
+      "duration_seconds": 11.829,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "[:test] Compiling ...\n[:test] Build completed. (57 files, 0 compiled, 0 warnings, 3.58s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration/shadow-cljs.edn\n"
+    },
+    {
+      "name": "document-hydration actual tests",
+      "argv": [
+        "node",
+        "target/test.cjs"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/document-hydration",
+      "started_at": "2026-10-10T04:54:32.414564+00:00",
+      "duration_seconds": 0.245,
+      "exit_code": 0,
+      "passed": true,
+      "stdout": "\nTesting openplanner.stores.document-hydration-test\n\nRan 5 tests containing 19 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "SDK TypeScript build",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "packages",
+        "--filter",
+        "@open-hax/openplanner-sdk",
+        "build"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "started_at": "2026-10-10T04:54:32.659854+00:00",
+      "duration_seconds": 3.54,
+      "exit_code": 2,
+      "passed": false,
+      "stdout": "\n> @open-hax/openplanner-sdk@0.1.0 build /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk\n> tsc\n\nsrc/mongo-vectors.ts(827,52): error TS2304: Cannot find name 'now'.\n/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/openplanner-sdk:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 @open-hax/openplanner-sdk@0.1.0 build: `tsc`\nExit status 2\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n"
+    }
+  ]
+}

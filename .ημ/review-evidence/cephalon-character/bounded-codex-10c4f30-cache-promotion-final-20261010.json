@@ -1,0 +1,53 @@
+{
+  "tier": "actual final cache capability guard supplement; earlier 19-command proof retains its exact prior source observation",
+  "commands": [
+    {
+      "name": "cache release",
+      "argv": [
+        "pnpm",
+        "exec",
+        "shadow-cljs",
+        "release",
+        "lib",
+        "--force-spawn"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "exit_code": 0,
+      "stdout": "[:lib] Compiling ...\n[:lib] Build completed. (53 files, 5 compiled, 0 warnings, 5.41s)\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\n"
+    },
+    {
+      "name": "cache test",
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache",
+      "exit_code": 0,
+      "stdout": "\n> @open-hax/openplanner-store-cache@0.1.0 test /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache\n> shadow-cljs compile test && node target/test.cjs\n\n[:test] Compiling ...\n[:test] Build completed. (56 files, 6 compiled, 0 warnings, 1.71s)\n\nTesting openplanner.stores.cache-test\n\nRan 8 tests containing 33 assertions.\n0 failures, 0 errors.\n",
+      "stderr": "\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n\u2009WARN\u2009 Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\nshadow-cljs - config: /home/err/spaces/cephalon-openplanner-bounded/openplanner/packages/stores/cache/shadow-cljs.edn\nno \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n"
+    },
+    {
+      "name": "cache lint",
+      "argv": [
+        "clj-kondo",
+        "--lint",
+        "packages/stores/cache/src",
+        "packages/stores/cache/test"
+      ],
+      "cwd": "/home/err/spaces/cephalon-openplanner-bounded/openplanner",
+      "exit_code": 0,
+      "stdout": "linting took 56ms, errors: 0, warnings: 0\n",
+      "stderr": ""
+    }
+  ],
+  "source_hashes": {
+    "packages/stores/cache/src/openplanner/stores/cache/protocol.cljs": "a95e989f9f43dfd16ffce73028259040afc7f4a15af1cb5c1af1d503c2b662d3",
+    "packages/stores/cache/src/openplanner/stores/cache/layered.cljs": "758b13809956c66340291239c45cf80a6053ac40cf1ecb35b613c534923d7c43",
+    "packages/stores/cache/src/openplanner/stores/cache/core.cljs": "73095dd51a450c29a30174d3ec0ec2f638d57997f25b6318812161fbac210c70",
+    "packages/stores/cache/src/openplanner/stores/cache/schema.cljs": "3454bb174ead2b84bc038319d40c09b11b3f22db3ff012d0006d539d0cd94f23",
+    "packages/stores/cache/src/openplanner/stores/cache/boundary.cljs": "e3563da03094a1a0949c9238c51e6466dd0cfee9be1bfba68b64c3bac2a552ae",
+    "packages/stores/cache/src/openplanner/stores/cache/adapters/memory.cljs": "3862f42979af9102c67896cca68d23dc4fe898cd6d2f7ef71e24df95d292c836",
+    "packages/stores/cache/src/openplanner/stores/cache/adapters/lmdb.cljs": "1fa33f41c9909b6e63b4e39bc26159aa4f002f954cf6bf817e1941995d4c945a"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "kind": "observed-command-output-transcription",
+  "observed_at": "2026-10-09T15:39:05.487767+00:00",
+  "head": "08dc03180d8b7720b501bd45f63e87d282b502fc",
+  "command": "node scripts/verify-recall-test-exit.mjs",
+  "cwd": "/home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core",
+  "exit_code": 1,
+  "raw": {
+    "bytes": 1558,
+    "sha256": "905fc7d4bf74a1350d52acd619c4d460769777711a4cafdefdea9cfa1bd6c6cb",
+    "output": "\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nTesting openplanner.graph.recall.mongo-test\nISOLATED_IN_MEMORY_ASSERTION_FAILURE\n\nTesting openplanner.graph.claims.core-test\n\nTesting openplanner.graph.recall.core-test\n\nTesting openplanner.graph.recall.runner\n\nFAIL in (native-boundary-keeps-trace-and-failure-outcomes) (openplanner/graph/recall/runner.cljs:13:9)\nexpected: (= \"completed\" (aget result \"status\"))\n  actual: (not (= \"completed\" \"forced-review-failure\"))\n\nTesting openplanner.graph.recall.mongo-test\n\nRan 46 tests containing 227 assertions.\n0 failures, 0 errors.\n\nRan 27 tests containing 145 assertions.\n1 failures, 0 errors.\nnode:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: one actual ordinary summary is required\n\n0 !== 1\n\n    at assertInjectedOutput (file:///home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs:15:10)\n    at file:///home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs:44:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: 0,\n  expected: 1,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n\nNode.js v24.14.1\n"
+  },
+  "sources": [
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-recall-test-exit.mjs",
+      "sha256": "dd5955d2969c19894e6b0b196cbb61b90d7a6ee1866309b80a1e3d5fc04d8694"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/core_test.cljc",
+      "sha256": "fa9ce6fa9e7c384df6bfecd10bebc17a281a787514026620f3e0d54508679522"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/mongo.cljs",
+      "sha256": "975fdb7c7d084edf0a32699df9fa5087c38973242035dc8349e50f562de4cfdb"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/mongo_test.cljs",
+      "sha256": "82fcfc3254b16cffc014083933d5381334dfa3e85841047b7b01c6b9082a8a67"
+    }
+  ],
+  "interpretation": "The ordinary asynchronous suite is still running when the second suite starts. Exact-summary verification rejects overlapping actual results. Await the actual end-run report before injection; keep all existing assertions and summary predicates.",
+  "limits": [
+    "Hermetic SDK test fixtures; no live Mongo, current production authority or maker prompt proof.",
+    "No formal GitHub approval or upstream-source qualification."
+  ]
+}

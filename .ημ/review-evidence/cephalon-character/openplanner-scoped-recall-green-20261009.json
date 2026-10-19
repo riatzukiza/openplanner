@@ -1,0 +1,331 @@
+{
+  "evidence_tier": "observed",
+  "kind": "captured-local-command-output",
+  "observed_at": "2026-10-09T14:51:40.350119+00:00",
+  "baseline": "07085d6557b75834ce6f50e6c54b8ca47e1c7c08",
+  "red_commit": "b46cc9400dd9f87fb468cdf1071f1d83d260987a",
+  "source_state": "Owned uncommitted implementation after retained RED; this manifest binds those exact bytes, not a hosted or approved revision.",
+  "source_manifest": [
+    {
+      "path": "packages/graph/graph-claim-core/deps.edn",
+      "bytes": 205,
+      "sha256": "21943b637b7be465fb2f84876120935c37e0514f9ff0c3aeb85c01fd64d97ea6"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/index.d.ts",
+      "bytes": 3715,
+      "sha256": "33bb6c5bec056b99fd81fcea857a25d458fbb0b172b0f708eadd3564a0f808db"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/shadow-cljs.edn",
+      "bytes": 2099,
+      "sha256": "dbfec971d1d35cdf9b17a91d73089492489bfd89c2922f04b142800017168816"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/contract.cljc",
+      "bytes": 4878,
+      "sha256": "350499515a80c71c6c9afc9ca463e9a4813e5d637da257049ec35eb8eb3f9d94"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/core.cljc",
+      "bytes": 7837,
+      "sha256": "18f9b472f41805eb090b0f6c6d7e53577e3423cb4f55c5daf1b259db3470d944"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/src/openplanner/graph/recall/boundary.cljs",
+      "bytes": 1502,
+      "sha256": "2a84a6e581684e0ea7152098f09b5f2771985707b3b188be48369f0575f33011"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/core_test.cljc",
+      "bytes": 7974,
+      "sha256": "65c693adec2c0f75fc4c8107dfc5690b659ee66f48a3a20d2b825b68bc2cc0cf"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/test/openplanner/graph/recall/runner.cljs",
+      "bytes": 1354,
+      "sha256": "088f9450f31980abade43c17aadae1fef3e26e4fd1edcfa9ab501e6e0ed51863"
+    },
+    {
+      "path": "packages/graph/graph-claim-core/scripts/verify-scoped-recall.mjs",
+      "bytes": 2663,
+      "sha256": "b0c5ee8f09cb2852e058581996315c2ba41179a7709cae2513fd5ea560b5bbee"
+    },
+    {
+      "path": "docs/verification/cephalon-scoped-graph-recall.md",
+      "bytes": 4209,
+      "sha256": "f5150d3354b7d16f362d19ccf5e45651bacecb3df70e7ee5fe27db3a5d822745"
+    }
+  ],
+  "executions": [
+    {
+      "command": "clojure -M:recall-test",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-jvm-final2.log",
+      "bytes": 106,
+      "sha256": "8fa53ce2ef684862df55ddc328934ce0c8e0749338c2b0bad3af05520e478057",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Ran 13 tests containing 90 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "command": "pnpm exec shadow-cljs --force-spawn compile test",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-node-final2-compile.log",
+      "bytes": 307,
+      "sha256": "4d93f8ed3df31f05403089450c3a32b7a5e5cd1a4a9c99362a00d5974b011765",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:test] Compiling ...\n",
+        "[:test] Build completed. (80 files, 5 compiled, 0 warnings, 2.46s)\n"
+      ]
+    },
+    {
+      "command": "node target/test.cjs",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-node-final2-test.log",
+      "bytes": 276,
+      "sha256": "2f0d7544421f38fdaa4530abc6a84a10e6c0d607581e47257f78cabb016a4f12",
+      "stdout_utf8_lines": [
+        "no \"source-map-support\" (run \"npm install source-map-support --save-dev\" to get it)\n",
+        "\n",
+        "Testing openplanner.graph.claims.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "Testing openplanner.graph.recall.runner\n",
+        "\n",
+        "Ran 23 tests containing 132 assertions.\n",
+        "0 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "command": "pnpm exec shadow-cljs --force-spawn release lib",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-release-final2.log",
+      "bytes": 305,
+      "sha256": "000233d740f68fef8110bde9fdb0ed07887a4b005bc22161a6e16b5068b29a6b",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "shadow-cljs - config: /home/err/spaces/cephalon-scoped-graph/openplanner/packages/graph/graph-claim-core/shadow-cljs.edn\n",
+        "[:lib] Compiling ...\n",
+        "[:lib] Build completed. (67 files, 3 compiled, 0 warnings, 6.64s)\n"
+      ]
+    },
+    {
+      "command": "node scripts/verify-scoped-recall.mjs",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-released-demo.log",
+      "bytes": 1560,
+      "sha256": "0dd4167fe827822a9feb040a1b12d9e61d88a15c9b7a999ec859821f671e44c4",
+      "stdout_utf8_lines": [
+        "PASS released ESM export returns a non-seed neighbor with an admitted graph path:\n",
+        "{\n",
+        "  \"feedback\": {\n",
+        "    \"status\": \"not-requested\",\n",
+        "    \"attempted\": 0,\n",
+        "    \"completed\": 0\n",
+        "  },\n",
+        "  \"diagnostics\": {\n",
+        "    \"denied-nodes\": 0,\n",
+        "    \"authorized-nodes\": 2,\n",
+        "    \"admitted-edges\": 1\n",
+        "  },\n",
+        "  \"hits\": [\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:outside-encounter\",\n",
+        "      \"reason\": \"semantic-seed\",\n",
+        "      \"id\": \"outside-encounter\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [],\n",
+        "      \"cost\": 0,\n",
+        "      \"seed?\": true,\n",
+        "      \"text\": \"memory:outside-encounter\"\n",
+        "    },\n",
+        "    {\n",
+        "      \"path\": [\n",
+        "        \"outside-encounter\",\n",
+        "        \"graph-only-neighbor\"\n",
+        "      ],\n",
+        "      \"event-id\": \"event:graph-only-neighbor\",\n",
+        "      \"reason\": \"graph-neighbor\",\n",
+        "      \"id\": \"graph-only-neighbor\",\n",
+        "      \"score\": 0.8,\n",
+        "      \"path-edge-ids\": [\n",
+        "        \"edge:encounter:neighbor\"\n",
+        "      ],\n",
+        "      \"cost\": 1,\n",
+        "      \"seed?\": false,\n",
+        "      \"text\": \"memory:graph-only-neighbor\"\n",
+        "    }\n",
+        "  ],\n",
+        "  \"graph-revision\": \"fixture-graph:23\",\n",
+        "  \"recall-id\": \"fixture-turn:17\",\n",
+        "  \"field-revision\": \"fixture-field:11\",\n",
+        "  \"status\": \"completed\",\n",
+        "  \"visited-count\": 2,\n",
+        "  \"policy-revision\": \"fixture-policy:7\",\n",
+        "  \"budget\": {\n",
+        "    \"k\": 6,\n",
+        "    \"fetch\": 18,\n",
+        "    \"max-nodes\": 64,\n",
+        "    \"max-cost\": 4\n",
+        "  },\n",
+        "  \"field-owner\": \"eros-eris-field\"\n",
+        "}\n",
+        "PASS missing decisions refuse recall; retrieval schedules zero feedback writes\n",
+        "WARN decisions/revisions are frozen fixtures; no live identity, Mongo, field state or maker prompt was verified\n",
+        "CLEAN removed only this demonstration's dedicated temporary fixture\n"
+      ]
+    },
+    {
+      "command": "previous incomplete implementation JVM",
+      "exit": 1,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-green.log",
+      "bytes": 631,
+      "sha256": "e355448f251683179b83bd0bed7ae23d49b7e8f89cf873f2f0dab07931c8284c",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "FAIL in (stale-mismatched-and-ambiguous-decisions-fail-closed) (core_test.cljc:71)\n",
+        "expected: (= :denied (:status result))\n",
+        "  actual: (not (= :denied :empty))\n",
+        "\n",
+        "FAIL in (malformed-or-conflicting-input-does-not-become-empty-success) (core_test.cljc:113)\n",
+        "expected: (= :failed (:status result))\n",
+        "  actual: (not (= :failed :empty))\n",
+        "\n",
+        "FAIL in (malformed-or-conflicting-input-does-not-become-empty-success) (core_test.cljc:114)\n",
+        "expected: (= :invalid-snapshot (get-in result [:failure :code]))\n",
+        "  actual: (not (= :invalid-snapshot nil))\n",
+        "\n",
+        "Ran 10 tests containing 69 assertions.\n",
+        "3 failures, 0 errors.\n"
+      ]
+    },
+    {
+      "command": "extra malformed-snapshot RED JVM",
+      "exit": 1,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-malformed-snapshot-red.log",
+      "bytes": 3112,
+      "sha256": "f9fbe391d933225e6690e869eb81474259bffd3bde1fafac18a5741595385a6c",
+      "stdout_utf8_lines": [
+        "\n",
+        "Testing openplanner.graph.recall.core-test\n",
+        "\n",
+        "ERROR in (arbitrary-malformed-snapshots-produce-a-safe-failure) (APersistentVector.java:410)\n",
+        "Uncaught exception, not in assertion.\n",
+        "expected: nil\n",
+        "  actual: java.lang.IllegalArgumentException: Key must be integer\n",
+        " at clojure.lang.APersistentVector.assoc (APersistentVector.java:410)\n",
+        "    clojure.lang.APersistentVector.assoc (APersistentVector.java:19)\n",
+        "    clojure.lang.RT.assoc (RT.java:847)\n",
+        "    clojure.core$assoc__5502.invokeStatic (core.clj:195)\n",
+        "    clojure.core$assoc__5502.doInvoke (core.clj:192)\n",
+        "    clojure.lang.RestFn.invoke (RestFn.java:576)\n",
+        "    openplanner.graph.recall.core$metadata_valid_QMARK_.invokeStatic (core.cljc:15)\n",
+        "    openplanner.graph.recall.core$metadata_valid_QMARK_.invoke (core.cljc:12)\n",
+        "    openplanner.graph.recall.core$recall_plan.invokeStatic (core.cljc:119)\n",
+        "    openplanner.graph.recall.core$recall_plan.invoke (core.cljc:112)\n",
+        "    openplanner.graph.recall.core_test$fn__4651.invokeStatic (core_test.cljc:141)\n",
+        "    openplanner.graph.recall.core_test/fn (core_test.cljc:139)\n",
+        "    clojure.test$test_var$fn__9898.invoke (test.clj:717)\n",
+        "    clojure.test$test_var.invokeStatic (test.clj:717)\n",
+        "    clojure.test$test_var.invoke (test.clj:708)\n",
+        "    clojure.test$test_vars$fn__9924$fn__9929.invoke (test.clj:735)\n",
+        "    clojure.test$default_fixture.invokeStatic (test.clj:687)\n",
+        "    clojure.test$default_fixture.invoke (test.clj:683)\n",
+        "    clojure.test$test_vars$fn__9924.invoke (test.clj:735)\n",
+        "    clojure.test$default_fixture.invokeStatic (test.clj:687)\n",
+        "    clojure.test$default_fixture.invoke (test.clj:683)\n",
+        "    clojure.test$test_vars.invokeStatic (test.clj:731)\n",
+        "    clojure.test$test_all_vars.invokeStatic (test.clj:737)\n",
+        "    clojure.test$test_ns.invokeStatic (test.clj:758)\n",
+        "    clojure.test$test_ns.invoke (test.clj:743)\n",
+        "    clojure.core$map$fn__5956.invoke (core.clj:2776)\n",
+        "    clojure.lang.LazySeq.force (LazySeq.java:50)\n",
+        "    clojure.lang.LazySeq.realize (LazySeq.java:87)\n",
+        "    clojure.lang.LazySeq.seq (LazySeq.java:104)\n",
+        "    clojure.lang.Cons.next (Cons.java:41)\n",
+        "    clojure.lang.RT.boundedLength (RT.java:1810)\n",
+        "    clojure.lang.RestFn.applyTo (RestFn.java:133)\n",
+        "    clojure.core$apply.invokeStatic (core.clj:669)\n",
+        "    clojure.test$run_tests.invokeStatic (test.clj:768)\n",
+        "    clojure.test$run_tests.doInvoke (test.clj:768)\n",
+        "    clojure.lang.RestFn.invoke (RestFn.java:411)\n",
+        "    openplanner.graph.recall.core_test$_main.invokeStatic (core_test.cljc:149)\n",
+        "    openplanner.graph.recall.core_test$_main.doInvoke (core_test.cljc:146)\n",
+        "    clojure.lang.RestFn.invoke (RestFn.java:400)\n",
+        "    clojure.lang.AFn.applyToHelper (AFn.java:152)\n",
+        "    clojure.lang.RestFn.applyTo (RestFn.java:135)\n",
+        "    clojure.lang.Var.applyTo (Var.java:707)\n",
+        "    clojure.core$apply.invokeStatic (core.clj:667)\n",
+        "    clojure.main$main_opt.invokeStatic (main.clj:515)\n",
+        "    clojure.main$main_opt.invoke (main.clj:511)\n",
+        "    clojure.main$main.invokeStatic (main.clj:665)\n",
+        "    clojure.main$main.doInvoke (main.clj:617)\n",
+        "    clojure.lang.RestFn.applyTo (RestFn.java:140)\n",
+        "    clojure.lang.Var.applyTo (Var.java:707)\n",
+        "    clojure.main.main (main.java:40)\n",
+        "\n",
+        "Ran 13 tests containing 82 assertions.\n",
+        "0 failures, 1 errors.\n"
+      ]
+    },
+    {
+      "command": "scoped frozen-lock dependency install",
+      "exit": 0,
+      "raw_private_path": "/home/err/.local/share/codex/cephalon-review-artifacts/receipt-river-fixture-20261009/openplanner-scoped-recall-install.log",
+      "bytes": 383,
+      "sha256": "f0839c53ef0c16c776b8803a93c5bcca065933712551adf93519abe48d73a867",
+      "stdout_utf8_lines": [
+        " WARN  Issue while reading \"/home/err/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}\n",
+        "Lockfile is up to date, resolution step is skipped\n",
+        "Progress: resolved 1, reused 0, downloaded 0, added 0\n",
+        ".                                        | +562 ++++++++++++++++++++++++++++++++\n",
+        "Progress: resolved 562, reused 562, downloaded 0, added 562, done\n",
+        "Done in 965ms using pnpm v10.15.0\n"
+      ]
+    }
+  ],
+  "final_results": {
+    "jvm": {
+      "tests": 13,
+      "assertions": 90,
+      "failures": 0,
+      "errors": 0
+    },
+    "node_combined": {
+      "tests": 23,
+      "assertions": 132,
+      "failures": 0,
+      "errors": 0
+    },
+    "compiler_warnings": 0,
+    "scoped_lint": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "released_esm_demo_exit": 0
+  },
+  "preparation_errors": [
+    "First registry initialization used m/default-schemas without calling it; repaired before original RED.",
+    "A root no-new-TypeScript command was first invoked from the package cwd and exited1 MODULE_NOT_FOUND. Correct root invocation subsequently exited0,554 active/554 allowlisted. This was an operator path error, not a product failure.",
+    "The first release began before the output-contract addition. It is historical only; final2 was compiled after all current core/contract/test source edits."
+  ],
+  "configuration_warning": "Existing private ~/.npmrc missing-NPM_TOKEN interpolation warning on pnpm commands; separate from zero compiler warnings. No credential contents read or emitted.",
+  "boundaries": [
+    "Pure graph selection only; no actual stored authority, Mongo, legacy REST repair, automatic maker prompt, physical field persistence, mood transition, reserved-head availability, feedback-write idempotency, hosted verification, qualified source integration or provider approval.",
+    "The selected field kernel remains sole physical owner; generic projected costs are retrieval input, not integrated motion or physical calibration.",
+    "Independent required code review is currently pending and its conclusion is not fabricated."
+  ]
+}
