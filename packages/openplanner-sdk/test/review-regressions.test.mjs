@@ -2564,15 +2564,28 @@ test('Codexed: tenant deletion removes ingested graph labels and their reference
  const mongo=mongoFixture();const event=(id,tenant,project)=>({schema:'openplanner.event.v1',id,ts:'2026-01-01T00:00:00Z',source:'fixture',kind:'message',text:'',project,extra:{tenant_id:tenant,openplanner_labels:{labels:['curious']}}});
  await ingestEvents({mongo,embeddingRuntime:{}},[event('a-one','tenant-a','one'),event('a-two','tenant-a','two'),event('b-one','tenant-b','one')]);
  const tenants=mongo.db.collection('tenants'),policies=mongo.db.collection('tenant_policies');tenants.rows.set('tenant-a',{tenant_id:'tenant-a'});tenants.rows.set('tenant-b',{tenant_id:'tenant-b'});policies.rows.set('tenant-a',{tenant_id:'tenant-a'});policies.rows.set('tenant-b',{tenant_id:'tenant-b'});
- const match=(row,filter)=>Object.entries(filter).every(([key,value])=>value&&Array.isArray(value.$in)?value.$in.includes(row[key]):row[key]===value);
+ const labelA=[...mongo.graphLabelNodes.rows.values()].find(row=>row.tenant_id==='tenant-a').label_id;
+ const labelB=[...mongo.graphLabelNodes.rows.values()].find(row=>row.tenant_id==='tenant-b').label_id;
+ const endpointCases=[
+  {source_node_id:labelA,target_node_id:'ordinary',edge_kind:'related'},
+  {source_node_id:'ordinary',target_node_id:labelA,edge_kind:'related'},
+  {source_node_id:labelA,target_node_id:labelB,edge_kind:'related'},
+  {source_node_id:labelB,target_node_id:'ordinary',edge_kind:'related'},
+  {source_node_id:'ordinary',target_node_id:'other-ordinary',edge_kind:'related'},
+ ];
+ const edgeCount=mongo.graphEdges.rows.size;
+ await upsertGraphEdges(mongo.graphEdges,endpointCases.map((row,index)=>({...row,data:{source_event_id:'tenant-endpoint-fixture-'+index}})));
+ assert.equal(mongo.graphEdges.rows.size,edgeCount+endpointCases.length,'all endpoint cases must exist before deleting the tenant');
+ const match=(row,filter)=>Object.entries(filter).every(([key,value])=>key==='$or'?value.some(part=>match(row,part)):value&&Array.isArray(value.$in)?value.$in.includes(row[key]):row[key]===value);
  const removed=[];for(const c of [mongo.graphLabelNodes,mongo.graphEdges,mongo.db.collection('km_labels'),tenants,policies]){
   c.find=filter=>({toArray:async()=>[...c.rows.values()].filter(row=>match(row,filter))});
   c.deleteMany=async filter=>{removed.push({collection:c.collectionName,filter});let count=0;for(const [id,row]of c.rows)if(match(row,filter)){c.rows.delete(id);count++;}return{deletedCount:count};};
   c.deleteOne=c.deleteMany;
  }
- const retainedLabels=[...mongo.graphLabelNodes.rows.values()].filter(row=>row.tenant_id==='tenant-b');const retainedEdges=[...mongo.graphEdges.rows.values()].filter(row=>row.data?.source_event_id==='b-one');
+ const retainedLabels=[...mongo.graphLabelNodes.rows.values()].filter(row=>row.tenant_id==='tenant-b');const retainedEdges=[...mongo.graphEdges.rows.values()].filter(row=>row.data?.source_event_id==='b-one'||(row.source_node_id===labelB&&row.target_node_id==='ordinary')||(row.source_node_id==='ordinary'&&row.target_node_id==='other-ordinary'));
  assert.equal(await createProtocols({mongo}).tenantManagement.deleteTenant('tenant-a'),true);
  assert.deepEqual([...mongo.graphLabelNodes.rows.values()],retainedLabels);assert.deepEqual([...mongo.graphEdges.rows.values()],retainedEdges);assert.ok(tenants.rows.has('tenant-b'));assert.ok(policies.rows.has('tenant-b'));assert.equal(policies.rows.has('tenant-a'),false);
+ assert.ok([...mongo.graphEdges.rows.values()].every(row=>row.source_node_id!==labelA&&row.target_node_id!==labelA));
  assert.equal(await createProtocols({mongo}).tenantManagement.deleteTenant('tenant-a'),false);
 });
 

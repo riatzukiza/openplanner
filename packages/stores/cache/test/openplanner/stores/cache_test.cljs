@@ -143,6 +143,27 @@
     (reset! clock 125)
     (is (nil? (boundary/cache-get-js cache "a"))))))
 
+(deftest expired-lmdb-reads-handle-asynchronous-removal-rejection
+  (async done
+    (let [attempts (atom [])
+          entry #js {:value "expired" :expiresAt 1}
+          db #js {:get (fn [_] entry)
+                  :remove (fn [key]
+                            (swap! attempts conj key)
+                            (js/Promise.reject (js/Error. "owned expiry removal failure")))}
+          cache (boundary/create-lmdb-cache #js {:db db :prefix "owned:"})]
+      (with-redefs [core/now-ms (constantly 100)]
+        (is (nil? (protocol/cache-get-entry cache "entry")))
+        (is (nil? (boundary/cache-get-js cache "get")))
+        (is (false? (boundary/cache-touch-js cache "touch" 20))))
+      ;; Real rejected promises reach the Node unhandled-rejection checkpoint
+      ;; before this callback if an expiry purge has lost ownership.
+      (js/setTimeout
+        (fn []
+          (is (= ["owned:entry" "owned:get" "owned:touch"] @attempts))
+          (is (= 1 (aget entry "expiresAt")))
+          (done)) 10))))
+
 (deftest lmdb-cleanup-removes-only-expired-owned-prefix-entries
   (async done
     (let [store (atom {"hydration:old" #js {:value "old" :expiresAt 99}

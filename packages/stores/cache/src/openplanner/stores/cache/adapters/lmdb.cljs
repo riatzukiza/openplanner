@@ -3,6 +3,13 @@
             [openplanner.stores.cache.core :as core]
             [openplanner.stores.cache.protocol :refer [CacheStore CacheEntryStore]]))
 
+(defn- remove-expired! [^js db key]
+  ;; Expiry already makes this entry a miss. Purging is best effort; retain
+  ;; ownership of asynchronous failure without changing synchronous reads.
+  (try
+    (.catch (js/Promise.resolve (.remove db key)) (fn [_error] nil))
+    (catch :default _error nil)))
+
 (deftype LmdbTtlCache [^js db prefix default-ttl-ms]
   CacheEntryStore
   (cache-get-entry [_ k] (core/checked-key k)
@@ -11,7 +18,7 @@
           expires-at (core/jget entry "expiresAt")]
       (cond
         (nil? entry) nil
-        (and expires-at (<= expires-at (core/now-ms))) (do (.remove db key) nil)
+        (and expires-at (<= expires-at (core/now-ms))) (do (remove-expired! db key) nil)
         :else (when-some [value (core/jget entry "value")]
                 {:value value :expires-at-ms expires-at}))))
   CacheStore
@@ -22,7 +29,7 @@
       (cond
         (nil? entry) nil
         (and (core/jget entry "expiresAt") (<= (core/jget entry "expiresAt") now))
-        (do (.remove db key) nil)
+        (do (remove-expired! db key) nil)
         :else (core/jget entry "value"))))
 
   (cache-put! [_ k v opts] (core/checked-key k)
@@ -47,7 +54,7 @@
       (cond
         (nil? entry) false
         (and (core/jget entry "expiresAt") (<= (core/jget entry "expiresAt") now))
-        (do (.remove db key) false)
+        (do (remove-expired! db key) false)
         :else
         (let [ttl-ms (core/ttl-ms opts default-ttl-ms)]
           (.put db key #js {:value (core/jget entry "value")

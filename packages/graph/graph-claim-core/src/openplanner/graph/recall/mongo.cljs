@@ -20,7 +20,9 @@
 
 (defn- ^:async current-authority! [resolve-current-authority]
   (let [authority (try (js->clj (await (resolve-current-authority)) :keywordize-keys true)
-                       (catch :default _error (fail! :authority-unavailable)))]
+                       (catch :default error
+                         (fail! (if (= 50 (when (some? error) (aget error "code")))
+                                  :timeout :authority-unavailable))))]
     (when (some? authority)
       (when-not (and (contract/valid-authority? authority)
                      (unique? (map :id (:records authority)))) (fail! :invalid-authority)))
@@ -85,7 +87,11 @@
         bound (filterv #(and (ids (:source_event_id %)) (= (:node_id %) (:source_event_id %))
                               (= (:project authority) (:project %)) (= model (:embedding_model %))
                               (= (:source_text_hash_sha256 %) (text-sha256 (get texts (:source_event_id %))))) rows)
-        decoded (mapv #(hash-map :id (:_id %) :event-id (:source_event_id %) :model (:embedding_model %)
+        ;; The typed embedding tuple owns recall identity. A preserved legacy
+        ;; BSON _id is physical storage metadata, not a string contract field.
+        decoded (mapv #(hash-map :id (str "scoped-index:" (digest [(:node_id %) (:embedding_model %)
+                                                                 (:embedding_dimensions %) (:chunk_index %)]))
+                                 :event-id (:source_event_id %) :model (:embedding_model %)
                                  :dimensions (:embedding_dimensions %) :chunk (:chunk_index %)
                                  :embedding (:embedding %)) bound)]
     (when-not (and (every? contract/valid-index? decoded) (unique? (map :id decoded))

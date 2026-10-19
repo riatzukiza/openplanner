@@ -1,8 +1,10 @@
 // LGPL-3.0-or-later. Actual owning SDK formatter; held provider and storage only.
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
 import {createScopedMongoRecall} from '../dist/index.js';
 import {formatEmbeddingQueryText} from '../../../openplanner-sdk/src/embedding-text.ts';
+const {ObjectId}=createRequire(new URL('../../../openplanner-sdk/package.json',import.meta.url))('mongodb');
 
 const scope={'actor-id':'creator','org-id':'org','membership-id':'member','user-id':'user','policy-revision':'policy:1'};
 const authority={scope,project:'project',records:[{id:'event',text:'harbor encounter'}]};
@@ -35,6 +37,24 @@ try {
     assert.deepEqual(captured,[],'formatter refusal reaches no provider');
     assert.ok(!JSON.stringify(result).includes('private formatting failure'));
   }
+  const read=createScopedMongoRecall(sdk,async()=>authority,formatEmbeddingQueryText);
+  const originalId=index._id;
+  const before=await read(request);
+  try {
+    index._id=new ObjectId('0123456789abcdef01234567');
+    const after=await read(request);
+    assert.deepEqual(after,before,'physical BSON storage identity cannot change typed embedding recall');
+    index._id=new ObjectId('abcdef0123456789abcdef01');
+    assert.deepEqual(await read(request),before,'embedding tuple identity survives physical storage replacement');
+    const duplicateSdk={...sdk,mongo:{...sdk.mongo,graphNodeEmbeddings:collection([index,{...index,_id:originalId}])}};
+    const duplicate=await createScopedMongoRecall(duplicateSdk,async()=>authority,formatEmbeddingQueryText)(request);
+    assert.equal(duplicate.selection.failure.code,'invalid-embedding','duplicate logical tuples still refuse');
+    const dimensions=index.embedding_dimensions;
+    index.embedding_dimensions='2';
+    try { assert.equal((await read(request)).selection.failure.code,'invalid-embedding','malformed tuple still refuses'); }
+    finally { index.embedding_dimensions=dimensions; }
+  } finally { index._id=originalId; }
+  console.log('PASS actual BSON ObjectId, stable typed embedding identity and duplicate/malformed tuple refusals');
   console.log('PASS actual SDK trim/prefix/template/escaped newline and invalid formatter refusals; no live model or Mongo proof');
 } finally {
   for(const [key,value] of Object.entries(saved)) {

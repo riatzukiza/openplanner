@@ -93,7 +93,7 @@ services:
     volumes:
       - openplanner-mongodb-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "try { if (!db.adminCommand({hello: 1}).setName) rs.initiate({_id: \"openplanner\", members: [{_id: 0, host: \"mongodb:27017\"}]}); } catch (e) { if (e.code !== 23) throw e; } quit(db.adminCommand({hello: 1}).isWritablePrimary ? 0 : 1);"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { if (!db.adminCommand({hello: 1}).setName) rs.initiate({_id: \"openplanner\", members: [{_id: 0, host: \"openplanner-mongodb:27017\"}]}); } catch (e) { if (e.code !== 23) throw e; } quit(db.adminCommand({hello: 1}).isWritablePrimary ? 0 : 1);"]
       interval: 30s
       timeout: 10s
       retries: 3

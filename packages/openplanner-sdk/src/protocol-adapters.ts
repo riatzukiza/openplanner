@@ -290,7 +290,9 @@ class MongoTenantManagement implements TenantManagement {
       return await session.withTransaction(async () => {
         const labels = await mongo.graphLabelNodes.find({ tenant_id: tenantId }, { session }).toArray();
         const labelIds = labels.map(label => label.label_id);
-        if (labelIds.length) await mongo.graphEdges.deleteMany({ target_node_id: { $in: labelIds } }, { session });
+        if (labelIds.length) await mongo.graphEdges.deleteMany({ $or: [
+          { source_node_id: { $in: labelIds } }, { target_node_id: { $in: labelIds } },
+        ] }, { session });
         await mongo.graphLabelNodes.deleteMany({ tenant_id: tenantId }, { session });
         await mongo.db.collection("km_labels").deleteMany({ tenant_id: tenantId }, { session });
         await this.policiesCollection().deleteOne({ tenant_id: tenantId }, { session });

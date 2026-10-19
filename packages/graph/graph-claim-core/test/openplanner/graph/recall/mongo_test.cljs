@@ -53,6 +53,7 @@
 
 (defn- state []
   {:authority* (atom authority) :authority-calls* (atom 0)
+   :authority-fail-at* (atom nil) :authority-error* (atom nil)
    :indices* (atom indices) :edges* (atom edges) :reads* (atom [])
    :read-hooks* (atom {}) :embedding-hook* (atom nil)
    :rejection* (atom :none) :model-scopes* (atom []) :model-overrides* (atom {})
@@ -73,11 +74,31 @@
                                                                     {:model model :texts (js->clj texts)})
                                                              (when-let [hook @(:embedding-hook* state)] (hook))
                                                              (js/Promise.resolve #js [#js [1.0 0.0]]))})}}}
-   (fn [] (swap! (:authority-calls* state) inc) (js/Promise.resolve (clj->js @(:authority* state))))
+   (fn []
+     (let [call (swap! (:authority-calls* state) inc)]
+       (if (= call @(:authority-fail-at* state))
+         (js/Promise.reject @(:authority-error* state))
+         (js/Promise.resolve (clj->js @(:authority* state))))))
    (fn [query] (str "configured query: " (str/trim query)))))
 
 (defn- ^:async recall! [reader request]
   (js->clj (await (reader (clj->js request))) :keywordize-keys true))
+
+(deftest ^:async authority-timeouts-remain-distinct-at-every-authority-await
+  (doseq [call [1 2 3 4] code [50 91 nil]]
+    (let [s (state)
+          error (js/Error. "PRIVATE_AUTHORITY_QUERY")]
+      (aset error "code" code)
+      (reset! (:authority-fail-at* s) call)
+      (reset! (:authority-error* s) error)
+      (let [result (await (recall! (reader s) fixture/request))]
+        (is (= "failed" (get-in result [:selection :status])))
+        (is (= (if (= 50 code) "timeout" "authority-unavailable")
+               (get-in result [:selection :failure :code])))
+        (is (= [] (get-in result [:selection :hits])))
+        (is (= call @(:authority-calls* s)))
+        (is (= 0 @(:writes* s)))
+        (is (not (str/includes? (pr-str result) "PRIVATE_AUTHORITY_QUERY")))))))
 
 (deftest ^:async consuming-wire-boundaries-validate-the-owning-result-shape
   (let [result (await (recall! (reader (state)) fixture/request))]

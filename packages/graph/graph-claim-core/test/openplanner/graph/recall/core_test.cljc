@@ -105,6 +105,23 @@
     (is (= :budget-exhausted (:status result)))
     (is (= ["seed"] (mapv :id (:hits result))))))
 
+(deftest satisfied-hit-count-finishes-before-unused-node-and-cost-budgets
+  (doseq [maximum-cost [0 4]]
+    (let [result (recall/recall-plan snapshot (decisions-for (:nodes snapshot))
+                                   (assoc request :k 1 :max-nodes 1 :max-cost maximum-cost))]
+      (is (= :completed (:status result)))
+      (is (= ["seed"] (mapv :id (:hits result))))
+      (is (= 1 (:visited-count result)))
+      (is (contract/valid-result? result))))
+  (let [expanded (-> snapshot
+                     (update :nodes conj (node "later" false 0))
+                     (update :edges conj (edge "later-edge" "neighbor" "later" 0)))
+        result (recall/recall-plan expanded (decisions-for (:nodes expanded))
+                                   (assoc request :k 2 :max-nodes 2))]
+    (is (= :completed (:status result)))
+    (is (= ["seed" "neighbor"] (mapv :id (:hits result))))
+    (is (= 2 (:visited-count result)))))
+
 (deftest malformed-or-conflicting-input-does-not-become-empty-success
   (doseq [changed [(assoc snapshot :scope {})
                    (update snapshot :nodes conj (first (:nodes snapshot)))

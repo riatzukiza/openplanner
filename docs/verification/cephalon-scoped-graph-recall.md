@@ -232,3 +232,53 @@ These are failed review attempts, with no approval or cohort credit. No third
 unchanged-head invocation is selected. The correction needs its own fresh hosted
 functional execution and complete native review before qualified merge. Live
 B1/B2/B3 remain unverified; no runtime or creative publication changed.
+## Current source review corrections — 2026-10-19 UTC
+
+Reviews `5565645656` (Codex) and `5565672976` (CodeRabbit) on
+`f2b8de52cfb8863ce2eabe78522163033480ee21` identified six existing source defects:
+
+- Authority reads now map Mongo deadline code `50` to the distinct `timeout`
+  outcome at the initial read and all three authority rechecks. Other failures
+  retain `authority-unavailable`; errors expose no private query text.
+- Recall embedding identity derives from the canonical typed node/model/
+  dimensions/chunk tuple. A preserved BSON `_id` cannot invalidate an admitted
+  embedding or change the snapshot revision. Duplicate and malformed tuples
+  still fail validation. The released ESM check uses actual MongoDB `ObjectId`
+  instances; this check uses held collection ports, not a live database.
+- Traversal completes once the requested hit count is satisfied, before an
+  unused node or cost budget can report exhaustion. Existing insufficient-hit
+  budget outcomes remain tested on JVM and Node.
+- Tenant deletion removes label references in both endpoint directions inside
+  the existing transaction. The regression retains another tenant's labels,
+  outgoing references and unrelated ordinary edges across projects.
+- Expired LMDB reads and touches own asynchronous purge failures while retaining
+  synchronous miss/false results. The causal RED crashed Node on the actual
+  rejected promise; GREEN reaches the subsequent event-loop checkpoint.
+- The Compose replica advertises `openplanner-mongodb:27017`, its existing
+  unique alias on the shared network. The disposable nonroot Mongo fixture
+  uses that hostname and reads the actual advertised `hello.hosts` back.
+  Existing deployed replica configurations are not reconfigured by this check.
+
+Local verification uses process-local Node `22.20.0` and pnpm `10.11.0`:
+cache `20` tests / `191` assertions; portable recall `18` / `111`; compiled
+claims/recall/adapter suites `89` / `1,070`; SDK `1,018` / `1,018` passing tests.
+The separate forced assertion still exits `1`, and its checker passes. Cache
+and recall release/test compilers each report zero compiler warnings; recall
+lint reports zero errors and warnings. Existing npm configuration and optional
+source-map-support notices remain visible separately.
+
+The actual disposable Mongo fixture also retains all six caller identity/time
+cases, health idempotence, indexed retention cleanup/reenable, vector replacement
+and transaction rollback controls. All pass on local image
+`sha256:9fae371f0280c30c40523dbda5edda96be4c8722cd1272d2ac79f699b2d955d3`.
+The first tenant regression was inconclusive because its permissive fixture
+overwrote ownerless tuples; that attempt is preserved. Explicit existing event
+ownership and a cardinality assertion made every endpoint case present before
+the corrected causal RED, which then failed against unchanged source.
+
+All original 150 review-input paths remain. Both workflow files, source pins,
+review guards, complete-input requirements, two-invocation limit and 120-minute
+budget remain unchanged. Fresh hosted functional checks and genuine reviews
+must qualify the new immutable head. No live maker, principal, physical Field
+or consumed mood transition is proven by these local checks; B1/B2/B3 remain
+unverified.

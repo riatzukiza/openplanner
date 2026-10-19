@@ -21,6 +21,9 @@ assert.ok(Array.isArray(service.command), "documented Mongo service must declare
 assert.deepEqual(service.command, ["mongod", "--replSet", "openplanner", "--bind_ip_all"]);
 assert.equal(compose.services.openplanner.environment.MONGODB_URI, "mongodb://mongodb:27017/?replicaSet=openplanner");
 assert.equal(service.healthcheck.test[0], "CMD");
+assert.ok(service.networks["ai-infra"].aliases.includes("openplanner-mongodb"));
+assert.match(service.healthcheck.test.at(-1), /host: "openplanner-mongodb:27017"/,
+  "replica discovery must advertise its unique shared-network alias");
 const documented = readFileSync(new URL("../../../.env.example", import.meta.url), "utf8").match(/^MONGODB_URI=(.+)$/m)?.[1];
 assert.equal(documented, "mongodb://localhost:27017/?directConnection=true");
 // Render the documented copied-.env setup without reading a private project .env.
@@ -58,7 +61,7 @@ const name = `openplanner-compose-proof-${randomUUID()}`;
 let container;
 let client;
 try {
-  container = docker("run", "--detach", "--pull=never", "--name", name, "--hostname", "mongodb",
+  container = docker("run", "--detach", "--pull=never", "--name", name, "--hostname", "openplanner-mongodb",
     "--user", "999:999", "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
     "--cpus=1", "--memory=1g", "--pids-limit=128",
     "--tmpfs", "/data/db:rw,nosuid,nodev,size=512m,uid=999,gid=999",
@@ -85,6 +88,7 @@ try {
   const hello = await db.admin().command({ hello: 1 });
   assert.equal(hello.setName, "openplanner");
   assert.equal(hello.isWritablePrimary, true);
+  assert.deepEqual(hello.hosts, ["openplanner-mongodb:27017"]);
   const callerTime = new Date(0);
   const callerFields = [
     ["identity", { _id: "caller-owned-id" }],

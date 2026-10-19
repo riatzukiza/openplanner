@@ -101,6 +101,7 @@
     (loop [queue (ordered-seeds (:nodes snapshot) request) visited #{} hits [] cost-exhausted? false]
       (let [queue (remove #(visited (:id %)) queue)]
         (cond
+          (= (count hits) (:k request)) {:hits hits :exhausted? false}
           (empty? queue) {:hits hits :exhausted? cost-exhausted?}
           (= (count visited) (:max-nodes request)) {:hits hits :exhausted? true}
           :else
