@@ -24,6 +24,8 @@ jobs:
           run_install: false
       - name: Install locked dependencies without lifecycle scripts
         run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build reference SDK used by route imports
+        run: pnpm --filter @open-hax/openplanner-sdk build
       - name: Verify HTTP reference and nbb contracts
         run: |
           pnpm test:contract:openapi
