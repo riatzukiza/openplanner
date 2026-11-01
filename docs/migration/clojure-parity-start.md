@@ -21,6 +21,17 @@ exists, but no TypeScript implementation has been removed or replaced in the
 production startup. This is not a claim that the application or full test
 suite passes.
 
+Paths below reflect the later namespace-aligned relocation from `src/nbb` and
+`tests` to `src/cljs` and `test/cljs`; earlier evidence was recorded before that
+move. The relocation was separately checked against the same fixtures.
+
+OpenAPI's additional Malli-law tests use the isolated `test/malli/nbb.edn`:
+they require native Babashka and a first dependency fetch from Maven. They do
+not make the existing nbb parity commands depend on that configuration. Local
+Maven access was denied, so the real-Malli result must come from the hosted
+workflow, not a local pass. S2.6 tracks a reproducible offline-capable
+distribution; until that is established, this is not Maven-free bootstrap.
+
 ## Ownership and boundaries
 
 - Root `src/` is the Fastify API. `src/app.ts` registers the real auth and Mongo
@@ -52,7 +63,7 @@ captured from the reference above; its SHA-256 is
 The `OPENPLANNER_OPENAPI_MODULE` environment variable selects an ESM module or
 an nbb `.cljs` file exporting `openApiRoutes`. The same test passed first
 against the reference, then unchanged against
-`src/nbb/openplanner/openapi_route.cljs` via
+`src/cljs/openplanner/extern/js/http/openapi.cljs` via
 `pnpm test:contract:openapi:nbb`. It checks the 4,946-byte JSON wire SHA-256
 `745dbaa1873009d92b780c47c211e9c05c9c0ca82b10d642e9dc3637f7a0a702` as
 well as parsed structure. Node ESM's `nbb/loadFile` also registered the
@@ -136,9 +147,9 @@ Closure's string handling. Both require reference-backed boundary tests.
 
 ## Candidate legacy string-hash adapter
 
-`src/nbb/openplanner/closure_sha.cljs` is an **unwired candidate**, not a
+`src/cljs/openplanner/extern/js/closure_sha.cljs` is an **unwired candidate**, not a
 replacement for the graph-claim boundary. Before writing it, the fixed vectors
-in `tests/closure_sha_contract.cljs` were run against the official
+in `test/cljs/openplanner/contract/closure_sha_contract.cljs` were run against the official
 `google-closure-library` npm package `20230802.0.0`; the candidate then passed
 them and 256 deterministic mixed-UTF-16 differential cases against that same
 library. The vectors include non-ASCII, NUL, surrogate, and SHA-block boundary
@@ -159,16 +170,16 @@ safe substitute.
 
 ## Blob HTTP story (parent: JVM-free backend parity epic)
 
-`tests/blob_http_contract.cljs` passed first against unchanged
+`test/cljs/openplanner/contract/blob_http_contract.cljs` passed first against unchanged
 `src/routes/v1/blobs.ts` and then unchanged against the side-by-side
-`src/nbb/openplanner/blob_routes.cljs` using `pnpm test:contract:blobs` and
+`src/cljs/openplanner/extern/js/http/blob.cljs` using `pnpm test:contract:blobs` and
 `pnpm test:contract:blobs:nbb`. It uses loopback HTTP, actual Fastify, auth and
 multipart, and a disposable real filesystem. It covers binary and empty file
 round trips, byte-based SHA-256 and sharded paths, metadata, repeated
 no-overwrite behavior, invalid/missing IDs, auth and preflight, no-file and
 multipart errors. The candidate is not selected by production startup; this
 is not yet proof of full production startup. The additional unchanged
-`tests/blob_http_edge_contract.cljs` passed reference first and candidate
+`test/cljs/openplanner/contract/blob_http_edge_contract.cljs` passed reference first and candidate
 second: fallback directories, invalid/encoded IDs, multi-file/filename handling,
 HEAD, actual filesystem errors, and a reduced multipart size limit. The
 permission tests ran as uid 1000; they do not exercise the full production
@@ -180,19 +191,19 @@ failure mode; no behavioral fix is implied by this checkpoint.
 
 ## Auth contract story (parent: JVM-free backend parity epic)
 
-`tests/auth_http_contract.cljs` passes against the original TS plugin via
+`test/cljs/openplanner/contract/auth_http_contract.cljs` passes against the original TS plugin via
 `pnpm test:contract:auth`. It checks public-path/query distinctions, synthetic
 bearer credentials, CORS, preflight, multiple methods and repeated requests.
 An intentionally empty plugin failed as a negative control. The unchanged
-fixture also passes against `src/nbb/openplanner/auth_plugin.cljs` via
+fixture also passes against `src/cljs/openplanner/extern/js/http/auth.cljs` via
 `pnpm test:contract:auth:nbb`. The original auth plugin remains in production;
 independent review and full application integration are separate gates.
 
 ## Composed backend slice (parent: JVM-free backend parity epic)
 
-The reference-first `tests/backend_slice_http_contract.cljs` passed against
+The reference-first `test/cljs/openplanner/contract/backend_slice_http_contract.cljs` passed against
 the original TS auth, OpenAPI, and blob modules in a partial Fastify app.
-The unchanged test then passed against `src/nbb/openplanner/application.cljs`,
+The unchanged test then passed against `src/cljs/openplanner/extern/js/http/application.cljs`,
 a reusable nbb builder for those three components. It exercises real HTTP,
 auth, multipart, a temporary filesystem and an OpenAPI wire checksum. Run
 `pnpm test:contract:backend-slice` and
@@ -202,9 +213,9 @@ and all other routes, and no startup default has been switched.
 
 ## Portable JSON Schema story (parent: portable language/checks epic)
 
-`tests/shared_schemas_contract.cljs` first passed against the actual four
+`test/cljs/openplanner/contract/shared_schemas_contract.cljs` first passed against the actual four
 TypeScript exports from `openapi.ts` and `state.ts`, then unchanged against
-`src/nbb/openplanner/schemas.cljc` through `schemas_boundary.cljs`. It checks
+`src/cljs/openplanner/shape/api_schemas.cljc` through `src/cljs/openplanner/extern/js/schemas.cljs`. It checks
 complete schema structure against `tests/fixtures/schemas-07085d65.json`
 (SHA-256 `9a487bb475025fb53eaa298adef2ef1ddc0e08bff64be777a613c7a85e3c0151`)
 and runs real Fastify loopback validation, defaults, rejected inputs and
@@ -225,7 +236,7 @@ Before adaptation, the unchanged cache and document-hydration suites failed to
 load under nbb at `goog/typeOf`. A first experimental classifier passed common
 cases but independent review found it could misclassify native functions if
 `Function.prototype.toString` was modified; that wiring was withdrawn. The
-regression is preserved in `tests/closure_object_intrinsic_regression.cljs`.
+regression is preserved in `test/cljs/openplanner/contract/closure_object_intrinsic_regression.cljs`.
 
 The revised `packages/stores/cache/src/openplanner/stores/cache/js_compat.cljc`
 uses existing locked Lodash 4.18.1's documented `isObjectLike` native `typeof`
@@ -233,13 +244,13 @@ extern plus `Array.isArray` on nbb, and retains the original `goog/typeOf`
 expression in the Shadow `:cljs` branch. Lodash is declared directly in the
 root and cache package because nbb resolves npm modules relative to the entry
 script. No handwritten JavaScript or evaluation escape is used.
-`tests/closure_object_contract.cljs` ran first against official Google Closure
+`test/cljs/openplanner/contract/closure_object_contract.cljs` ran first against official Google Closure
 npm `20230802.0.0`, then against the nbb boundary, including native/SCI
 functions, intrinsic mutation, revoked proxies and cross-realm values. The
 unchanged suites now pass under nbb: `pnpm test:nbb:cache` (5 tests, 21
 assertions) and `pnpm test:nbb:document-hydration` (4 tests, 17 assertions).
 
-`src/nbb/openplanner/cache_exports.cljs` and `hydration_exports.cljs` expose
+`src/cljs/openplanner/extern/js/cache.cljs` and `src/cljs/openplanner/extern/js/hydration.cljs` expose
 those existing namespaces through `nbb/loadFile` with the named API surfaces
 listed in their Shadow configs, without inventing generated dist. Their
 `cache_exports_contract.cljs` and `hydration_exports_contract.cljs` fixtures
@@ -260,7 +271,7 @@ whole-service qualification are also still needed.
 The PR-only `shadow-baseline.yml` workflow is configured to check out the
 immutable original revision and candidate head separately, run the existing
 root build, and run four inspected synthetic package suites. It also runs the
-same `tests/openplanner/schema_laws_test.cljc` structural assertions under nbb
+same `test/cljs/openplanner/law/schema_laws_test.cljc` structural assertions under nbb
 and JVM Clojure using Shadow's `clj-run`. A failed build or suite remains a
 failed job; later package suites are still attempted after a successful install.
 The nbb law run passed locally; JVM execution and the new hosted workflow are

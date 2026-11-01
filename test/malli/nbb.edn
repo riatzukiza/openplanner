@@ -1,0 +1,4 @@
+;; Isolated law-test bootstrap. The regular nbb parity commands do not load
+;; this file or require a Clojure dependency fetch.
+{:paths ["../../src/cljs" "../cljs"]
+ :deps {metosin/malli {:mvn/version "0.20.3"}}}

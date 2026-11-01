@@ -80,8 +80,8 @@ it during migration.
   then unchanged on the nbb candidate, with auth, errors, repeated requests and
   document/wire assertions. Record production integration and shared-schema
   export gaps as downstream S4.1 qualification before replacement.
-- **Evidence/status:** in progress. `tests/openapi_http_contract.cljs` passed
-  against both the original and `src/nbb/openplanner/openapi_route.cljs` in an
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/openapi_http_contract.cljs` passed
+  against both the original and `src/cljs/openplanner/extern/js/http/openapi.cljs` in an
   isolated Fastify server. It does not cover full `buildApp` or the separately
   used `openApiSchemas` export in TypeScript search; candidate declarations are
   shared as `.cljc` but can still drift from the unchanged TS reference. See the
@@ -101,7 +101,7 @@ clients remain compatible.
   error, configuration and repeat cases. Hand full production startup and
   actual limits to S4.1 before transition. Track, rather than silently fix,
   observed legacy defects.
-- **Evidence/status:** in progress. The two `tests/blob_http*_contract.cljs`
+- **Evidence/status:** in progress. The two `test/cljs/openplanner/contract/blob_http*_contract.cljs`
   fixtures passed against both implementations with loopback HTTP and temp
   storage, including a reduced size-limit test. Some robustness findings and
   detailed reproductions are retained privately; the public fixture is not
@@ -123,9 +123,9 @@ runtime change cannot silently widen access.
   preflight and repeats; the unchanged fixture and a negative control pass as
   appropriate for a candidate. Hand production-composition verification to
   S4.1.
-- **Evidence/status:** in progress. `tests/auth_http_contract.cljs` passed the
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/auth_http_contract.cljs` passed the
   original first and then the side-by-side
-  `src/nbb/openplanner/auth_plugin.cljs`; a no-op negative control failed as
+  `src/cljs/openplanner/extern/js/http/auth.cljs`; a no-op negative control failed as
   expected. Production auth has not been changed or selected.
 - **Candidate-stage dependency:** S1.1. **Downstream handoff:** S4.1 for full
   app composition and review.
@@ -141,8 +141,8 @@ not just in isolated handlers.
   reference wiring first and the nbb partial app second; preserve both and
   describe every omitted capability. Full production startup, the unported
   routes, Mongo, Kafka and tenant behavior remain separately required in S4.1.
-- **Evidence/status:** in progress. `tests/backend_slice_http_contract.cljs`
-  passed reference composition before `src/nbb/openplanner/application.cljs`
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/backend_slice_http_contract.cljs`
+  passed reference composition before `src/cljs/openplanner/extern/js/http/application.cljs`
   was written, then passed against that partial app. It is not the complete
   `buildApp` and is not selected in production.
 - **Candidate-stage dependencies:** the characterized components in S1.2–S1.4.
@@ -164,9 +164,9 @@ specification does not depend on one backend.
   effects and host-specific adapters without equating schema validity with
   semantic truth or authorization.
 - **Evidence/status:** in progress, with partial nbb structural evidence only.
-  `tests/shared_schemas_contract.cljs` passed first against the four actual
+  `test/cljs/openplanner/contract/shared_schemas_contract.cljs` passed first against the four actual
   TypeScript schema exports, then unchanged against
-  `src/nbb/openplanner/schemas.cljc` via `schemas_boundary.cljs`. It checks a
+  `src/cljs/openplanner/shape/api_schemas.cljc` via `src/cljs/openplanner/extern/js/schemas.cljs`. It checks a
   full structural snapshot plus Fastify loopback validation, defaults, error
   and serialization behavior. The nbb OpenAPI route consumes the same portable
   declarations and still passes its exact-wire and composition contracts. This
@@ -264,6 +264,27 @@ or introducing a competing DSL.
 - **Dependencies:** access to relevant existing tooling and workflow owners;
   E-OP-1 baseline evidence; independent review and separate authorization for
   any actual workflow transition.
+
+#### S2.6 — JVM-free, offline-capable contract bootstrap
+
+**Parent:** E-OP-2. **Story:** As a backend developer, I want the actual
+contract library available to nbb without a JVM or a live Maven fetch during
+ordinary work so that agent and developer environments can run the same laws
+reliably.
+
+- **Acceptance:** evaluate a pinned, licensed and reproducible distribution of
+  the resolved contract sources or another supported nbb-compatible package;
+  verify provenance, version integrity, updates, licensing, clean-machine
+  bootstrap and offline execution. Run the same positive and negative law tests
+  on nbb and JVM without conflating packaging success with semantic proof.
+- **Evidence/status:** incoming. The isolated OpenAPI law test uses native
+  Babashka to resolve real Malli on first use; that still requires network
+  access to Maven repositories. It is not the desired offline development
+  experience. Existing nbb parity commands do not load that isolated config.
+  Local resolution was blocked; hosted CI evidence must be reported separately.
+- **Dependencies:** S2.1 contract evidence, packaging/provenance investigation,
+  and review of the selected distribution mechanism. No unreviewed vendoring
+  or bypass of a denied network path is implied.
 
 ### E-OP-3 — Backend and domain migration
 

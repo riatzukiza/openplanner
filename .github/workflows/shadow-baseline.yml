@@ -83,4 +83,8 @@ jobs:
       - name: Run the same portable assertions on JVM Clojure
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: >-
-          pnpm exec shadow-cljs clj-run openplanner.schema-laws-test/-main
+          pnpm exec shadow-cljs clj-run openplanner.law.schema-laws-test/-main
+      - name: Run OpenAPI Malli laws and macro on JVM Clojure
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: >-
+          pnpm exec shadow-cljs clj-run openplanner.law.openapi-test/-main
