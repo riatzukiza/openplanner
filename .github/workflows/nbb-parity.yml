@@ -55,7 +55,7 @@ jobs:
         run: node --import tsx --test src/tests/embedding-models.test.ts src/tests/sentence-split.test.ts
 
   openapi-malli-reference:
-    name: Original OpenAPI Malli laws (nbb)
+    name: Reference-first OpenAPI Malli laws (nbb)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -82,14 +82,22 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build reference SDK used by route imports
         run: pnpm --filter @open-hax/openplanner-sdk build
+      - name: Check original HTTP document against Malli laws first
+        working-directory: test/malli
+        run: >-
+          node --import tsx ../../node_modules/nbb/cli.js
+          --classpath ../../src/cljs:../cljs
+          -m openplanner.contract.openapi-laws-http-contract
       - name: Run shared Malli laws and macro on nbb
         working-directory: test/malli
         run: >-
           node ../../node_modules/nbb/cli.js
           --classpath ../../src/cljs:../cljs
           -m openplanner.law.openapi-test
-      - name: Check original HTTP document against Malli laws first
+      - name: Check nbb candidate HTTP document against the same Malli laws
         working-directory: test/malli
+        env:
+          OPENPLANNER_OPENAPI_MODULE: src/cljs/openplanner/extern/js/http/openapi.cljs
         run: >-
           node --import tsx ../../node_modules/nbb/cli.js
           --classpath ../../src/cljs:../cljs

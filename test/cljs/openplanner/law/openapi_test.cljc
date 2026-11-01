@@ -2,6 +2,7 @@
   (:require #?(:clj [clojure.test :as t :refer [deftest is testing]]
                :cljs [cljs.test :as t :refer [deftest is testing]])
             [openplanner.law.openapi :as law]
+            [openplanner.shape.openapi-document :as document]
             #?(:clj [openplanner.macro.openapi :refer [defopenapi]]
                :org.babashka/nbb [openplanner.macro.openapi :refer [defopenapi]]))
   #?(:cljs (:require-macros [openplanner.macro.openapi :refer [defopenapi]])))
@@ -15,11 +16,20 @@
 
 (defopenapi macro-document valid-document)
 
+(deftest declaration-macro-laws
+  (testing "the macro emits one ordinary def and rejects a non-symbol name"
+    (is (= '(def declared {"x" 1})
+           (macroexpand '(openplanner.macro.openapi/defopenapi declared {"x" 1}))))
+    (is (thrown? #?(:clj Exception :cljs js/Error)
+                 (macroexpand '(openplanner.macro.openapi/defopenapi 42 {}))))))
+
 (deftest construction-laws
   (testing "validation is non-transforming and the macro declares a value"
     (is (identical? valid-document (law/checked! valid-document)))
     (is (identical? valid-document macro-document))
     (is (:valid? (law/diagnose valid-document))))
+  (testing "the actual portable declaration satisfies the supported law"
+    (is (:valid? (law/diagnose document/openapi-document))))
   (testing "missing and invalid shape members report a violation"
     (doseq [value [(dissoc valid-document "info")
                    (assoc valid-document "paths" {})

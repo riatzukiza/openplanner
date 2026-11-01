@@ -1,7 +1,9 @@
 (ns openplanner.macro.openapi
-  "Declaration syntax for checked construction, not a static type checker.")
+  "Declaration syntax only; validation belongs to the separate law tests.")
 
 (defmacro defopenapi
-  "Define NAME from DOCUMENT, checking the supported law at construction."
+  "Define NAME from DOCUMENT without evaluating it more than once."
   [name document]
-  `(def ~name (openplanner.law.openapi/checked! ~document)))
+  (when-not (symbol? name)
+    (throw (ex-info "defopenapi requires a symbol as its name" {:name name})))
+  `(def ~name ~document))

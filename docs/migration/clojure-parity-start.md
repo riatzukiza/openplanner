@@ -28,8 +28,12 @@ move. The relocation was separately checked against the same fixtures.
 OpenAPI's additional Malli-law tests use the isolated `test/malli/nbb.edn`:
 they require native Babashka and a first dependency fetch from Maven. They do
 not make the existing nbb parity commands depend on that configuration. Local
-Maven access was denied, so the real-Malli result must come from the hosted
-workflow, not a local pass. S2.6 tracks a reproducible offline-capable
+Maven access was denied locally. Hosted CI ran the real-Malli reference-first
+laws on nbb and JVM at `d99ca4c`; this was not a local pass. The declaration
+macro expands to an ordinary definition without fetching Malli or validating
+at runtime; the isolated law fixture checks the constructed value separately.
+These subset checks are neither full OpenAPI conformance nor static typing.
+S2.6 tracks a reproducible offline-capable
 distribution; until that is established, this is not Maven-free bootstrap.
 
 ## Ownership and boundaries
@@ -132,8 +136,9 @@ Installed nbb 1.6.214 executes the existing pure graph-claims and translation
 cores. Small macro, protocol, record, and `deftype` probes worked; the official
 README's `deftype` caveat did not match that minimal probe. Actual graph
 boundary loading stopped at `goog.crypt.Sha256`, and translation/cache
-boundaries at `goog/typeOf`. Malli and typed.cljs were absent from the nbb
-classpath; this is not proof of incompatibility. Node ESM can load an nbb
+boundaries at `goog/typeOf`. Malli and typed.cljs were absent from the initial
+nbb classpath; later isolated hosted CI loaded real Malli using native
+Babashka and a first Maven fetch. Node ESM can load an nbb
 file and call an ordinary CLJS function. An nbb `^:async` function returned
 through `loadFile` was not a native function accepted by Fastify's plugin
 registration, so this synchronous route uses Fastify's callback-style
@@ -274,6 +279,8 @@ root build, and run four inspected synthetic package suites. It also runs the
 same `test/cljs/openplanner/law/schema_laws_test.cljc` structural assertions under nbb
 and JVM Clojure using Shadow's `clj-run`. A failed build or suite remains a
 failed job; later package suites are still attempted after a successful install.
-The nbb law run passed locally; JVM execution and the new hosted workflow are
-not yet established by this note. These assertions do not establish Malli
-semantic laws, static typing, authorization, search behavior or full app E2E.
+The nbb structural law run passed locally and the hosted reference/candidate
+Shadow suites and dual-host structural assertions passed at earlier PR heads.
+The separate OpenAPI subset Malli reference laws also passed on nbb and JVM at
+`d99ca4c`; neither group establishes static typing, authorization, full
+OpenAPI conformance, search behavior or full app E2E.

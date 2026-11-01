@@ -36,7 +36,7 @@
         (assert/equal (.-status response) 200)
         (assert/deepEqual parsed snapshot "real route matches pinned snapshot")
         (assert/equal (:valid? (law/diagnose (js->clj snapshot))) true "original snapshot satisfies law")
-        (assert/equal (:valid? (law/diagnose document)) true "original HTTP document satisfies law")
+        (assert/equal (:valid? (law/diagnose document)) true "selected HTTP document satisfies law")
         (assert/equal (:valid? (law/diagnose (dissoc document "info"))) false "missing info rejected")
         (assert/equal (:valid? (law/diagnose (assoc document "paths" {}))) false "empty paths rejected")
         (let [report (law/diagnose (assoc-in document ref-path "#/components/schemas/Missing"))]

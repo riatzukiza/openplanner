@@ -163,18 +163,23 @@ specification does not depend on one backend.
   and boundary cases under nbb/Node and the chosen JVM CI host, and document
   effects and host-specific adapters without equating schema validity with
   semantic truth or authorization.
-- **Evidence/status:** in progress, with partial nbb structural evidence only.
+- **Evidence/status:** in progress, with partial dual-host evidence.
   `test/cljs/openplanner/contract/shared_schemas_contract.cljs` passed first against the four actual
   TypeScript schema exports, then unchanged against
   `src/cljs/openplanner/shape/api_schemas.cljc` via `src/cljs/openplanner/extern/js/schemas.cljs`. It checks a
   full structural snapshot plus Fastify loopback validation, defaults, error
   and serialization behavior. The nbb OpenAPI route consumes the same portable
   declarations and still passes its exact-wire and composition contracts. This
-  does not establish JVM evaluation, Malli laws, static type checking, actual
+  does not by itself establish Malli laws, static type checking, actual
   search/Mongo E2E, or production replacement. The real search import was blocked
   by missing shadow-built document-hydration artifacts. Some pure graph and
   translation probes work on nbb; Closure-dependent boundaries need adaptation.
-  Malli is absent from the current nbb classpath, not established incompatible.
+  The separate OpenAPI subset Malli law ran on nbb and JVM in hosted CI at
+  reference-first stage `d99ca4c`, including the original HTTP document and
+  negative fixtures. This is a bounded shape/reference check, not full OpenAPI
+  conformance or runtime enforcement. The dependency-free declaration macro
+  defines data; the isolated law test validates it. Root nbb parity tasks do
+  not load Malli or need its Maven bootstrap. S2.6 tracks offline packaging.
   [Shared-schema evidence](../migration/clojure-parity-start.md#portable-json-schema-story-parent-portable-languagechecks-epic).
 - **Dependencies:** initial S3.1 discovery and actual host/dependency
   availability, not completion of all S3.1 children; may run concurrently with
