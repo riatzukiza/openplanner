@@ -5,6 +5,431 @@ Status: planning
 Epic card: `kanban/openplanner-typescript-to-cljs-epic.md`
 Inventory: `docs/architecture/typescript-to-cljs-file-inventory.md`
 
+## Living map — 2026-11-01
+
+The following is the current destination and decision map. IDs are local to
+this document, **not** GitHub issue numbers or claims that issues exist. The
+June inventory and T0–T9 material below are preserved as historical planning
+and useful ownership clues: their 756-file count, worktree scope, shadow-only
+standard, and strictly blocking order are not a current baseline or a rule that
+all architecture must precede any language-parity work. At reference commit
+`07085d6557b75834ce6f50e6c54b8ca47e1c7c08`, the no-new-TypeScript gate reports
+554 active allowlisted files. Re-measure at each checkout; the historical
+counts are not evidence of removal, and submodules have separate ownership.
+
+### Destination and roadmap
+
+- **D-OP-1 — Destination.** A complete Clojure-family OpenPlanner implementation
+  with portable specifications and semantics, nbb-first backend development and
+  runtime, and JVM-based CI where useful. Eliminate the active TypeScript
+  implementation over time without discarding user behavior or tests. Before
+  replacing each TypeScript slice, a complete Clojure-family end-to-end fixture
+  must pass against the original, then unchanged against the candidate; retain
+  existing tests and the reference until parity is established. All new
+  implementation and tests are Clojure-family; minimal manifest/configuration
+  changes are permitted. No mass deletion or reorganization is implied.
+- **R-OP-1 — Roadmap. Parent: D-OP-1.** Inventory ownership and dependencies;
+  build evidence-backed, side-by-side runtime and domain capabilities; qualify
+  each against reference and existing tests; compose and qualify the whole
+  backend; only then propose a separately authorized transition. The epics
+  below are parallel-capable lines of work, not a blanket architectural lock on
+  incremental implementation.
+
+**Map, not territory:** when an obstacle or new evidence changes the route,
+update the affected story, dependency, status and rationale here; preserve the
+original destination instead of silently shrinking it. A runtime contract,
+static type check, semantic law and authorization decision are different
+claims. Preserve observed behavior during parity; record potential defects and
+review any semantic correction separately. Local work here does not authorize
+production selection, deployment, merge, remote issue creation, or live-data
+changes.
+
+The evidence and precise limits for the current isolated checkout are in the
+[implementation checkpoint](../migration/clojure-parity-start.md). In
+particular, the nbb checkpoint passed on local Node 24 and hosted Node 22
+at PR head `5dfdb25f967372fb65308dcd6997e0f0db341f97`; full app startup and
+aggregate tests have not passed in this environment.
+
+### E-OP-1 — JVM-free backend baseline and parity
+
+**Parent:** R-OP-1. **Status:** in progress; candidates remain side-by-side and
+production still selects the TypeScript reference.
+
+#### S1.1 — Establish the baseline
+
+**Parent:** E-OP-1. **Story:** As a maintainer, I want a pinned checkout and
+truthful build, test, lint and ownership baseline so that migration results can
+be compared without concealing pre-existing failures.
+
+- **Acceptance:** record commit, ownership, commands, passes, failures and
+  never-run stages; retain existing tests and disclose environment limits.
+- **Evidence/status:** in progress. [Checkpoint baseline](../migration/clojure-parity-start.md#baseline-in-this-isolated-environment): SDK build,
+  16 focused tests and no-new-TS gate passed; strict lint failed with 27 errors
+  and 8,032 warnings; root shadow build failed at Maven resolution, and full
+  application/aggregate tests were not run. These are not a green global gate.
+- **Dependencies:** authorized official Maven access for original shadow/JVM
+  checks; isolated Mongo and required build artifacts for full-stack tests.
+
+#### S1.2 — OpenAPI route parity
+
+**Parent:** E-OP-1. **Story:** As an API consumer, I want the OpenAPI HTTP route
+ported without changing its wire contract so that existing clients can consume
+it during migration.
+
+- **Acceptance:** run the same complete route fixture first on the original,
+  then unchanged on the nbb candidate, with auth, errors, repeated requests and
+  document/wire assertions. Record production integration and shared-schema
+  export gaps as downstream S4.1 qualification before replacement.
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/openapi_http_contract.cljs` passed
+  against both the original and `src/cljs/openplanner/extern/js/http/openapi.cljs` in an
+  isolated Fastify server. It does not cover full `buildApp` or the separately
+  used `openApiSchemas` export in TypeScript search; candidate declarations are
+  shared as `.cljc` but can still drift from the unchanged TS reference. See the
+  [OpenAPI checkpoint](../migration/clojure-parity-start.md#reference-http-contract).
+- **Candidate-stage dependency:** S1.1. **Downstream handoff:** S2.1 for
+  portable shared schemas and S4.1 for full-startup qualification; neither
+  blocks collecting side-by-side route evidence.
+
+#### S1.3 — Blob routes parity
+
+**Parent:** E-OP-1. **Story:** As a blob API consumer, I want uploads and reads
+to retain their filesystem and HTTP behavior on nbb so that stored content and
+clients remain compatible.
+
+- **Acceptance:** unchanged Clojure-family fixtures pass original first and
+  candidate second with real isolated filesystem, auth, multipart, binary,
+  error, configuration and repeat cases. Hand full production startup and
+  actual limits to S4.1 before transition. Track, rather than silently fix,
+  observed legacy defects.
+- **Evidence/status:** in progress. The two `test/cljs/openplanner/contract/blob_http*_contract.cljs`
+  fixtures passed against both implementations with loopback HTTP and temp
+  storage, including a reduced size-limit test. Some robustness findings and
+  detailed reproductions are retained privately; the public fixture is not
+  exhaustive and no fix is implied. See the
+  [blob checkpoint](../migration/clojure-parity-start.md#blob-http-story-parent-jvm-free-backend-parity-epic).
+- **Candidate-stage dependencies:** S1.1 and the reference auth boundary.
+  **Downstream handoff:** S4.1 for production-sized limits and complete
+  startup. Any robustness correction needs explicit review as a
+  behavior change.
+
+#### S1.4 — Authentication boundary
+
+**Parent:** E-OP-1. **Story:** As an operator, I want the authentication and
+CORS boundary characterized and ported with its existing behavior so that a
+runtime change cannot silently widen access.
+
+- **Acceptance:** reference-first Clojure-family fixture covers public-path
+  and query distinctions, credential rejection/acceptance, methods, CORS,
+  preflight and repeats; the unchanged fixture and a negative control pass as
+  appropriate for a candidate. Hand production-composition verification to
+  S4.1.
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/auth_http_contract.cljs` passed the
+  original first and then the side-by-side
+  `src/cljs/openplanner/domain/auth.cljc` through the Fastify extern and a
+  test-only ABI adapter; a no-op negative control failed as
+  expected. Production auth has not been changed or selected.
+- **Candidate-stage dependency:** S1.1. **Downstream handoff:** S4.1 for full
+  app composition and review.
+
+#### S1.5 — Compose the characterized backend slice
+
+**Parent:** E-OP-1. **Story:** As a backend developer, I want the characterized
+nbb authentication, OpenAPI and blob components to start and work together so
+that compatibility is tested across their registration and effect boundaries,
+not just in isolated handlers.
+
+- **Acceptance:** run the same synthetic end-to-end composition fixture against
+  reference wiring first and the nbb partial app second; preserve both and
+  describe every omitted capability. Full production startup, the unported
+  routes, Mongo, Kafka and tenant behavior remain separately required in S4.1.
+- **Evidence/status:** in progress. `test/cljs/openplanner/contract/backend_slice_http_contract.cljs`
+  passed reference composition before `src/cljs/openplanner/extern/js/http/application.cljs`
+  was written, then passed against that partial app. It is not the complete
+  `buildApp` and is not selected in production.
+- **Candidate-stage dependencies:** the characterized components in S1.2–S1.4.
+  **Downstream handoff:** S4.1 for whole-service qualification and review.
+
+### E-OP-2 — Portable language, contracts and checks
+
+**Parent:** R-OP-1. **Status:** investigation/in progress; this epic may
+proceed alongside, rather than block all, reference-first route migration.
+
+#### S2.1 — Dual-host contracts and laws
+
+**Parent:** E-OP-2. **Story:** As a domain maintainer, I want shared portable
+contracts and executable laws checked on the intended hosts so that the
+specification does not depend on one backend.
+
+- **Acceptance:** identify `.cljc`-appropriate shapes/laws, validate examples
+  and boundary cases under nbb/Node and the chosen JVM CI host, and document
+  effects and host-specific adapters without equating schema validity with
+  semantic truth or authorization.
+- **Evidence/status:** in progress, with partial dual-host evidence.
+  `test/cljs/openplanner/contract/shared_schemas_contract.cljs` passed first against the four actual
+  TypeScript schema exports, then unchanged against
+  `src/cljs/openplanner/shape/api_schemas.cljc` using test-local JS encoding. It checks a
+  full structural snapshot plus Fastify loopback validation, defaults, error
+  and serialization behavior. The nbb OpenAPI route consumes the same portable
+  declarations and still passes its exact-wire and composition contracts. This
+  does not by itself establish Malli laws, static type checking, actual
+  search/Mongo E2E, or production replacement. The real search import was blocked
+  by missing shadow-built document-hydration artifacts. Some pure graph and
+  translation probes work on nbb; Closure-dependent boundaries need adaptation.
+  Hosted CI ran the OpenAPI subset Malli law on nbb and JVM. At reference-first
+  stage `d99ca4c`, nbb checked the original TS HTTP document and negative
+  fixtures; JVM checked portable sample and negative fixtures, not that HTTP
+  response. At `32de17c`, nbb checked the original and candidate HTTP documents
+  in order, while JVM checked the portable candidate declaration and negative
+  fixtures. This is a bounded shape/reference check, not full OpenAPI
+  conformance or runtime enforcement. The dependency-free declaration macro
+  defines data; the isolated law test validates it. Root nbb parity tasks do
+  not load Malli or need its Maven bootstrap. S2.6 tracks offline packaging.
+  [Shared-schema evidence](../migration/clojure-parity-start.md#portable-json-schema-story-parent-portable-languagechecks-epic).
+- **Dependencies:** initial S3.1 discovery and actual host/dependency
+  availability, not completion of all S3.1 children; may run concurrently with
+  E-OP-1.
+
+#### S2.2 — Real typed checking
+
+**Parent:** E-OP-2. **Story:** As a maintainer, I want a real, reproducible
+static typed-Clojure check with explicit interop boundaries so that type claims
+are backed by an executed checker rather than annotations alone.
+
+- **Acceptance:** verify supported `typed.cljs` APIs/version, checker setup,
+  representative positive and negative cases and CI behavior; distinguish
+  runtime validation and static checking, and document which steps require JVM.
+- **Evidence/status:** blocked/unverified. `typed.cljs` is not on the current
+  nbb classpath; original shadow dependency resolution cannot reach Maven here.
+  No static checker pass is claimed.
+- **Dependencies:** authorized dependencies and a supported checker setup;
+  S2.1 for relevant contracts where applicable.
+
+#### S2.3 — Closure compatibility and claim IDs
+
+**Parent:** E-OP-2. **Story:** As a graph-data owner, I want the nbb adapter to
+reproduce the actual reference Closure hash and object-boundary semantics so
+that existing identifiers and input behavior do not silently change.
+
+- **Acceptance:** run reference-backed vectors and differential cases against
+  the exact resolved 2025 Clojure Closure fork, including non-ASCII, surrogate,
+  NUL, block boundaries and JavaScript object types; only then qualify exact
+  fork compatibility or wire the reviewed SHA candidate into graph claims and
+  rerun existing graph tests.
+- **Evidence/status:** in progress, not complete. The nbb SHA candidate remains
+  unwired: its successful digest values matched 13 vectors and 256 differential
+  cases against the distinct official 2023 npm Closure library, not the exact
+  fork. It now returns tagged Clojure success/error maps and keeps Node buffers
+  and exceptions internal; this is candidate behavior, not a graph or ESM API.
+  Invalid inputs and a synthetic Node crypto failure are tested. An earlier
+  nbb object-predicate attempt was withdrawn after review found divergence when
+  same-process code mutates `Function.prototype.toString`; that is a
+  compatibility finding, not a claim of remote exploitability. The revised
+  cache `js_compat.cljc` retains the original `goog/typeOf` expression on the
+  Shadow `:cljs` branch and uses directly declared, already-locked Lodash
+  `isObjectLike` plus `Array.isArray` on nbb. A reference-first 2023 Closure
+  matrix, including intrinsic mutation, cross-realm values and revoked proxies,
+  passed against the revised boundary. The unchanged cache suite now passes
+  under nbb (5 tests/21 assertions), as does document hydration (4 tests/17
+  assertions). Source fixtures derive names and qualified vars from the checked-in
+  `shadow-cljs.edn` files and exercise those functions directly on nbb. Earlier
+  side-by-side bulk JS export maps were withdrawn: outbound export collections
+  are not extern wrappers under the project's boundary convention. The source
+  checks are not tests of compiled Shadow ESM behavior, an nbb ESM ABI,
+  generated `dist` artifacts or production integration. Exact
+  compatibility with the 2025 fork, Shadow compile, SDK static ESM import,
+  Mongo and whole-backend behavior remain unproven. UTF-8 and `object?` are not safe blanket substitutes.
+  See the [hash evidence](../migration/clojure-parity-start.md#candidate-legacy-string-hash-adapter)
+  and [cache/hydration evidence](../migration/clojure-parity-start.md#cache-and-document-hydration-nbb-dependency-story).
+- **Dependencies:** access to the exact original dependency/build without
+  bypassing network restrictions; S1.1; graph boundary integration tests.
+
+#### S2.4 — Declaration ownership and precedents
+
+**Parent:** E-OP-2. **Story:** As a language-tooling maintainer, I want to
+connect portable declarations and laws to Katamorph's existing responsibility
+so that intent can guide host-specific implementations without creating a
+competing DSL.
+
+- **Acceptance:** compare Katamorph responsibilities with existing
+  language-design precedents; record ownership, executable checks, gaps and
+  host choices before proposing integration.
+- **Evidence/status:** research identified precedents for further investigation;
+  no runtime enforcement or static-checking result is claimed here.
+- **Dependencies:** S2.1–S2.2 evidence and Katamorph ownership review; no new
+  parallel framework or implicit cross-repository change.
+
+#### S2.5 — Workflow declaration spike and provisional follow-up
+
+**Parent:** E-OP-2. **Story:** As a maintainer, I want to investigate the
+existing EDN workflow-declaration work and its fit for OpenPlanner so that
+future automation can reuse shared intent without silently changing CI behavior
+or introducing a competing DSL.
+
+- **Acceptance:** complete the revision-pinned inventory, options and evidence,
+  representative equivalence tests, and decision record described in the
+  [workflow DSL investigation card](../../kanban/openplanner-workflow-dsl-investigation.md).
+  Revise or discard that card's provisional epic and stories after the spike;
+  preserve the destination of replacing handwritten workflow YAML over time;
+  target choice, migration sequence and implementation are not predetermined.
+- **Evidence/status:** incoming; investigation has not been performed. Existing
+  PR workflows remain handwritten YAML and unchanged by this story. The user's
+  review requested investigation of existing EDN workflow efforts, not a silent
+  rewrite of current CI.
+- **Dependencies:** access to relevant existing tooling and workflow owners;
+  E-OP-1 baseline evidence; independent review and separate authorization for
+  any actual workflow transition.
+
+#### S2.6 — JVM-free, offline-capable contract bootstrap
+
+**Parent:** E-OP-2. **Story:** As a backend developer, I want the actual
+contract library available to nbb without a JVM or a live Maven fetch during
+ordinary work so that agent and developer environments can run the same laws
+reliably.
+
+- **Acceptance:** evaluate a pinned, licensed and reproducible distribution of
+  the resolved contract sources or another supported nbb-compatible package;
+  verify provenance, version integrity, updates, licensing, clean-machine
+  bootstrap and offline execution. Run the same positive and negative law tests
+  on nbb and JVM without conflating packaging success with semantic proof.
+- **Evidence/status:** incoming. The isolated OpenAPI law test uses native
+  Babashka to resolve real Malli on first use; that still requires network
+  access to Maven repositories. It is not the desired offline development
+  experience. Existing nbb parity commands do not load that isolated config.
+  Local resolution was blocked; hosted CI evidence must be reported separately.
+- **Dependencies:** S2.1 contract evidence, packaging/provenance investigation,
+  and review of the selected distribution mechanism. No unreviewed vendoring
+  or bypass of a denied network path is implied.
+
+#### S2.7 — Nbb async runtime conformance
+
+**Parent:** E-OP-2. **Story:** As a backend maintainer, I want asynchronous
+effects and tests to establish completion and propagate failures on nbb, so
+that a green parity result cannot precede its assertions or teardown.
+
+- **Acceptance:** characterize the pinned runtime with delayed completion,
+  rejection, sequential iteration and cleanup canaries; audit introduced
+  adapters and fixtures; run the corrected fixture against the unchanged
+  original before the candidate and retain negative controls.
+- **Evidence/status:** in progress. On nbb `1.6.214`, a bare non-final
+  `await` in a `^:async` body was observed to advance before a delayed
+  promise; binding that result in a `let` sequenced the minimal probe.
+  An async `doseq` probe also advanced before delayed iterations completed.
+  Corrected local auth, OpenAPI, schema, blob and partial-composition HTTP
+  fixtures passed original first then candidate; delayed assertion, rejection,
+  iteration and cleanup subprocess canaries passed. Corrected Malli HTTP and
+  hosted CI are still pending. This is not a blanket rejection of nbb or of
+  separately run JVM law evidence.
+- **Dependencies:** corrected test lifecycle, reference-first reruns and
+  independent review; retain runtime/version-specific evidence.
+
+### E-OP-3 — Backend and domain migration
+
+**Parent:** R-OP-1. **Status:** inventory and design in progress. The legacy
+T1–T9 groups below remain ownership inputs, not automatic authorization to
+retire packages or alter external systems.
+
+#### S3.1 — Capability and dependency inventory
+
+**Parent:** E-OP-3. **Story:** As a migration lead, I want every remaining
+backend capability assigned an owner and a linked child story so that the
+whole implementation, including delegated packages, is accounted for.
+
+- **Acceptance:** reconcile current tracked files and package/submodule
+  boundaries, dependencies and observable contracts; create local child
+  stories with acceptance and reference fixtures before implementation.
+- **Evidence/status:** in progress. Root `src/` owns the Fastify app; SDK,
+  graph, storage, translation and other workspace packages own distinct
+  components. Both submodules were uninitialized. See the
+  [ownership checkpoint](../migration/clojure-parity-start.md#ownership-and-boundaries).
+- **Dependencies:** S1.1 and per-checkout inventory. Initial children, each
+  parented to S3.1, are listed below; they must be refined as evidence changes.
+- **Open design question:** how should capability-oriented names and paths
+  make the domain intent navigable while retaining explicit law, shape, domain,
+  extern and infra responsibilities? Evaluate navigation against existing
+  project conventions and actual ownership before choosing a canonical tree;
+  a runtime or framework name alone should not obscure the capability. This
+  question does not authorize another mass rename.
+
+| Local child | User story | Acceptance and evidence | Status / dependencies |
+| --- | --- | --- | --- |
+| S3.1a | As an API maintainer, I want every root route and its effects inventoried so that no HTTP capability is lost. | Route-to-contract/dependency map and reference-first fixtures; OpenAPI/blob evidence exists. | In progress; S1.1–S1.5. |
+| S3.1b | As an SDK consumer, I want delegated data-plane operations inventoried so that an HTTP shell rewrite does not masquerade as a core rewrite. | SDK/core inventory and unchanged direct/HTTP consumer tests; SDK build passed. | In progress; S1.1 and isolated service fixtures. |
+| S3.1c | As a graph and signal consumer, I want package boundaries and runtime interop inventoried so that claim and event semantics remain stable. | Claims, graph, signals and Closure dependencies mapped with tests; pure graph core probe exists. | In progress; S2.3 and package owners. |
+| S3.1d | As a workspace maintainer, I want remaining agents, clients, UI, pseudo, archive and gitlink ownership classified so that no active TypeScript is silently omitted. | Reconciled T3–T9 inventory, explicit owner and authorized disposition per package; old counts are historical. | Planned; S1.1 and owning repositories. |
+
+#### S3.2 — Backend-independent storage contracts
+
+**Parent:** E-OP-3. **Story:** As a storage implementer, I want portable store
+contracts and isolated backend adapters so that OpenPlanner semantics can move
+between backends without changing clients or touching live data.
+
+- **Acceptance:** specify and exercise operations, errors, ordering, retention
+  and boundary examples against isolated reference and candidate backends;
+  distinguish proven parity from known discrepancies.
+- **Evidence/status:** planned; no isolated Mongo daemon/container was
+  available here. Do not substitute a mock contract for required end-to-end
+  evidence or use Atlas/live credentials.
+- **Dependencies:** S2.1, S3.1b, isolated backend availability.
+
+#### S3.3 — Clio event compatibility
+
+**Parent:** E-OP-3. **Story:** As an event consumer, I want OpenPlanner's event
+contracts reconciled with Clio so that future interoperability is explicit and
+preserves current behavior until a reviewed change is authorized.
+
+- **Acceptance:** map schemas, laws, versioning and event semantics; link the
+  work to [Foresight #51](https://github.com/open-hax/foresight/issues/51)
+  and [Foresight #52](https://github.com/open-hax/foresight/issues/52), verify
+  their actual state and ownership before implementation, and test with
+  synthetic events. Record
+  duplicate/TTL/order discrepancies separately, not as silent rewrite fixes.
+- **Evidence/status:** planned; references are related work identifiers, not a
+  claim they are complete or a substitute for source verification.
+- **Dependencies:** S2.1, S3.1c, owner review and access to the relevant
+  Foresight evidence.
+
+### E-OP-4 — Whole-backend qualification and authorized transition
+
+**Parent:** R-OP-1. **Status:** planned; no production switch is authorized by
+isolated test results.
+
+#### S4.1 — Qualify the whole backend
+
+**Parent:** E-OP-4. **Story:** As an operator, I want the complete nbb backend
+and its portable contracts exercised with real isolated dependencies so that
+readiness reflects end-to-end behavior rather than a collection of route demos.
+
+- **Acceptance:** production-equivalent startup/configuration, auth, all
+  required routes and dependency lifecycles pass reference/candidate E2E and
+  retained existing tests; test Node 22 as deployed as well as supported
+  versions, run actual type/law and zero-warning gates, and obtain review.
+- **Evidence/status:** not started as a full-backend qualification; isolated
+  route evidence is in E-OP-1, static and global checks remain open.
+- **Dependencies:** E-OP-1 through E-OP-3 capability completion, isolated
+  service infrastructure and executable CI/toolchain.
+
+#### S4.2 — Review and authorize transition
+
+**Parent:** E-OP-4. **Story:** As the service owner, I want a separately
+reviewed transition and rollback decision after qualification so that changing
+production behavior or retiring reference code is deliberate and authorized.
+
+- **Acceptance:** present evidence, remaining defects, ownership, rollback and
+  explicit authorization before any production selection, deletion, merge or
+  deployment; verify the authorized outcome afterward.
+- **Evidence/status:** not started and not authorized by this document.
+- **Dependencies:** S4.1 and explicit authorization for the proposed external
+  state change.
+
+---
+
+## Historical June 2026 plan and inventory
+
+The material below is preserved for context and package ownership. Where it
+conflicts with the living map above, the current destination, test-preservation
+rules, nbb-first backend choice, separate transition authorization, and
+revision rule take precedence.
+
 ## Scope
 
 This roadmap covers the active OpenPlanner worktree under `orgs/open-hax/openplanner` and every source TypeScript/TSX declaration/config/test file found outside generated/vendor directories.

@@ -1,0 +1,2 @@
+{:lint-as {openplanner.macro.openapi/defopenapi clojure.core/def
+           openplanner.support.serial/serial clojure.core/do}}
