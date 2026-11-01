@@ -244,6 +244,27 @@ competing DSL.
 - **Dependencies:** S2.1–S2.2 evidence and Katamorph ownership review; no new
   parallel framework or implicit cross-repository change.
 
+#### S2.5 — Workflow declaration spike and provisional follow-up
+
+**Parent:** E-OP-2. **Story:** As a maintainer, I want to investigate the
+existing EDN workflow-declaration work and its fit for OpenPlanner so that
+future automation can reuse shared intent without silently changing CI behavior
+or introducing a competing DSL.
+
+- **Acceptance:** complete the revision-pinned inventory, options and evidence,
+  representative equivalence tests, and decision record described in the
+  [workflow DSL investigation card](../../kanban/openplanner-workflow-dsl-investigation.md).
+  Revise or discard that card's provisional epic and stories after the spike;
+  preserve the destination of replacing handwritten workflow YAML over time;
+  target choice, migration sequence and implementation are not predetermined.
+- **Evidence/status:** incoming; investigation has not been performed. Existing
+  PR workflows remain handwritten YAML and unchanged by this story. The user's
+  review requested investigation of existing EDN workflow efforts, not a silent
+  rewrite of current CI.
+- **Dependencies:** access to relevant existing tooling and workflow owners;
+  E-OP-1 baseline evidence; independent review and separate authorization for
+  any actual workflow transition.
+
 ### E-OP-3 — Backend and domain migration
 
 **Parent:** R-OP-1. **Status:** inventory and design in progress. The legacy
