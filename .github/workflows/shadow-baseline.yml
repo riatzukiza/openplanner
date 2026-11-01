@@ -88,3 +88,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: >-
           pnpm exec shadow-cljs clj-run openplanner.law.openapi-test/-main
+      - name: Run portable auth domain tests on JVM Clojure
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: >-
+          pnpm exec shadow-cljs clj-run openplanner.domain.auth-test/-main

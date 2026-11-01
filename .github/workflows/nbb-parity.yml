@@ -28,12 +28,19 @@ jobs:
         run: pnpm --filter @open-hax/openplanner-sdk build
       - name: Verify HTTP reference and nbb contracts
         run: |
+          pnpm test:nbb:async-canary
+          pnpm test:nbb:auth-domain
+          pnpm test:nbb:auth-extern
+          pnpm test:nbb:auth-diagnostic
+          pnpm test:nbb:blob-extern
           pnpm test:contract:openapi
           pnpm test:contract:openapi:nbb
           pnpm test:contract:blobs
           pnpm test:contract:blobs:nbb
           pnpm test:contract:blobs:edges
           pnpm test:contract:blobs:edges:nbb
+          pnpm test:contract:blobs:errors
+          pnpm test:contract:blobs:errors:nbb
           pnpm test:contract:auth
           pnpm test:contract:auth:nbb
           pnpm test:contract:backend-slice
@@ -48,9 +55,7 @@ jobs:
           pnpm test:nbb:cache
           pnpm test:nbb:document-hydration
           pnpm test:contract:cache-exports
-          pnpm test:contract:cache-exports:nbb
           pnpm test:contract:hydration-exports
-          pnpm test:contract:hydration-exports:nbb
       - name: Verify focused existing tests
         run: node --import tsx --test src/tests/embedding-models.test.ts src/tests/sentence-split.test.ts
 
@@ -97,7 +102,7 @@ jobs:
       - name: Check nbb candidate HTTP document against the same Malli laws
         working-directory: test/malli
         env:
-          OPENPLANNER_OPENAPI_MODULE: src/cljs/openplanner/extern/js/http/openapi.cljs
+          OPENPLANNER_OPENAPI_MODULE: test/cljs/openplanner/support/openapi_route_adapter.cljs
         run: >-
           node --import tsx ../../node_modules/nbb/cli.js
           --classpath ../../src/cljs:../cljs

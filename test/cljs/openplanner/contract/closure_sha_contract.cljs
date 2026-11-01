@@ -5,10 +5,11 @@
   20230802.0.0 on Node's Uint8Array path. This is not a claim about the exact
   shadow-resolved 2025 fork until that build is available for comparison."
   (:require ["node:assert/strict" :as assert]
+            ["node:crypto$default" :as crypto-default]
             ["node:module" :as node-module]
             ["node:path" :as path]
             ["node:url" :as url]
-            ["nbb" :as nbb]))
+            [openplanner.extern.js.closure-sha :as sha]))
 
 (def vectors
   [["empty" "" "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]
@@ -40,11 +41,13 @@
 
 (defn ^:async run-contract []
   (let [reference (.-OPENPLANNER_CLOSURE_REFERENCE js/process.env)
-        module (await (nbb/loadFile (path/resolve "src/cljs/openplanner/extern/js/closure_sha.cljs")))
-        candidate (.-sha256String module)
+        candidate sha/sha256-string
         digest (if reference (load-reference reference) candidate)]
     (doseq [[label input expected] vectors]
-      (assert/equal (candidate input) expected (str "candidate " label))
+      (let [result (candidate input)]
+        (assert/ok (map? result) (str "candidate " label " returns a Clojure map"))
+        (assert/ok (= :ok (:outcome result)) (str "candidate " label " succeeds"))
+        (assert/equal (:value result) expected (str "candidate " label)))
       (when reference (assert/equal (digest input) expected (str "reference " label))))
     (when reference
       ;; Deterministic UTF-16 units include unpaired surrogates and mixed input
@@ -60,8 +63,35 @@
                     (let [next-seed (mod (+ (* seed 1664525) 1013904223) 4294967296)]
                       (recur (inc i) next-seed
                              (str result (js/String.fromCharCode (mod next-seed 65536)))))))]
-            (assert/equal (candidate text) (digest text) (str "differential sample " sample))
+            (let [result (candidate text)]
+              (assert/ok (= :ok (:outcome result)) (str "candidate sample " sample))
+              (assert/equal (:value result) (digest text) (str "differential sample " sample)))
             (recur (inc sample) next-state)))))
+    (doseq [invalid [nil js/undefined true 42 #js [] #js {} [] {}]]
+      (assert/ok (= {:outcome :error :error :invalid-input} (candidate invalid))
+                 "non-string input returns a safe Clojure error map"))
+    (doseq [target [#js {} (fn [])]]
+      (let [revocable (js/Proxy.revocable target #js {})]
+        (.revoke revocable)
+        (assert/ok (= {:outcome :error :error :invalid-input}
+                      (candidate (.-proxy revocable)))
+                   "a revoked proxy cannot escape input classification as a host exception")))
+    ;; Force a real Node crypto boundary failure and restore the built-in even
+    ;; if an assertion fails. No host message is returned in the result.
+    (let [original (.-createHash crypto-default)]
+      (try
+        (set! (.-createHash crypto-default)
+              (fn [_] (throw (js/Error. "synthetic sensitive host details"))))
+        (node-module/syncBuiltinESMExports)
+        (assert/ok (= {:outcome :error :error :digest-failed} (candidate "abc"))
+                   "Node failure is normalized without exposing host details")
+        (finally
+          (set! (.-createHash crypto-default) original)
+          (node-module/syncBuiltinESMExports))))
+    (assert/ok (= {:outcome :ok
+                   :value "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}
+                  (candidate "abc"))
+               "Node crypto is restored after the failure test")
     (println "Closure string-hash vectors passed against" (if reference reference "nbb adapter"))))
 
 (run-contract)

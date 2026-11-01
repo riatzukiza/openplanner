@@ -1,63 +1,57 @@
 (ns openplanner.extern.js.http.blob
-  "Side-by-side nbb implementation of the filesystem-backed blob routes.
+  "Fastify host boundary for the side-by-side filesystem blob routes.
 
-  The reference TypeScript module remains registered in production. These
-  functions preserve its content-addressing, existing-file, and error behavior."
-  (:require ["node:crypto" :as crypto]
-            ["node:fs/promises" :as fs]
-            ["node:path" :as path]))
+  Host request, reply and app handles remain here. Node effects return Clojure
+  metadata; private byte buffers never enter the portable blob domain."
+  (:require [openplanner.domain.blob :as blob]
+            [openplanner.extern.js.blob-io :as io]
+            [openplanner.shape.http.blob-response :as response]))
 
-(defn- nullish-or [value fallback]
-  (if (nil? value) fallback value))
+(defn- ^:async blobs-dir [app]
+  (let [configured (await (io/configured-data-dir app))
+        environment (if (= :missing (:kind configured))
+                      (await (io/environment-data-dir))
+                      {:kind :missing})]
+    (io/blobs-dir app (blob/data-dir configured environment))))
 
-(defn- blobs-dir [app]
-  (let [config (.-openplannerConfig app)
-        configured (when (some? config) (.-dataDir config))
-        data-dir (nullish-or configured
-                             (nullish-or (.-OPENPLANNER_DATA_DIR js/process.env)
-                                         "./openplanner-lake"))]
-    (path/join data-dir "blobs" "sha256")))
-
-(defn- blob-path [dir sha]
-  (path/join dir (.slice sha 0 2) (.slice sha 2 4) sha))
-
-(defn- sha256-bytes [buffer]
-  (.digest (.update (crypto/createHash "sha256") buffer) "hex"))
+(defn- emit-action [reply action]
+  (case (:action action)
+    :reply (.send (.status reply (:status action)) (clj->js (:body action)))
+    :return (clj->js (:body action))
+    :sent nil
+    (throw (ex-info "Invalid blob operation outcome" (:detail action)))))
 
 (defn- ^:async post-blob [app request reply]
-  (let [dir (blobs-dir app)]
-    (await (fs/mkdir dir #js {:recursive true}))
-    (let [part (await (.file request))]
-      (if (nil? part)
-        (.send (.status reply 400) #js {:error "expected multipart field 'file'"})
-        (let [buffer (await (.toBuffer part))
-              sha (sha256-bytes buffer)
-              output (blob-path dir sha)]
-          (await (fs/mkdir (path/dirname output) #js {:recursive true}))
-          (try
-            (await (fs/access output))
-            (catch :default _error
-              (await (fs/writeFile output buffer))))
-          #js {:ok true :sha256 sha :mime (.-mimetype part)
-               :name (.-filename part) :size (.-length buffer)})))))
+  (let [dir-result (await (blobs-dir app))]
+    (if (= :error (:outcome dir-result))
+      (emit-action reply (response/error-action dir-result))
+      (let [dir (:path dir-result)
+            ensured (await (io/ensure-dir! dir))]
+        (if (= :error (:outcome ensured))
+          (emit-action reply (response/error-action ensured))
+          (let [result (await (io/store-upload! request dir))]
+            (emit-action reply (response/upload-action result))))))))
 
 (defn- ^:async get-blob [app request reply]
-  (let [sha (.. request -params -sha256)]
-    (if-not (re-matches #"^[a-f0-9]{64}$" sha)
-      (.send (.status reply 400) #js {:error "invalid sha256"})
-      (let [file (blob-path (blobs-dir app) sha)]
-        (try
-          (let [buffer (await (fs/readFile file))]
-            (.header reply "Content-Type" "application/octet-stream")
-            (.send reply buffer))
-          (catch :default _error
-            (.send (.status reply 404) #js {:error "blob not found"})))))))
+  (let [decoded (await (io/request-sha request))
+        sha (:value decoded)]
+    (cond
+      (= :error (:kind decoded)) (emit-action reply (response/error-action (io/decode-failure)))
+      (not (and (= :value (:kind decoded)) (blob/valid-sha? sha)))
+      (emit-action reply (response/invalid-sha-action))
+      :else
+      (let [dir-result (await (blobs-dir app))]
+        (if (= :error (:outcome dir-result))
+          (emit-action reply (response/error-action dir-result))
+          (let [path-result (io/blob-path (:path dir-result) sha)]
+            (if (= :error (:outcome path-result))
+              (emit-action reply (response/error-action path-result))
+              (let [result (await (io/send-file! reply (:path path-result)))]
+                (emit-action reply (response/download-action result))))))))))
 
 (defn blob-routes
-  "Fastify callback plugin; wrappers expose native JS-callable route handlers."
+  "Fastify callback plugin; the host adapter owns request and reply handles."
   [app _options done]
   (.post app "/blobs" (fn [request reply] (post-blob app request reply)))
   (.get app "/blobs/:sha256" (fn [request reply] (get-blob app request reply)))
   (done))
-
-#js {:blobRoutes blob-routes}

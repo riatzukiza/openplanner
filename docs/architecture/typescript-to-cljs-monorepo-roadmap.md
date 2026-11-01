@@ -125,7 +125,8 @@ runtime change cannot silently widen access.
   S4.1.
 - **Evidence/status:** in progress. `test/cljs/openplanner/contract/auth_http_contract.cljs` passed the
   original first and then the side-by-side
-  `src/cljs/openplanner/extern/js/http/auth.cljs`; a no-op negative control failed as
+  `src/cljs/openplanner/domain/auth.cljc` through the Fastify extern and a
+  test-only ABI adapter; a no-op negative control failed as
   expected. Production auth has not been changed or selected.
 - **Candidate-stage dependency:** S1.1. **Downstream handoff:** S4.1 for full
   app composition and review.
@@ -166,7 +167,7 @@ specification does not depend on one backend.
 - **Evidence/status:** in progress, with partial dual-host evidence.
   `test/cljs/openplanner/contract/shared_schemas_contract.cljs` passed first against the four actual
   TypeScript schema exports, then unchanged against
-  `src/cljs/openplanner/shape/api_schemas.cljc` via `src/cljs/openplanner/extern/js/schemas.cljs`. It checks a
+  `src/cljs/openplanner/shape/api_schemas.cljc` using test-local JS encoding. It checks a
   full structural snapshot plus Fastify loopback validation, defaults, error
   and serialization behavior. The nbb OpenAPI route consumes the same portable
   declarations and still passes its exact-wire and composition contracts. This
@@ -174,9 +175,12 @@ specification does not depend on one backend.
   search/Mongo E2E, or production replacement. The real search import was blocked
   by missing shadow-built document-hydration artifacts. Some pure graph and
   translation probes work on nbb; Closure-dependent boundaries need adaptation.
-  The separate OpenAPI subset Malli law ran on nbb and JVM in hosted CI at
-  reference-first stage `d99ca4c`, including the original HTTP document and
-  negative fixtures. This is a bounded shape/reference check, not full OpenAPI
+  Hosted CI ran the OpenAPI subset Malli law on nbb and JVM. At reference-first
+  stage `d99ca4c`, nbb checked the original TS HTTP document and negative
+  fixtures; JVM checked portable sample and negative fixtures, not that HTTP
+  response. At `32de17c`, nbb checked the original and candidate HTTP documents
+  in order, while JVM checked the portable candidate declaration and negative
+  fixtures. This is a bounded shape/reference check, not full OpenAPI
   conformance or runtime enforcement. The dependency-free declaration macro
   defines data; the isolated law test validates it. Root nbb parity tasks do
   not load Malli or need its Maven bootstrap. S2.6 tracks offline packaging.
@@ -212,8 +216,11 @@ that existing identifiers and input behavior do not silently change.
   fork compatibility or wire the reviewed SHA candidate into graph claims and
   rerun existing graph tests.
 - **Evidence/status:** in progress, not complete. The nbb SHA candidate remains
-  unwired: it matched 13 vectors and 256 differential cases against the
-  distinct official 2023 npm Closure library, not the exact fork. An earlier
+  unwired: its successful digest values matched 13 vectors and 256 differential
+  cases against the distinct official 2023 npm Closure library, not the exact
+  fork. It now returns tagged Clojure success/error maps and keeps Node buffers
+  and exceptions internal; this is candidate behavior, not a graph or ESM API.
+  Invalid inputs and a synthetic Node crypto failure are tested. An earlier
   nbb object-predicate attempt was withdrawn after review found divergence when
   same-process code mutates `Function.prototype.toString`; that is a
   compatibility finding, not a claim of remote exploitability. The revised
@@ -223,10 +230,12 @@ that existing identifiers and input behavior do not silently change.
   matrix, including intrinsic mutation, cross-realm values and revoked proxies,
   passed against the revised boundary. The unchanged cache suite now passes
   under nbb (5 tests/21 assertions), as does document hydration (4 tests/17
-  assertions). Export fixtures derive expected names from the checked-in
-  `shadow-cljs.edn` files and exercise source functions through the nbb export
-  maps; a Node ESM smoke test passed. These are not tests of compiled Shadow ESM
-  behavior, generated `dist` artifacts or production integration. Exact
+  assertions). Source fixtures derive names and qualified vars from the checked-in
+  `shadow-cljs.edn` files and exercise those functions directly on nbb. Earlier
+  side-by-side bulk JS export maps were withdrawn: outbound export collections
+  are not extern wrappers under the project's boundary convention. The source
+  checks are not tests of compiled Shadow ESM behavior, an nbb ESM ABI,
+  generated `dist` artifacts or production integration. Exact
   compatibility with the 2025 fork, Shadow compile, SDK static ESM import,
   Mongo and whole-backend behavior remain unproven. UTF-8 and `object?` are not safe blanket substitutes.
   See the [hash evidence](../migration/clojure-parity-start.md#candidate-legacy-string-hash-adapter)
@@ -291,6 +300,28 @@ reliably.
   and review of the selected distribution mechanism. No unreviewed vendoring
   or bypass of a denied network path is implied.
 
+#### S2.7 — Nbb async runtime conformance
+
+**Parent:** E-OP-2. **Story:** As a backend maintainer, I want asynchronous
+effects and tests to establish completion and propagate failures on nbb, so
+that a green parity result cannot precede its assertions or teardown.
+
+- **Acceptance:** characterize the pinned runtime with delayed completion,
+  rejection, sequential iteration and cleanup canaries; audit introduced
+  adapters and fixtures; run the corrected fixture against the unchanged
+  original before the candidate and retain negative controls.
+- **Evidence/status:** in progress. On nbb `1.6.214`, a bare non-final
+  `await` in a `^:async` body was observed to advance before a delayed
+  promise; binding that result in a `let` sequenced the minimal probe.
+  An async `doseq` probe also advanced before delayed iterations completed.
+  Corrected local auth, OpenAPI, schema, blob and partial-composition HTTP
+  fixtures passed original first then candidate; delayed assertion, rejection,
+  iteration and cleanup subprocess canaries passed. Corrected Malli HTTP and
+  hosted CI are still pending. This is not a blanket rejection of nbb or of
+  separately run JVM law evidence.
+- **Dependencies:** corrected test lifecycle, reference-first reruns and
+  independent review; retain runtime/version-specific evidence.
+
 ### E-OP-3 — Backend and domain migration
 
 **Parent:** R-OP-1. **Status:** inventory and design in progress. The legacy
@@ -312,6 +343,12 @@ whole implementation, including delegated packages, is accounted for.
   [ownership checkpoint](../migration/clojure-parity-start.md#ownership-and-boundaries).
 - **Dependencies:** S1.1 and per-checkout inventory. Initial children, each
   parented to S3.1, are listed below; they must be refined as evidence changes.
+- **Open design question:** how should capability-oriented names and paths
+  make the domain intent navigable while retaining explicit law, shape, domain,
+  extern and infra responsibilities? Evaluate navigation against existing
+  project conventions and actual ownership before choosing a canonical tree;
+  a runtime or framework name alone should not obscure the capability. This
+  question does not authorize another mass rename.
 
 | Local child | User story | Acceptance and evidence | Status / dependencies |
 | --- | --- | --- | --- |

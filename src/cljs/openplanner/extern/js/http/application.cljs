@@ -7,25 +7,26 @@
   (:require ["fastify" :as fastify]
             ["@fastify/multipart" :as multipart]
             ["@fastify/sensible" :as sensible]
-            [openplanner.extern.js.http.auth :as auth]
+            [openplanner.extern.js.fastify.auth :as fastify-auth]
             [openplanner.extern.js.http.blob :as blobs]
-            [openplanner.extern.js.http.openapi :as openapi]))
+            [openplanner.extern.js.http.openapi :as openapi]
+            [openplanner.infra.http.auth :as auth]))
 
-(defn- ^:async build-slice-app [config]
-  (let [app (fastify/default #js {:logger false
+(defn ^:async build-slice-app
+  "Build an opaque Fastify handle from normalized Clojure configuration.
+
+  The handle is host-specific and must remain inside the JS HTTP boundary."
+  [config]
+  (let [config-js (clj->js config)
+        app (fastify/default #js {:logger false
                                  :bodyLimit (* 50 1024 1024)
                                  :pluginTimeout 120000})]
-    (.decorate app "openplannerConfig" config)
-    (await (.register app sensible/default))
-    (await (.register app multipart/default #js {:limits #js {:fileSize (* 200 1024 1024)}}))
-    (await (.register app auth/auth-plugin config))
-    (await (.register app openapi/open-api-routes #js {:prefix "/v1"}))
-    (await (.register app blobs/blob-routes #js {:prefix "/v1"}))
-    app))
-
-;; An ordinary wrapper is a native JS function for nbb/loadFile consumers;
-;; the internal ^:async function returns the app promise.
-(defn build-slice-app-js [config]
-  (build-slice-app config))
-
-#js {:buildSliceApp build-slice-app-js}
+    (.decorate app "openplannerConfig" config-js)
+    ;; nbb 1.6.214 does not sequence a bare non-final await. Binding each
+    ;; result preserves registration order and propagates a rejected promise.
+    (let [_sensible (await (.register app sensible/default))
+          _multipart (await (.register app multipart/default #js {:limits #js {:fileSize (* 200 1024 1024)}}))
+          _auth (await (.register app (fastify-auth/auth-plugin auth/decide-auth) config-js))
+          _openapi (await (.register app openapi/open-api-routes #js {:prefix "/v1"}))
+          _blobs (await (.register app blobs/blob-routes #js {:prefix "/v1"}))]
+      app)))

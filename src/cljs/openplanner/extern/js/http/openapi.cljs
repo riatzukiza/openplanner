@@ -23,6 +23,3 @@
         (fn [_request reply]
           (.send reply (clj->js document/openapi-document))))
   (done))
-
-;; nbb's loadFile resolves to its last expression for JavaScript/ESM consumers.
-#js {:openApiRoutes open-api-routes}

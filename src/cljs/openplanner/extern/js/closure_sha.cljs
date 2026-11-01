@@ -6,9 +6,15 @@
   Keep this adapter separate until checked against the exact shadow dependency."
   (:require ["node:crypto" :as crypto]))
 
-(defn sha256-string [text]
-  (let [hasher (crypto/createHash "sha256")]
-    (.update hasher (js/Buffer.from text "latin1"))
-    (.digest hasher "hex")))
-
-#js {:sha256String sha256-string}
+(defn sha256-string
+  "Return a CLJS outcome map; never expose Node buffers or host exceptions."
+  [text]
+  (if-not (try (string? text)
+               (catch :default _ false))
+    {:outcome :error :error :invalid-input}
+    (try
+      (let [hasher (.createHash crypto "sha256")]
+        (.update hasher (js/Buffer.from text "latin1"))
+        {:outcome :ok :value (.digest hasher "hex")})
+      (catch :default _
+        {:outcome :error :error :digest-failed}))))
