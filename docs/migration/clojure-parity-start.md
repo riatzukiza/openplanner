@@ -82,6 +82,12 @@ compilation under shadow-cljs or a typed.cljs check.
 - `pnpm check:no-new-typescript`: passed; the existing inventory reports 554
   active allowlisted TypeScript-family files, of which 92 are assigned to the
   root API/SDK tranche (including 69 at the root and 22 in the SDK).
+- Hosted PR head `5dfdb25f967372fb65308dcd6997e0f0db341f97`: the nbb
+  parity workflow passed on Node 22, including the reference SDK build,
+  characterized HTTP/schema/composition tests, nbb package contracts and
+  focused existing tests. Code Quality passed its no-new-TypeScript,
+  deployment-boundary and duplication jobs; it did not run strict lint or
+  the full build. These are results for that head, not a whole-app pass.
 - `pnpm lint:strict`: failed on the unmodified baseline with 27 errors and
   8,032 warnings; unrelated legacy files were not changed to hide this.
 - `pnpm build`: failed in the graph-claim-core shadow-cljs dependency setup,
@@ -248,3 +254,15 @@ value, or evidence against the distinct 2025 Clojure Closure fork. The Shadow
 expression is retained but could not be compiled or run here. The SDK still
 imports a missing shadow-built hydration `dist` artifact; an isolated Mongo and
 whole-service qualification are also still needed.
+
+## Hosted Shadow baseline and dual-host structural check
+
+The PR-only `shadow-baseline.yml` workflow is configured to check out the
+immutable original revision and candidate head separately, run the existing
+root build, and run four inspected synthetic package suites. It also runs the
+same `tests/openplanner/schema_laws_test.cljc` structural assertions under nbb
+and JVM Clojure using Shadow's `clj-run`. A failed build or suite remains a
+failed job; later package suites are still attempted after a successful install.
+The nbb law run passed locally; JVM execution and the new hosted workflow are
+not yet established by this note. These assertions do not establish Malli
+semantic laws, static typing, authorization, search behavior or full app E2E.

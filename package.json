@@ -41,7 +41,8 @@
     "test:contract:cache-exports": "node node_modules/nbb/cli.js tests/cache_exports_contract.cljs",
     "test:contract:cache-exports:nbb": "OPENPLANNER_CACHE_EXPORTS_IMPL=nbb node node_modules/nbb/cli.js tests/cache_exports_contract.cljs",
     "test:contract:hydration-exports": "node node_modules/nbb/cli.js tests/hydration_exports_contract.cljs",
-    "test:contract:hydration-exports:nbb": "OPENPLANNER_HYDRATION_EXPORTS_IMPL=nbb node node_modules/nbb/cli.js tests/hydration_exports_contract.cljs"
+    "test:contract:hydration-exports:nbb": "OPENPLANNER_HYDRATION_EXPORTS_IMPL=nbb node node_modules/nbb/cli.js tests/hydration_exports_contract.cljs",
+    "test:contract:portable-schema-laws": "node node_modules/nbb/cli.js --classpath src/nbb:tests -m openplanner.schema-laws-test"
   },
   "dependencies": {
     "@fastify/multipart": "^8.2.0",
@@ -88,6 +89,7 @@
     "eslint-plugin-functional": "^9.0.4",
     "eslint-plugin-sonarjs": "^4.0.3",
     "postcss": "^8.5.9",
+    "shadow-cljs": "3.4.10",
     "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.0",

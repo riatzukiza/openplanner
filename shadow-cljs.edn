@@ -1,0 +1,5 @@
+;; JVM runner for the same portable structural laws exercised by nbb.
+;; Application packages retain their own Shadow build configurations.
+{:source-paths ["src/nbb" "tests"]
+ :dependencies []
+ :builds {}}

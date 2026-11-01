@@ -46,8 +46,9 @@ changes.
 
 The evidence and precise limits for the current isolated checkout are in the
 [implementation checkpoint](../migration/clojure-parity-start.md). In
-particular, Node 24 has been exercised, not the Dockerfile's Node 22; full app
-startup and aggregate tests have not passed in this environment.
+particular, the nbb checkpoint passed on local Node 24 and hosted Node 22
+at PR head `5dfdb25f967372fb65308dcd6997e0f0db341f97`; full app startup and
+aggregate tests have not passed in this environment.
 
 ### E-OP-1 — JVM-free backend baseline and parity
 
@@ -107,8 +108,8 @@ clients remain compatible.
   exhaustive and no fix is implied. See the
   [blob checkpoint](../migration/clojure-parity-start.md#blob-http-story-parent-jvm-free-backend-parity-epic).
 - **Candidate-stage dependencies:** S1.1 and the reference auth boundary.
-  **Downstream handoff:** S4.1 for production-sized limits, Node 22 and
-  complete startup. Any robustness correction needs explicit review as a
+  **Downstream handoff:** S4.1 for production-sized limits and complete
+  startup. Any robustness correction needs explicit review as a
   behavior change.
 
 #### S1.4 — Authentication boundary
