@@ -1,5 +1,6 @@
 (ns openplanner.stores.cache.core
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [openplanner.stores.cache.js-compat :as js-compat]))
 
 (defn now-ms [] (.now js/Date))
 (defn promise [v] (js/Promise.resolve v))
@@ -7,7 +8,7 @@
 
 (defn obj?
   [x]
-  (and (some? x) (= "object" (goog/typeOf x)) (not (array? x))))
+  (js-compat/js-object? x))
 
 (defn jget
   [obj k]

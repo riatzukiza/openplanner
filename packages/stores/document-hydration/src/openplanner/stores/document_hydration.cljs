@@ -1,12 +1,13 @@
 (ns openplanner.stores.document-hydration
   (:require [clojure.string :as str]
-            [openplanner.stores.cache.boundary :as cache]))
+            [openplanner.stores.cache.boundary :as cache]
+            [openplanner.stores.cache.core :as cache-core]))
 
 (def document-kinds #{"docs" "code" "config" "data"})
 
 (defn- obj?
   [x]
-  (and (some? x) (= "object" (goog/typeOf x)) (not (array? x))))
+  (cache-core/obj? x))
 
 (defn- jget
   [obj k]

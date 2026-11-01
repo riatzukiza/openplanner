@@ -50,6 +50,9 @@ importers:
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       lmdb:
         specifier: ^3.4.2
         version: 3.5.4
@@ -59,6 +62,9 @@ importers:
       mongodb:
         specifier: ^7.1.1
         version: 7.2.0(socks@2.8.9)
+      nbb:
+        specifier: 1.6.214
+        version: 1.6.214
       pino:
         specifier: ^9.0.0
         version: 9.14.0
@@ -627,6 +633,10 @@ importers:
         version: 8.20.1
 
   packages/stores/cache:
+    dependencies:
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
     devDependencies:
       shadow-cljs:
         specifier: ^3.3.5
@@ -3546,6 +3556,9 @@ packages:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
     engines: {node: '>= 4'}
 
+  import-meta-resolve@4.2.0:
+    resolution: {integrity: sha512-Iqv2fzaTQN28s/FwZAoFq0ZSs/7hMAHJVX+w8PZl3cY19Pxk6jFFalxQoIfW2826i/fDLXv8IiEZRIT0lDuWcg==}
+
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
@@ -4181,6 +4194,10 @@ packages:
 
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
+
+  nbb@1.6.214:
+    resolution: {integrity: sha512-dH6ESZ/HNtZPzp4uxiweM9XtmiCu/pMaoz8ALuDU1vDjzF4l7uEzkrQx8Cel1vuHeLxS2aIETdMyB6EpiAHGyQ==}
+    hasBin: true
 
   negotiator@1.0.0:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
@@ -8826,6 +8843,8 @@ snapshots:
 
   ignore@7.0.5: {}
 
+  import-meta-resolve@4.2.0: {}
+
   imurmurhash@0.1.4: {}
 
   indent-string@5.0.0: {}
@@ -9582,6 +9601,10 @@ snapshots:
   nanoid@3.3.12: {}
 
   natural-compare@1.4.0: {}
+
+  nbb@1.6.214:
+    dependencies:
+      import-meta-resolve: 4.2.0
 
   negotiator@1.0.0: {}
 

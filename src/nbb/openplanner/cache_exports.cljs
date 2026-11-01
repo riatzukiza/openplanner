@@ -1,0 +1,20 @@
+(ns openplanner.cache-exports
+  "Nbb loadFile export boundary matching the existing cache ESM names.
+
+  This is an nbb API, not a generated dist module or a replacement for the
+  package's existing Shadow build. Add cache/src to the nbb classpath first."
+  (:require [openplanner.stores.cache.boundary :as cache]))
+
+#js {:createMemoryLruCache cache/create-memory-lru-cache
+     :createLmdbCache cache/create-lmdb-cache
+     :createLayeredCache cache/create-layered-cache
+     :cacheGet cache/cache-get-js
+     :cachePut cache/cache-put-js
+     :cacheEvict cache/cache-evict-js
+     :cacheTouch cache/cache-touch-js
+     :cacheCleanup cache/cache-cleanup-js
+     :cacheStats cache/cache-stats-js
+     :cacheEntry cache/cache-entry-js
+     :explainCacheEntry cache/explain-cache-entry-js
+     :projectionEnvelope cache/projection-envelope-js
+     :explainProjectionEnvelope cache/explain-projection-envelope-js}

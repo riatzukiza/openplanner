@@ -1,0 +1,53 @@
+name: Nbb parity checkpoint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  nbb-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - name: Install locked dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify HTTP reference and nbb contracts
+        run: |
+          pnpm test:contract:openapi
+          pnpm test:contract:openapi:nbb
+          pnpm test:contract:blobs
+          pnpm test:contract:blobs:nbb
+          pnpm test:contract:blobs:edges
+          pnpm test:contract:blobs:edges:nbb
+          pnpm test:contract:auth
+          pnpm test:contract:auth:nbb
+          pnpm test:contract:backend-slice
+          pnpm test:contract:backend-slice:nbb
+          pnpm test:contract:schemas
+          pnpm test:contract:schemas:nbb
+      - name: Verify nbb package and boundary contracts
+        run: |
+          pnpm test:contract:closure-sha:nbb
+          pnpm test:diagnostic:closure-object
+          pnpm test:contract:closure-object:intrinsics
+          pnpm test:nbb:cache
+          pnpm test:nbb:document-hydration
+          pnpm test:contract:cache-exports
+          pnpm test:contract:cache-exports:nbb
+          pnpm test:contract:hydration-exports
+          pnpm test:contract:hydration-exports:nbb
+      - name: Verify focused existing tests
+        run: node --import tsx --test src/tests/embedding-models.test.ts src/tests/sentence-split.test.ts
