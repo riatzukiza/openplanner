@@ -1,0 +1,13 @@
+# Graph connections boundaries
+
+`POST /v1/graph/connections` reads the MongoDB event and graph-edge projections. It is a bounded, two-hop visualization, not a complete graph export: the node cap, per-hop edge cap and lake filter can omit neighbors. Its bridge counts describe the returned neighborhood, not global membership or verified cross-platform identity. A Bluesky mention links a message author's displayed bridge to the mentioned profile; it does not establish ownership of that profile.
+
+Discord topics and attachments are derived from event `extra.topics`/`extra.topic` and `extra.attachments`. The top-level `attachments` field contains OpenPlanner blob references and is a separate contract. The ingestion path derives `preceded_by` from an explicit previous ID or an earlier stored channel event; late, concurrent, or equal-timestamp arrivals can leave ordering incomplete or stale. Consumers must not interpret these edges as a complete chronology.
+
+The backfill script writes MongoDB graph edges directly; it is not a Clio ledger migration and does not establish Clio event provenance. It does not create the corresponding topic or attachment node records. Run no backfill against a live database without a separately reviewed migration and operational plan. This change does not migrate existing data or establish a Clio cutover.
+
+## Clojure implementation plan
+
+The current HTTP routes remain TypeScript and the characterization in `tests/graph_connections_characterization.cljs` intentionally fails against them. Build the repair in the existing ClojureScript backend, beginning with a pure reference projection that selects the induced edges of the bounded node set and associates Bluesky mentions through explicit authorship. Add message projection for textless events with explicit predecessor, topic, and attachment data. Connect those functions to the ClojureScript HTTP and persistence boundaries, then run the same request fixtures against that backend and verify parity on real MongoDB fixtures separately. Resolve late-arrival ordering and historical backfill as separately scoped designs; this characterization does not establish either guarantee or a Clio cutover. Do not remove the failing characterization until a compliant serving path passes it.
+
+`tests/graph_connections_mongo_http.cljs` exercises the unchanged routes through a loopback HTTP listener and a disposable real MongoDB database. It requires an explicitly supplied loopback-only `OPENPLANNER_E2E_MONGO_URI`, creates a uniquely named database, and drops it during cleanup. Kafka is stubbed; this is not a full service-stack test. Run only against an isolated disposable MongoDB server.
